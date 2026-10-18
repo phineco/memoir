@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ person.name }} · {{ family.name }}{% endblock %}
+{% block nav %}
+<nav class="navlinks">
+  <a href="{{ url_for('main.family_home', family_id=family.id) }}">🌳 家族树</a>
+  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1>{{ person.name }}{% if person.relation %} <small>（{{ person.relation }}）</small>{% endif %}</h1>
+{% if kinship %}<p class="kinship">🧭 与你的关系：<strong>{{ kinship }}</strong></p>{% endif %}
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if linked_user %}<p>👤 已关联账号：<strong>{{ linked_user.nickname or linked_user.phone }}</strong>
+  {% if me and (linked_user.id == me.id or is_admin) %}
+  <form method="post" action="{{ url_for('main.tree_unlink', family_id=family.id, person_id=person.id) }}" style="display:inline">
+    <button type="submit" class="btn-small" style="background:#999" onclick="return confirm('解除关联吗？')">解除关联</button>
+  </form>{% endif %}</p>
+{% elif me and not my_link %}
+<p><form method="post" action="{{ url_for('main.tree_claim', family_id=family.id, person_id=person.id) }}" style="display:inline">
+  <button type="submit" class="btn-small" style="background:#5a7d9a" onclick="return confirm('确认你是「{{ person.name }}」吗？')">👤 这是我</button>
+</form> <span class="hint">把你的登录账号关联到这个人物，家族树上会显示标记。</span></p>
+{% endif %}
+{% if is_admin %}
+<p><a href="{{ url_for('main.tree_edit', family_id=family.id, person_id=person.id) }}" class="btn-small" style="background:#5a7d9a;text-decoration:none">✏️ 编辑人物</a></p>
+{% endif %}
+<div class="stats">
+  <span>{{ status_label.get(person.status, person.status or '—') }}</span>
+  {% if person.birth_year %}<span>🎂 {{ person.birth_year }}年生</span>{% endif %}
+  {% if person.death_year %}<span>🕯️ {{ person.death_year }}年去世</span>{% endif %}
+  {% if person.alive %}<span>💚 健在</span>{% endif %}
+</div>
+
+<h2>📝 人物小传</h2>
+{% if is_admin %}<p><a href="{{ url_for('main.portrait_edit', family_id=family.id, person_id=person.id) }}" class="btn-small" style="background:#5a7d9a;text-decoration:none">✏️ 编辑小传</a> <span class="muted">AI 自动提炼，管理员可修订（保留历史版本）</span></p>{% endif %}
+{% if portrait %}
+{% set ra_prefix = 'portrait' %}{% set ra_label = '朗读小传' %}{% set ra_target = 'portraitBody' %}
+{% include '_read_aloud.html' %}
+{% endif %}
+<div class="prose" id="portraitBody">
+{% if portrait %}{{ portrait.profile_text }}{% if portrait.version %}<p class="muted">（第 {{ portrait.version }} 版）</p>{% endif %}{% else %}<p class="hint">暂无小传。</p>{% endif %}
+</div>
+
+<h2>🖼️ 照片墙</h2>
+<div class="photos">
+{% for ph in photos %}
+  <div class="photo">
+    {% if ph.storage_path %}<img src="{{ storage_url(ph.storage_path) }}" class="photo-img" alt="{{ ph.caption or '' }}" loading="lazy">{% else %}<div class="photo-ph">📷</div>{% endif %}
+    <div class="photo-cap">{{ ph.photo_year or '年份未知' }} · {{ ph.caption or '' }}</div>
+    {% if me and (ph.uploaded_by == me.id or is_admin) %}
+    <form method="post" action="{{ url_for('main.photo_delete', family_id=family.id, person_id=person.id, photo_id=ph.id) }}" onsubmit="return confirm('删除这张照片？')">
+      <button type="submit" class="btn-small" style="background:#999">删除</button>
+    </form>
+    {% endif %}
+  </div>
+{% else %}
+  <p class="hint">暂无照片。</p>
+{% endfor %}
+</div>
+{% if me %}
+<h3>📤 添加照片</h3>
+<form method="post" action="{{ url_for('main.photo_upload', family_id=family.id, person_id=person.id) }}" enctype="multipart/form-data">
+  <div class="upload-row">
+    <label class="btn-secondary filebtn">📷 拍照<input type="file" name="photo" accept="image/*" capture="environment" hidden></label>
+    <label class="btn-secondary filebtn">🖼️ 相册上传<input type="file" name="photo2" accept="image/*" hidden></label>
+    <span id="filename" class="muted"></span>
+  </div>
+  <div class="form-row">
+    <label>拍摄年份 <input type="number" name="photo_year" placeholder="如 1985"></label>
+  </div>
+  <label>照片描述 *<br><input name="caption" class="full" required placeholder="这张照片讲的是…（必填）"></label>
+  <div class="form-actions">
+    <button type="submit" class="btn-primary">上传</button>
+  </div>
+  <p class="hint">手机上"拍照"会直接打开相机。描述必填，方便以后回忆。</p>
+</form>
+<script>
+document.querySelectorAll('input[type=file]').forEach(function(inp){
+  inp.addEventListener('change', function(){
+    if (inp.files.length) document.getElementById('filename').textContent = '已选：' + inp.files[0].name;
+  });
+});
+</script>
+{% endif %}
+
+<h2>🕰️ 时间轴</h2>
+{% if is_admin %}<p><a href="{{ url_for('main.timeline_add', family_id=family.id, person_id=person.id) }}" class="btn-small" style="background:#5a7d9a;text-decoration:none">➕ 添加事件</a></p>{% endif %}
+{% for year, evs in by_year.items() %}
+  <h3 class="year">{{ year }} 年</h3>
+  <ul class="timeline">
+  {% for e in evs %}
+    <li><strong>{{ e.title }}</strong>
+      {% if is_admin %}
+      <a href="{{ url_for('main.timeline_edit', family_id=family.id, person_id=person.id, event_id=e.id) }}" class="btn-small" style="background:#5a7d9a">编辑</a>
+      <form method="post" action="{{ url_for('main.timeline_delete', family_id=family.id, person_id=person.id, event_id=e.id) }}" style="display:inline" onsubmit="return confirm('删除该事件？')">
+        <button type="submit" class="btn-small" style="background:#999">删除</button>
+      </form>
+      {% endif %}
+      <span class="prec">（{{ {'year':'年','month':'月','day':'日'}[e.date_precision or 'year'] }}精度）</span><br>
+      {{ e.description or '' }}</li>
+  {% endfor %}
+  </ul>
+{% endfor %}
+{% if undated %}
+  <h3 class="year">待定时间</h3>
+  <ul class="timeline">{% for e in undated %}<li><strong>{{ e.title }}</strong>
+  {% if is_admin %}
+  <a href="{{ url_for('main.timeline_edit', family_id=family.id, person_id=person.id, event_id=e.id) }}" class="btn-small" style="background:#5a7d9a">编辑</a>
+  <form method="post" action="{{ url_for('main.timeline_delete', family_id=family.id, person_id=person.id, event_id=e.id) }}" style="display:inline" onsubmit="return confirm('删除该事件？')">
+    <button type="submit" class="btn-small" style="background:#999">删除</button>
+  </form>
+  {% endif %}<br>{{ e.description or '' }}</li>{% endfor %}</ul>
+{% endif %}
+
+{% if interviews %}
+<h2>📖 相关故事</h2>
+<ul>
+{% for iv in interviews %}
+  <li><a href="{{ url_for('main.story_detail', family_id=family.id, interview_id=iv.id) }}">《{{ iv.topic or '未命名' }}》</a></li>
+{% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

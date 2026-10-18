@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}家庭列表 · 家音{% endblock %}
+{% block content %}
+<h1>选择家庭</h1>
+{% if me %}<p><a href="{{ url_for('main.family_new') }}" class="btn-primary" style="text-decoration:none">➕ 创建家庭</a></p>{% endif %}
+<div class="cards">
+{% for f in families %}
+  <a class="card" href="{{ url_for('main.family_home', family_id=f.id) }}">
+    <div class="card-title">{{ f.name }}</div>
+    <div class="card-sub">进入家族树 →</div>
+  </a>
+{% else %}
+  <p>暂无家庭，{% if me %}点上面"➕ 创建家庭"新建一个{% else %}登录后可创建家庭{% endif %}。</p>
+{% endfor %}
+</div>
+{% endblock %}

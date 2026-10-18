@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}问 AI · {{ family.name }}{% endblock %}
+{% block nav %}
+<nav class="navlinks">
+  <a href="{{ url_for('main.family_home', family_id=family.id) }}">🌳 家族树</a>
+  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
+  <a href="{{ url_for('main.weekly_current', family_id=family.id) }}">📰 本周周报</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1>🤖 问 AI</h1>
+<p class="hint">我知道"家音"这个项目是做什么的，也读过{{ family.name }}已有的全部回忆内容。
+可以问我家里的事（我会注明出处）、让我找缺失的内容、或帮你规划下周采访谁。不知道的事我会直说，绝不编。</p>
+{% if not ai_enabled %}
+<p class="error">AI 未启用：请管理员配置 DEEPSEEK_API_KEY 后使用。</p>
+{% endif %}
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<div class="chatlog">
+{% for m in msgs %}
+  <div class="chat-msg {{ m.role }}">
+    <div class="chat-role">{{ '你' if m.role == 'user' else '🤖 家音' }}</div>
+    <div class="chat-body">{{ m.content }}</div>
+  </div>
+{% else %}
+  <p class="hint">还没有对话，试试："三叔哪年进的供销社？"、"家里还有谁没采访？"、"下周建议先采访谁？"</p>
+{% endfor %}
+</div>
+{% if ai_enabled %}
+<form method="post" class="chatform">
+  <input name="message" class="full" placeholder="问点什么…" required maxlength="2000" autocomplete="off">
+  <button type="submit" class="btn-primary">发送</button>
+</form>
+{% endif %}
+{% endblock %}

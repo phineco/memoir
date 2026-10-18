@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}《{{ iv.topic or '未命名' }}》 · {{ family.name }}{% endblock %}
+{% block nav %}
+<nav class="navlinks">
+  <a href="{{ url_for('main.family_home', family_id=family.id) }}">🌳 家族树</a>
+  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1>《{{ iv.topic or '未命名' }}》</h1>
+{% if me and iv.author_id == me.id and (iv.publish_status or 'published') == 'draft' %}
+<p><span class="badge-draft">草稿 · 仅你可见</span> <a href="{{ url_for('main.edit_article', family_id=family.id, interview_id=iv.id) }}" class="btn-small" style="background:#5a7d9a">✏️ 继续编辑</a></p>
+{% endif %}
+<p class="hint">🎙️ 讲述者：{% if narrator %}<a href="{{ url_for('main.person_page', family_id=family.id, person_id=narrator.id) }}">{{ narrator.name }}</a>{% else %}—{% endif %} · 讲述对象：{% if person %}<a href="{{ url_for('main.person_page', family_id=family.id, person_id=person.id) }}">{{ person.name }}</a>{% else %}—{% endif %} · {{ iv.create_date.strftime('%Y-%m-%d') if iv.create_date else '' }}</p>
+<div class="engagement">
+  <span>👁️ <span id="viewCount">{{ iv.view_count or 0 }}</span> 观看</span>
+  <button class="likebtn {{ 'liked' if ('interview', iv.id) in liked_ids else '' }}" data-type="interview" data-id="{{ iv.id }}">❤️ <span class="cnt">{{ iv.like_count or 0 }}</span> 点赞</button>
+</div>
+<div class="meta-line">
+  {% if iv.period_start or iv.period_end %}<span>📅 {{ iv.period_start.strftime('%Y') if iv.period_start else '?' }} → {{ iv.period_end.strftime('%Y') if iv.period_end else '?' }}{% if iv.period_precision == 'year' %}（年精度）{% endif %}</span>{% endif %}
+  {% if rel_rows %}<span>👥
+    {% for ip, p in rel_rows %}<a href="{{ url_for('main.person_page', family_id=family.id, person_id=p.id) }}">{{ p.name }}</a>{% if ip.role == 'subject' %}（讲述对象）{% endif %}{% if not loop.last %}、{% endif %}{% endfor %}
+  </span>{% endif %}
+</div>
+
+<h2>初稿</h2>
+{% set ra_prefix = 'story' %}{% set ra_label = '朗读全文' %}{% set ra_target = 'articleBody' %}
+{% include '_read_aloud.html' %}
+<div class="prose article-body" id="articleBody">
+{% if draft %}{% if draft.content and draft.content.lstrip().startswith('<') %}{{ draft.content | safe }}{% else %}{% for para in draft.content.split("\n\n") %}{% if para.strip() %}<p>{{ para }}</p>{% endif %}{% endfor %}{% endif %}{% else %}<p class="hint">暂无初稿。</p>{% endif %}
+</div>
+
+<h2>✨ 原话金句</h2>
+<ul class="quotes">
+{% for q in quotes %}<li>"{{ q.text }}"</li>{% else %}<li class="hint">暂无。</li>{% endfor %}
+</ul>
+
+<h2>❓ 待核实</h2>
+<ul>
+{% for v in verifs %}
+  <li>{{ '✅' if v.status == 'resolved' else '⏳' }} 「{{ v.text }}」→ {{ v.reason }}
+      {% if v.correction %}<br><span class="correction">修正：{{ v.correction }}</span>{% endif %}</li>
+{% else %}<li class="hint">暂无。</li>{% endfor %}
+</ul>
+
+<h2>👥 故事人物对应</h2>
+<ul>
+{% for l in links %}
+  <li>"{{ l.mention }}" → {% if l.is_new %}🆕 新出现人物（待确认是否入树）{% else %}{{ l.status }}{% endif %}</li>
+{% else %}<li class="hint">暂无。</li>{% endfor %}
+</ul>
+
+<h2>💬 评论</h2>
+{% macro render_comment(node, depth=0) %}
+<div class="comment" style="margin-left: {{ depth * 28 }}px">
+  <div class="comment-head">
+    <strong>{{ comment_users[node.c.user_id].nickname if node.c.user_id in comment_users else '已注销' }}</strong>
+    <span class="hint">{{ node.c.create_date.strftime('%Y-%m-%d %H:%M') if node.c.create_date else '' }}</span>
+  </div>
+  <div class="comment-body">{{ node.c.content }}</div>
+  <div class="comment-actions">
+    <button class="likebtn small {{ 'liked' if ('comment', node.c.id) in liked_ids else '' }}" data-type="comment" data-id="{{ node.c.id }}">❤️ <span class="cnt">{{ node.c.like_count or 0 }}</span></button>
+    {% if me %}<button class="replybtn" data-pid="{{ node.c.id }}" data-name="{{ comment_users[node.c.user_id].nickname if node.c.user_id in comment_users else '' }}">回复</button>{% endif %}
+    {% if me and node.c.content != '（该评论已删除）' and (node.c.user_id == me.id or is_admin) %}
+    <form method="post" action="{{ url_for('main.comment_delete', family_id=family.id, interview_id=iv.id, comment_id=node.c.id) }}" style="display:inline" onsubmit="return confirm('删除这条评论？')">
+      <button type="submit" class="btn-small" style="background:#999">删除</button>
+    </form>
+    {% endif %}
+  </div>
+  {% for child in node.children %}{{ render_comment(child, depth + 1) }}{% endfor %}
+</div>
+{% endmacro %}
+
+<div class="comments">
+{% for node in comment_roots %}{{ render_comment(node) }}{% else %}<p class="hint">暂无评论，来抢沙发吧。</p>{% endfor %}
+</div>
+
+{% if me %}
+<form method="post" action="{{ url_for('main.post_comment', family_id=family.id, interview_id=iv.id) }}" class="commentform">
+  <input type="hidden" name="parent_id" id="parentId" value="0">
+  <div id="replyHint" class="hint" style="display:none"></div>
+  <textarea name="content" rows="3" placeholder="写下你的评论…" required></textarea>
+  <button type="submit">发表评论</button>
+</form>
+{% else %}
+<p class="hint"><a href="{{ url_for('main.login', next=request.path) }}">登录后评论</a></p>
+{% endif %}
+{% endblock %}
+{% block script %}
+<script>
+// 点赞
+document.querySelectorAll('.likebtn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    fetch('/api/like', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({target_type: btn.dataset.type, target_id: btn.dataset.id})
+    }).then(function(r) {
+      if (r.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname); return null; }
+      return r.json();
+    }).then(function(d) {
+      if (!d) return;
+      btn.querySelector('.cnt').textContent = d.count;
+      btn.classList.toggle('liked', d.liked);
+    });
+  });
+});
+
+// 追评：点"回复"把 parent_id 填进表单
+document.querySelectorAll('.replybtn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.getElementById('parentId').value = btn.dataset.pid;
+    var hint = document.getElementById('replyHint');
+    hint.style.display = 'block';
+    hint.innerHTML = '回复 @' + btn.dataset.name + ' <a href="#" id="cancelReply">取消</a>';
+    document.querySelector('.commentform textarea').focus();
+    document.getElementById('cancelReply').addEventListener('click', function(e) {
+      e.preventDefault();
+      document.getElementById('parentId').value = '0';
+      hint.style.display = 'none';
+    });
+  });
+});
+</script>
+{% endblock %}

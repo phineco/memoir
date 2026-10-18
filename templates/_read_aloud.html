@@ -1,0 +1,17 @@
+{# 语音朗读控件：需先 set ra_prefix / ra_label / ra_target #}
+<div class="readbar">
+  <button id="{{ ra_prefix }}ReadBtn" class="read-btn">🔊 {{ ra_label or '朗读全文' }}</button>
+  <label class="speed">语速
+    <select id="{{ ra_prefix }}ReadRate">
+      <option value="0.8" selected>慢速</option>
+      <option value="1">正常</option>
+    </select>
+  </label>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof initReadAloud === 'function') {
+    initReadAloud('{{ ra_prefix }}ReadBtn', '{{ ra_prefix }}ReadRate', '{{ ra_target }}');
+  }
+});
+</script>

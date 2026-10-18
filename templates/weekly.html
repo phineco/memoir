@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}第 {{ week }} 周周报 · {{ family.name }}{% endblock %}
+{% block nav %}
+<nav class="navlinks">
+  <a href="{{ url_for('main.family_home', family_id=family.id) }}">🌳 家族树</a>
+  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1>📰 {{ family.name }} · 第 {{ week }} 周周报</h1>
+<p class="hint">固定框架页面 · 数据来自云端库（原型：SQLite）· 接口：<a href="{{ url_for('main.api_weekly_report') }}?family_id={{ family.id }}&week={{ week }}">/api/weekly-report</a></p>
+{% set ra_prefix = 'weekly' %}{% set ra_label = '朗读周报' %}{% set ra_target = 'weeklyBody' %}
+{% include '_read_aloud.html' %}
+<div id="weeklyBody">
+<h2>✨ AI 导读</h2>
+{% if ai_summary %}
+<div class="prose">
+  <p>{{ ai_summary.digest }}</p>
+  <ul>{% for h in ai_summary.highlights or [] %}<li>{{ h }}</li>{% endfor %}</ul>
+</div>
+{% elif ai_error %}<p class="error">{{ ai_error }}</p>
+{% elif ai_enabled and is_admin %}
+<form method="post" action="{{ url_for('main.ai_weekly_summary', family_id=family.id, week=week) }}">
+  <button type="submit" class="btn-primary">✨ 生成 AI 导读</button>
+</form>
+{% elif not ai_enabled %}
+<p class="hint">配置 DEEPSEEK_API_KEY 后可生成 AI 导读。</p>
+{% else %}
+<p class="hint">暂无 AI 导读，请管理员生成。</p>
+{% endif %}
+<h2>本周新增故事（{{ interviews|length }}）</h2>
+<ul>
+{% for iv in interviews %}
+  <li><a href="{{ url_for('main.story_detail', family_id=family.id, interview_id=iv.id) }}">《{{ iv.topic or '未命名' }}》</a>
+      · {{ persons[iv.person_id].name if iv.person_id in persons else '—' }}</li>
+{% else %}<li class="hint">本周暂无新增。</li>{% endfor %}
+</ul>
+
+<h2>本周金句</h2>
+<ul class="quotes">{% for q in quotes %}<li>"{{ q.text }}"</li>{% else %}<li class="hint">暂无。</li>{% endfor %}</ul>
+
+<h2>❓ 本周问题清单</h2>
+<ol>
+{% for v in verifs %}
+  <li>{{ '✅' if v.status == 'resolved' else '⏳' }} 「{{ v.text }}」→ {{ v.reason }}
+      {% if v.correction %}<br><span class="correction">修正：{{ v.correction }}</span>{% endif %}</li>
+{% else %}<li class="hint">暂无。</li>{% endfor %}
+</ol>
+
+<h2>🆕 本周新出现人物</h2>
+<ul>
+{% for np in new_persons %}<li>{{ np.name }} · {{ np.context or '' }}（{{ np.join_tree or '待定' }}）</li>
+{% else %}<li class="hint">暂无。</li>{% endfor %}
+</ul>
+
+<p class="hint">家人纠正格式：<code>编号. 结论 ✅/✏️/❓</code>，如 <code>1. 三叔全名叫王建军 ✅</code></p>
+</div>
+{% endblock %}

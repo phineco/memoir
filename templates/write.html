@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}{% if edit_iv %}编辑草稿{% else %}写文章{% endif %} - {{ family.name }}{% endblock %}
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
+<div class="nav"><a href="{% if edit_iv %}{{ url_for('main.story_detail', family_id=family.id, interview_id=edit_iv.id) }}{% else %}{{ url_for('main.stories', family_id=family.id) }}{% endif %}">← 返回</a></div>
+<h2>{% if edit_iv %}✏️ 编辑草稿{% else %}✍️ 写文章{% endif %}</h2>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form method="post" id="write-form" action="{% if edit_iv %}{{ url_for('main.edit_article', family_id=family.id, interview_id=edit_iv.id) }}{% endif %}">
+  <label>标题<br><input name="topic" class="full" value="{{ form.get('topic','') if form else '' }}" required></label>
+
+  <div class="form-row">
+    <label>讲述对象
+      <select name="subject_id">
+        <option value="">（不指定）</option>
+        {% for p in persons %}<option value="{{ p.id }}" {% if form and form.get('subject_id') == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>时间段精度
+      <select name="period_precision">
+        {% for v, label in [('day','日'),('month','月'),('year','年')] %}
+        <option value="{{ v }}" {% if form and form.get('period_precision') == v %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% set narrator_sel = form.get('narrator_person_id') if form and form.get('narrator_person_id') else (narrator_default_id or '') %}
+    <label>🎙️ 讲述者
+      <select name="narrator_person_id">
+        <option value="">（不指定）</option>
+        {% for p in persons %}<option value="{{ p.id }}" {% if narrator_sel == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+      </select>
+    </label>
+  </div>
+  <div class="form-row">
+    <label>开始日期 <input type="date" name="period_start" value="{{ form.get('period_start','') if form else '' }}"></label>
+    <label>结束日期 <input type="date" name="period_end" value="{{ form.get('period_end','') if form else '' }}"></label>
+  </div>
+
+  <fieldset class="related-box">
+    <legend>关联人物（可多选）</legend>
+    <div class="checkbox-grid">
+      {% for p in persons %}
+      <label class="check"><input type="checkbox" name="related_ids" value="{{ p.id }}" {% if related_ids and p.id in related_ids %}checked{% endif %}> {{ p.name }}</label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <div class="editor-toolbar-row">
+    <span class="editor-label">正文</span>
+    <button type="button" id="voice-btn" class="voice-btn">🎤 语音输入</button>
+    <span id="voice-status" class="voice-status"></span>
+  </div>
+  <div id="editor"></div>
+  <input type="hidden" name="content" id="content-input">
+
+  <div class="form-actions">
+    <button type="submit" name="action" value="draft" class="btn-secondary">保存草稿</button>
+    <button type="submit" name="action" value="publish" class="btn-primary">发布</button>
+  </div>
+  <p class="hint">草稿只有你自己能看到；发布后全家人可见。{% if edit_iv %}每次保存会保留历史版本。{% endif %}</p>
+</form>
+
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script>
+const quill = new Quill('#editor', {
+  theme: 'snow',
+  placeholder: '写下这段回忆……',
+  modules: { toolbar: [
+    [{header:[1,2,3,false]}],
+    [{size:['small',false,'large','huge']}],
+    ['bold','italic','underline','strike'],
+    [{color:[]},{background:[]}],
+    [{list:'ordered'},{list:'bullet'}],
+    [{align:[]}],
+    ['blockquote','code-block'],
+    ['clean']
+  ]}
+});
+{% if existing_content %}quill.root.innerHTML = {{ existing_content | tojson }};{% endif %}
+
+document.getElementById('write-form').addEventListener('submit', function(){
+  document.getElementById('content-input').value = quill.root.innerHTML;
+});
+
+// ---- 语音转文字（浏览器 Web Speech API，Chrome/Edge/Safari 14.1+）----
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const voiceBtn = document.getElementById('voice-btn');
+const voiceStatus = document.getElementById('voice-status');
+if (!SR) {
+  voiceBtn.disabled = true;
+  voiceStatus.textContent = '当前浏览器不支持语音输入';
+} else {
+  let rec = null, listening = false, baseIndex = 0;
+  voiceBtn.addEventListener('click', function(){
+    if (listening) { rec.stop(); return; }
+    rec = new SR();
+    rec.lang = 'zh-CN';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onstart = function(){ listening = true; baseIndex = quill.getLength() - 1; voiceBtn.textContent = '⏹ 停止'; voiceStatus.textContent = '正在听…'; };
+    rec.onend = function(){ listening = false; voiceBtn.textContent = '🎤 语音输入'; voiceStatus.textContent = ''; };
+    rec.onerror = function(e){ voiceStatus.textContent = '语音出错：' + e.error; };
+    rec.onresult = function(e){
+      let finalText = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+      }
+      if (finalText) {
+        quill.insertText(baseIndex, finalText);
+        baseIndex += finalText.length;
+        quill.setSelection(baseIndex, 0);
+      }
+    };
+    rec.start();
+  });
+}
+</script>
+{% endblock %}

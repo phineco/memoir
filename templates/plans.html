@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}写作计划 · {{ family.name }}{% endblock %}
+{% block nav %}
+<nav class="navlinks">
+  <a href="{{ url_for('main.family_home', family_id=family.id) }}">🌳 家族树</a>
+  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1>📋 写作计划</h1>
+<p class="hint">管理员定"先写谁"，skill 拉取当前计划后按它引导家人补故事。skill 同步接口：<code>/api/writing-plan?family_id={{ family.id }}</code></p>
+{% if is_admin %}
+<p><a href="{{ url_for('main.plan_new', family_id=family.id) }}" class="btn-primary" style="text-decoration:none">➕ 新建计划</a></p>
+{% endif %}
+{% for plan in plans %}
+<div class="card" style="margin-bottom:16px">
+  <h3>{{ plan.title }}
+    {% if plan.status == 'active' %}<span class="badge">当前计划</span>
+    {% elif plan.status == 'draft' %}<span class="muted">（草稿）</span>
+    {% else %}<span class="muted">（已归档）</span>{% endif %}
+  </h3>
+  {% set items = plan_items(plan) %}
+  {% if items %}
+  <ol>
+    {% for it in items %}
+    <li>
+      <strong>{{ it.person_name }}</strong>
+      {% if it.person_id == viewer_person_id %}<span class="badge">👤 你</span>{% endif %}
+      — {{ {'pending':'待写','doing':'进行中','done':'已完成'}[it.status] }}
+      {% if it.note %}<span class="muted">（{{ it.note }}）</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}<p class="hint">暂无条目。</p>{% endif %}
+  {% if is_admin and plan.status != 'archived' %}
+  <div class="form-row">
+    <a href="{{ url_for('main.plan_edit', family_id=family.id, plan_id=plan.id) }}" class="btn-small" style="text-decoration:none;background:#5a7d9a">编辑</a>
+    {% if plan.status != 'active' %}
+    <form method="post" action="{{ url_for('main.plan_activate', family_id=family.id, plan_id=plan.id) }}" style="display:inline">
+      <button type="submit" class="btn-small">设为当前计划</button>
+    </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('main.plan_archive', family_id=family.id, plan_id=plan.id) }}" style="display:inline" onsubmit="return confirm('归档后不再作为当前计划，确定吗？')">
+      <button type="submit" class="btn-small" style="background:#999">归档</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<p class="hint">还没有写作计划。{% if is_admin %}点"新建计划"，可让 AI 先给个建议。{% endif %}</p>
+{% endfor %}
+{% endblock %}

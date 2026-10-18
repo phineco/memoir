@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ snap.title or '分享' }} · 家音{% endblock %}
+{% block content %}
+{% if need_password %}
+  <h1>🔒 {{ snap.title or '分享内容' }}</h1>
+  <p class="hint">该分享设有访问密码，请输入后查看。</p>
+  <form method="post" class="pwdform">
+    <input type="password" name="password" placeholder="访问密码" autofocus>
+    <button type="submit">进入</button>
+  </form>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% else %}
+  <h1>{{ content.title or snap.title }}</h1>
+  {% if content.new_badge %}<p><span class="badge">NEW</span> {{ content.new_badge }}</p>{% endif %}
+  <h2>本周新增</h2>
+  <ul>
+  {% for st in content.stories or [] %}
+    <li><strong>《{{ st.title }}》</strong> · {{ st.person }}<br>{{ st.summary }}</li>
+  {% endfor %}
+  </ul>
+  <h2>金句</h2>
+  <ul class="quotes">{% for q in content.quotes or [] %}<li>"{{ q }}"</li>{% endfor %}</ul>
+  <p class="hint">{{ content.tree_note or '' }}</p>
+  <p class="hint">🔒 快照内容 · token + 密码访问 · 与业务库隔离</p>
+{% endif %}
+{% endblock %}

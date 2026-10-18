@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}{{ family.name }} · 家音{% endblock %}
+{% block nav %}
+<nav class="navlinks">
+  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
+  <a href="{{ url_for('main.weekly_current', family_id=family.id) }}">📰 本周周报</a>
+  {% if me %}<a href="{{ url_for('main.plan_list', family_id=family.id) }}">📋 写作计划</a>
+  <a href="{{ url_for('main.ai_ask', family_id=family.id) }}">🤖 问 AI</a>
+  <a href="{{ url_for('main.write_article', family_id=family.id) }}">✍️ 写文章</a>
+  <a href="{{ url_for('main.my_drafts', family_id=family.id) }}">📝 草稿箱</a>{% endif %}
+</nav>
+{% endblock %}
+{% block content %}
+<h1>{{ family.name }} · 家族树</h1>
+<div class="stats">
+  <span>👥 {{ n_person }} 人</span>
+  <span>📖 {{ n_story }} 篇故事</span>
+  <span>❓ {{ n_pending }} 条待核实</span>
+</div>
+<div id="tree" class="tree-box"></div>
+<p class="hint">点击人物节点进入人物页（小传 · 照片墙 · 时间轴）</p>
+{% if is_admin %}
+<hr>
+<h2>🛠️ 家族树管理 <small class="muted">（管理员）</small></h2>
+<p><a href="{{ url_for('main.tree_add', family_id=family.id) }}" class="btn-primary" style="text-decoration:none">➕ 添加人物</a>
+<a href="{{ url_for('main.share_list', family_id=family.id) }}" class="btn-secondary" style="text-decoration:none">🔗 分享管理</a>
+<a href="{{ url_for('main.sync_import', family_id=family.id) }}" class="btn-secondary" style="text-decoration:none">🔄 同步入库</a></p>
+<p class="hint">如需修改或删除某位人物，请点击树上节点进入人物页操作。</p>
+{% endif %}
+{% if is_admin %}
+<hr>
+<h2>👥 成员 <small class="muted">（管理员可重置成员密码）</small></h2>
+{% if reset_notice %}
+<p class="success">✅ 密码已重置（仅显示一次，请转告家人）：<strong>{{ reset_notice.nickname }}</strong>，登录名 <code>{{ reset_notice.login }}</code>，新密码 <code>{{ reset_notice.password }}</code></p>
+{% endif %}
+<ul class="card-list">
+  {% for m, u in member_rows %}
+  <li class="card">{{ u.nickname or u.phone or u.username }} <span class="muted">（{{ u.phone or u.username or '' }}）</span> — <strong>{{ {'owner':'创建者','admin':'管理员','member':'成员'}[m.role] }}</strong>
+    {% if is_owner and m.role != 'owner' %}
+    <form method="post" action="{{ url_for('main.member_remove', family_id=family.id, member_id=m.id) }}" style="display:inline" onsubmit="return confirm('确定移除该成员吗？')">
+      <button type="submit" class="btn-small" style="background:#999">移除</button>
+    </form>
+    {% endif %}
+    {% if u.id in resettable_ids %}
+    <form method="post" action="{{ url_for('main.member_reset_password', family_id=family.id, member_id=m.id) }}" style="display:inline" onsubmit="return confirm('确定重置 {{ u.nickname or u.phone or u.username }} 的密码吗？')">
+      <input name="new_password" placeholder="新密码≥6位" required minlength="6" style="width:110px">
+      <button type="submit" class="btn-small" style="background:#5a7d9a">重置密码</button>
+    </form>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% if is_owner %}
+{% if cand_users %}
+<form method="post" action="{{ url_for('main.member_add', family_id=family.id) }}" class="form-row">
+  <label>添加成员
+    <select name="user_id">
+      {% for u in cand_users %}<option value="{{ u.id }}">{{ u.nickname or u.phone }}（{{ u.phone }}）</option>{% endfor %}
+    </select>
+  </label>
+  <label>角色
+    <select name="role">
+      <option value="admin">管理员</option>
+      <option value="member">成员</option>
+    </select>
+  </label>
+  <button type="submit" class="btn-primary">添加</button>
+</form>
+{% endif %}
+<p class="hint">仅创建者可添加/移除成员、设置管理员。权限按家庭隔离，A 家庭的管理员管不了 B 家庭。</p>
+{% endif %}
+{% endif %}
+{% if is_admin %}
+<hr>
+<h2>➕ 为家人开通账号 <small class="muted">（管理员）</small></h2>
+<p class="hint">老人不会注册？由你代他开通：设好登录名和密码，告诉他直接登录就行。开通后自动加入本家庭成为成员。</p>
+{% if member_form_error %}<p class="error">{{ member_form_error }}</p>{% endif %}
+{% if created_account %}
+<p class="success">✅ 账号已开通（仅显示一次，请记下转告家人）：<strong>{{ created_account.nickname }}</strong>，登录名 <code>{{ created_account.login }}</code>，密码 <code>{{ created_account.password }}</code></p>
+{% endif %}
+<form method="post" action="{{ url_for('main.member_create_account', family_id=family.id) }}">
+  <div class="form-row">
+    <label>家人昵称 *<input name="nickname" required maxlength="64" placeholder="如：爷爷"></label>
+    <label>登录方式
+      <select name="login_type">
+        <option value="phone">手机号</option>
+        <option value="username">用户名</option>
+      </select>
+    </label>
+  </div>
+  <div class="form-row">
+    <label>登录名 *<input name="login_id" required placeholder="手机号 11 位 / 用户名 3-20 位"></label>
+    <label>初始密码 *<input name="password" required minlength="6" placeholder="至少 6 位"></label>
+  </div>
+  <div class="form-actions"><button type="submit" class="btn-primary">开通并加入本家庭</button></div>
+</form>
+{% endif %}
+{% if is_admin %}
+<hr>
+<h2>📨 邀请家人 <small class="muted">（管理员）</small></h2>
+<p class="hint">生成邀请链接发给家人，对方注册/登录后自动加入本家庭。适合会自己操作的年轻人；老人不会注册还是走"为家人开通账号"。</p>
+{% if new_invite %}
+<p class="success">✅ 邀请已生成（复制发给家人）：<br><code>{{ new_invite.url }}</code></p>
+{% endif %}
+<form method="post" action="{{ url_for('main.invite_create', family_id=family.id) }}" class="form-row">
+  <label>有效天数<input name="days" value="7" style="width:70px"></label>
+  <label>使用次数（0=不限）<input name="max_uses" value="0" style="width:70px"></label>
+  <button type="submit" class="btn-primary">生成邀请链接</button>
+</form>
+{% if invites %}
+<ul class="card-list">
+  {% for inv in invites %}
+  <li class="card"><code>/join/{{ inv.code }}</code>
+    <span class="muted">已用 {{ inv.used_count or 0 }}{% if inv.max_uses %}/{{ inv.max_uses }}{% endif %} 次
+    · {{ inv.expire_at.strftime('%m-%d') if inv.expire_at else '长期' }}过期</span></li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endif %}
+{% endblock %}
+{% block script %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script>
+const treeData = {{ tree | tojson }};
+const fid = "{{ family.id }}";
+const chart = echarts.init(document.getElementById('tree'));
+chart.setOption({
+  tooltip: {trigger: 'item', triggerOn: 'mousemove'},
+  series: [{
+    type: 'tree', data: [treeData],
+    top: '5%', bottom: '5%', left: '10%', right: '10%',
+    symbolSize: 14, orient: 'vertical',
+    label: {fontSize: 14, color: '#333'},
+    leaves: {label: {fontSize: 14}},
+    expandAndCollapse: true, initialTreeDepth: -1,
+    animationDuration: 550
+  }]
+});
+chart.on('click', function(params) {
+  if (params.data && params.data.person_id) {
+    location.href = '/f/' + fid + '/person/' + params.data.person_id;
+  }
+});
+window.addEventListener('resize', () => chart.resize());
+</script>
+{% endblock %}

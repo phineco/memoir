@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}忘记密码 · 家音{% endblock %}
+{% block content %}
+<h1>找回密码</h1>
+<p class="hint">用注册手机号收验证码，直接设新密码（创建者忘密码也不用找人）。</p>
+{% if not sms_enabled %}
+<p class="hint">短信服务未配置（开发模式）：点"获取验证码"后验证码会直接显示。</p>
+{% endif %}
+<form method="post" class="authform">
+<input name="phone" id="phone" placeholder="手机号（11 位）" required>
+<div class="coderow">
+<input name="code" placeholder="短信验证码" required style="flex:1">
+<button type="button" id="sendCode" class="btn-small">获取验证码</button>
+</div>
+<input type="password" name="password" placeholder="新密码（至少 6 位）" required>
+<button type="submit">重置密码并登录</button>
+</form>
+{% if error %}<p class="error">{{ error}}</p>{% endif %}
+<p class="hint"><a href="{{ url_for('main.login')}}">返回登录</a></p>
+{% endblock %}
+{% block script %}
+<script>
+(function() {
+var btn = document.getElementById('sendCode');
+var phoneInput = document.getElementById('phone');
+btn.addEventListener('click', function() {
+var phone = phoneInput.value.trim();
+if (!/^\d{11}$/.test(phone)) { alert('请先填写 11 位手机号'); return;}
+btn.disabled = true;
+fetch('/api/sms-code', {
+method: 'POST',
+headers: {'Content-Type': 'application/json'},
+body: JSON.stringify({phone: phone, purpose: 'reset'})
+}).then(function(r) { return r.json();}).then(function(d) {
+if (!d.ok) { alert(d.error || '发送失败'); btn.disabled = false; return;}
+if (d.dev_mode) { alert('验证码：' + d.dev_code);}
+else { alert('验证码已发送，请注意查收');}
+var sec = 60;
+btn.textContent = sec + 's';
+var timer = setInterval(function() {
+sec--;
+if (sec <= 0) { clearInterval(timer); btn.disabled = false; btn.textContent = '获取验证码';}
+else { btn.textContent = sec + 's';}
+}, 1000);
+}).catch(function() { alert('网络错误'); btn.disabled = false;});
+});
+})();
+</script>
+{% endblock %}

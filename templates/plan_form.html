@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ '新建' if not plan else '编辑' }}写作计划 · {{ family.name }}{% endblock %}
+{% block content %}
+<div class="nav"><a href="{{ url_for('main.plan_list', family_id=family.id) }}">← 返回计划列表</a></div>
+<h2>📋 {{ '新建写作计划' if not plan else '编辑写作计划' }}</h2>
+{% if not plan and ai_enabled %}
+<form method="post" action="{{ url_for('main.plan_ai_suggest', family_id=family.id) }}" style="margin-bottom:16px">
+  <button type="submit" class="btn-primary">✨ AI 给出计划建议</button>
+  <span class="hint">AI 按长辈优先、待采访优先排个初版，你再手动改</span>
+</form>
+{% elif not plan %}
+<p class="hint">配置 DEEPSEEK_API_KEY 后可用 AI 给出计划建议。</p>
+{% endif %}
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if not plan %}
+<form method="post" action="{{ url_for('main.plan_create', family_id=family.id) }}">
+{% else %}
+<form method="post" action="{{ url_for('main.plan_update', family_id=family.id, plan_id=plan.id) }}">
+{% endif %}
+  <label>计划标题 *<br><input name="title" class="full" required maxlength="128"
+    value="{{ plan.title if plan else suggested_title }}" placeholder="如：王家·冬季采访计划"></label>
+  <h3>优先级排序（从上到下，先写谁）</h3>
+  <p class="hint">每行选一个人；空行会被忽略。保存后可在列表页"设为当前计划"。</p>
+  {% for row in rows %}
+  <div class="form-row">
+    <label>{{ loop.index }}.
+      <select name="person_id">
+        <option value="">— 不选 —</option>
+        {% for p in persons %}
+        <option value="{{ p.id }}" {% if p.id == row.person_id %}selected{% endif %}>{{ p.name }}{% if p.relation %}（{{ p.relation }}）{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>状态
+      <select name="item_status">
+        <option value="pending" {% if row.status == 'pending' %}selected{% endif %}>待写</option>
+        <option value="doing" {% if row.status == 'doing' %}selected{% endif %}>进行中</option>
+        <option value="done" {% if row.status == 'done' %}selected{% endif %}>已完成</option>
+      </select>
+    </label>
+    <label>备注<br><input name="note" value="{{ row.note }}" placeholder="如：供销社经历待深挖" maxlength="200"></label>
+  </div>
+  {% endfor %}
+  <div class="form-actions">
+    <button type="submit" class="btn-primary">{{ '保存草稿' if not plan else '保存修改' }}</button>
+  </div>
+</form>
+{% endblock %}

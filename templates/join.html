@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}加入家庭 · 家音{% endblock %}
+{% block content %}
+{% if invite and family %}
+<h1>📨 加入「{{ family.name }}」</h1>
+<p>你被邀请加入这个家庭的回忆录。注册或登录后自动成为成员。</p>
+<p>
+  <a href="{{ url_for('main.register', invite=invite.code) }}" class="btn-primary" style="text-decoration:none">注册并加入</a>
+  <a href="{{ url_for('main.login', next=url_for('main.join_by_invite', code=invite.code)) }}" class="btn-small" style="text-decoration:none;background:#5a7d9a">登录并加入</a>
+</p>
+{% else %}
+<h1>邀请无效</h1>
+<p class="hint">这个邀请链接不存在、已过期或已用完。请联系家庭管理员重新生成。</p>
+<p><a href="{{ url_for('main.index') }}">返回首页</a></p>
+{% endif %}
+{% endblock %}

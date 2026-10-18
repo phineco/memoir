@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}登录 · 家音{% endblock %}
+{% block content %}
+<h1>登录</h1>
+<p class="hint">原型用手机号/用户名+密码登录；正式版为微信登录+手机号双绑定。</p>
+<form method="post" class="authform">
+  <input name="phone" placeholder="手机号 / 用户名" required>
+  <input type="password" name="password" placeholder="密码" required>
+  <button type="submit">登录</button>
+</form>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<p class="hint">没有账号？<a href="{{ url_for('main.register', next=request.args.get('next')) }}">去注册</a> · <a href="{{ url_for('main.forgot_password') }}">忘记密码</a></p>
+{% endblock %}

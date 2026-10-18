@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}我的草稿 - {{ family.name }}{% endblock %}
+{% block content %}
+<div class="nav"><a href="{{ url_for('main.stories', family_id=family.id) }}">← 故事列表</a></div>
+<h2>📝 我的草稿</h2>
+{% if rows %}
+<ul class="card-list">
+  {% for iv in rows %}
+  <li class="card">
+    <a href="{{ url_for('main.story_detail', family_id=family.id, interview_id=iv.id) }}"><strong>{{ iv.topic }}</strong></a>
+    <span class="muted">· {{ iv.create_date.strftime('%Y-%m-%d %H:%M') if iv.create_date else '' }}</span>
+    <a href="{{ url_for('main.edit_article', family_id=family.id, interview_id=iv.id) }}" class="btn-small" style="background:#5a7d9a">继续编辑</a>
+    <form method="post" action="{{ url_for('main.publish_article', family_id=family.id, interview_id=iv.id) }}" style="display:inline">
+      <button type="submit" class="btn-small" onclick="return confirm('发布后全家人可见，确定吗？')">发布</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted">还没有草稿，去 <a href="{{ url_for('main.write_article', family_id=family.id) }}">写一篇文章</a> 吧。</p>
+{% endif %}
+{% endblock %}

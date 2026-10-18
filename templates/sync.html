@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}同步入库 · {{ family.name }}{% endblock %}
+{% block content %}
+<div class="nav"><a href="{{ url_for('main.family_home', family_id=family.id) }}">← 返回家族树</a></div>
+<h2>🔄 同步入库</h2>
+<p class="hint">在 skill 里完成整理/采访后，它会输出 <code>sync-json</code> 数据包（含 <code>"type"</code> 字段）。
+复制整段 JSON（可直接粘贴 <code>```sync-json</code> 代码块）→ 点"导入入库"。</p>
+<p class="hint">支持：<code>tree_upsert</code>（树更新）· <code>interview_upsert</code>（初稿包）· <code>verification_update</code>（核实）· <code>new_person</code>（新人物）· <code>person_status</code>（状态）· <code>revision_sync</code>（修订）。同一数据包重复导入会自动跳过。</p>
+{% if result %}
+  {% if result[0] %}<p class="success">✅ {{ result[1] }}</p>
+  {% else %}<p class="error">❌ {{ result[1] }}</p>{% endif %}
+{% endif %}
+<form method="post">
+  <textarea name="sync_json" rows="10" class="full" placeholder='{"type": "interview_upsert", "clientId": "...", "payload": {...}}' style="font-family:monospace"></textarea>
+  <div class="form-actions"><button type="submit" class="btn-primary">导入入库</button></div>
+</form>
+<hr>
+<h3>最近同步记录</h3>
+<table class="table">
+  <tr><th>时间</th><th>类型</th><th>结果</th><th>说明</th></tr>
+  {% for l in logs %}
+  <tr>
+    <td>{{ l.create_date.strftime('%m-%d %H:%M') if l.create_date else '' }}</td>
+    <td><code>{{ l.op_type }}</code></td>
+    <td>{% if l.status == 'ok' %}✅{% elif l.status == 'skipped' %}⏭️{% else %}❌{% endif %}</td>
+    <td>{{ l.summary or '' }}</td>
+  </tr>
+  {% else %}<tr><td colspan="4" class="hint">暂无记录</td></tr>{% endfor %}
+</table>
+{% endblock %}
