@@ -6,6 +6,7 @@
 |---|---|---|---|---|
 | 本地部署 | 自己电脑/内网演示 | SQLite（零配置） | 本地磁盘 `uploads/` | `python app.py` |
 | 云部署 | 公网服务 | MySQL 5.7（RDS/自建） | 阿里云 OSS 私有桶 | gunicorn + systemd + nginx |
+| 宝塔面板部署 | 装了宝塔面板的服务器 | 面板 MySQL 5.7 | 阿里云 OSS 私有桶 | Python项目管理器 / gunicorn |
 
 ---
 
@@ -61,7 +62,7 @@ pip install -r requirements.txt
 CREATE DATABASE memoir CHARACTER SET utf8mb4;
 ```
 
-用仓库根目录的建表 SQL 建表（19 张表，含审计字段；`persons` 表为树形结构）：
+用仓库根目录的建表 SQL 建表（27 张表，含审计字段；`persons` 表为树形结构）：
 
 ```bash
 mysql -h <host> -u <user> -p memoir < /path/to/memoir-mysql-schema.sql
@@ -178,7 +179,106 @@ sudo certbot --nginx -d memoir.example.com
 
 ---
 
-## 四、环境变量总表
+## 四、宝塔面板部署
+
+> 适用：在装了宝塔面板的服务器上部署。面板可视化操作为主，少量终端命令。
+
+### 4.1 软件商店安装运行环境
+
+面板左侧「软件商店」→ 搜索安装：
+
+- **Python 3.12**（运行环境分类）
+- **MySQL 5.7**（数据库分类）
+- **Nginx**（面板一般自带；没有就装一个）
+- **phpMyAdmin**（可选，导入建表 SQL 用）
+
+> ⚠️ 别用系统自带的 `python3`（一般是 3.8，`pip install` 会报找不到 Flask 3.1.0）。面板装的 Python 3.12 通常在 `/www/server/panel/pyenv/bin/python3.12`，不确定就跑 `find /www -name "python3.12" -type f` 确认。下面都用完整路径，记成 `PY312`。
+
+### 4.2 传代码、建虚拟环境、装依赖
+
+```bash
+# 把 memoir-prototype 传到 /www/wwwroot/memoir（面板「文件」上传 zip 后解压，或 git clone）
+cd /www/wwwroot/memoir/memoir-prototype
+
+PY312=/www/server/panel/pyenv/bin/python3.12   # 按 4.1 找到的实际路径改
+$PY312 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+> 国内服务器建议加清华镜像（上面已带 `-i`），比官方源快很多。
+> 如果 `$PY312 -m venv` 报错没有 venv 模块，先跑 `$PY312 -m pip install virtualenv`，再用 `virtualenv venv` 建。
+
+### 4.3 数据库：建库 + 导表
+
+1. 面板左侧「数据库」→「添加数据库」：库名 `memoir`，字符集选 `utf8mb4`，记下用户名和密码。
+2. 导入建表 SQL：点该数据库的「管理」进 phpMyAdmin →「导入」→ 选择 `memoir-mysql-schema.sql` → 执行。27 张表一次建完。
+
+### 4.4 环境变量
+
+在项目目录（`/www/wwwroot/memoir/memoir-prototype/`）新建 `.env`，对照 `.env.example` 填，关键几项：
+
+```bash
+APP_ENV=cloud
+SECRET_KEY=换成32位以上随机字符串
+DATABASE_URL=mysql+pymysql://用户名:密码@127.0.0.1:3306/memoir?charset=utf8mb4
+STORAGE_BACKEND=oss
+OSS_REGION=cn-hangzhou
+OSS_BUCKET=memoir-photos
+OSS_ACCESS_KEY_ID=xxx
+OSS_ACCESS_KEY_SECRET=xxx
+# 短信 / DeepSeek 按需填，不填对应功能自动隐藏或走开发模式
+```
+
+> `.env` 不要进 git；AK 用 RAM 子账号。
+
+生产初始化管理员（不要跑 `seed.py`，它会清空表）：
+
+```bash
+source venv/bin/activate
+python create_admin.py --phone 13800000000 --nickname 主持人 --family-name 王家
+```
+
+### 4.5 启动服务（二选一）
+
+**A. Python项目管理器（可视化，推荐）**
+
+1. 软件商店搜索安装「Python项目管理器」插件。
+2. 插件里「添加项目」：项目路径选 `/www/wwwroot/memoir/memoir-prototype`，Python 版本选 3.12，按向导填启动文件（`app.py`）和端口（如 8000）。
+3. 插件会自动建虚拟环境、装依赖、以后台守护进程运行，开机自启。
+
+**B. 终端手动（gunicorn）**
+
+```bash
+source venv/bin/activate
+nohup gunicorn -w 3 -b 127.0.0.1:8000 app:app > gunicorn.log 2>&1 &
+```
+
+> 生产建议配成守护进程（用上面的 Python项目管理器，或按 3.7 写 systemd service，把路径换成面板路径）。
+
+### 4.6 反向代理 + HTTPS（面板可视化）
+
+1. 面板左侧「网站」→「添加站点」：域名填你的（如 `memoir.example.com`），FTP/数据库都不建，PHP 版本选「纯静态」。
+2. 点站点「设置」→「反向代理」→「添加反向代理」：目标 URL 填 `http://127.0.0.1:8000`（与 4.5 的端口一致），保存。
+3. 「设置」→「SSL」→「Let's Encrypt」→ 申请证书，开启「强制 HTTPS」。
+4. 照片上传上限 10MB：反向代理的配置文件里确认有 `client_max_body_size 12m;`，没有就加上后保存。
+
+### 4.7 端口放行（两个地方都要放）
+
+- 面板左侧「安全」→ 放行 **80** 和 **443**。
+- 云服务器控制台（阿里云 ECS 安全组）→ 同样放行 80/443。缺一个都访问不了。
+
+### 4.8 上线检查清单
+
+- [ ] 首页/家族树/故事页可打开
+- [ ] 登录后可写文章、传照片（照片能显示 → OSS 签名 URL 有效）
+- [ ] 注册短信验证码能收到（生产需配好阿里云短信 AK/签名/模板）
+- [ ] 分享页 token+密码可访问
+- [ ] `SECRET_KEY` 已换成随机值
+
+---
+
+## 五、环境变量总表
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
@@ -201,7 +301,7 @@ sudo certbot --nginx -d memoir.example.com
 
 ---
 
-## 五、FAQ
+## 六、FAQ
 
 **Q：照片传成功但打不开？**
 A：① 检查 bucket 是否私有——私有是对的，页面用签名 URL；② 检查 `OSS_URL_EXPIRES` 是否太短；③ RAM 账号是否有 `oss:GetObject` 权限；④ ECS 与 bucket 是否同地域、endpoint 是否写对。
@@ -217,6 +317,9 @@ A：① 安全组放行 3306（只对 ECS 内网段）；② `DATABASE_URL` 里 
 
 **Q：从 SQLite 迁到 MySQL，数据怎么办？**
 A：原型阶段建议重灌（`memoir-mysql-schema.sql` 建表 + `create_admin.py` 建号）；历史演示数据如需保留，用 SQLite→MySQL 迁移工具（如 `sqlite3 .dump` 手工调）另行处理，不在本文范围。
+
+**Q：宝塔终端 pip install 报找不到 Flask==3.1.0？**
+A：用的是系统自带的 Python 3.8（Flask 3.1.0 要求 3.9+）。改用面板装的 Python 3.12 完整路径建 venv（见 4.1–4.2），不要动系统 python3。
 
 **Q：正式版微信登录怎么接？**
 A：原型是手机号+密码；正式版按架构（微信登录+手机号双绑定）替换 `/login` 逻辑，`users.wechat_openid` 字段已预留。
