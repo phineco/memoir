@@ -321,5 +321,14 @@ A：原型阶段建议重灌（`memoir-mysql-schema.sql` 建表 + `create_admin.
 **Q：宝塔终端 pip install 报找不到 Flask==3.1.0？**
 A：用的是系统自带的 Python 3.8（Flask 3.1.0 要求 3.9+）。改用面板装的 Python 3.12 完整路径建 venv（见 4.1–4.2），不要动系统 python3。
 
+**Q：宝塔 Python项目管理器启动报 `ModuleNotFoundError: No module named 'flask'`？**
+A：项目管理器只建虚拟环境，不自动装 `requirements.txt`。用项目 venv 自带的 pip 手动装（路径按实际改）：
+
+```bash
+/www/server/pyporject_evn/<项目名>_venv/bin/pip install -r /www/wwwroot/<站点>/memoir-prototype/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+装完在项目管理器里重启项目。以后 requirements 加了新依赖，也要手动跑一遍这条。
+
 **Q：正式版微信登录怎么接？**
 A：原型是手机号+密码；正式版按架构（微信登录+手机号双绑定）替换 `/login` 逻辑，`users.wechat_openid` 字段已预留。
