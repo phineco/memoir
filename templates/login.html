@@ -5,7 +5,10 @@
 <p class="hint">原型用手机号/用户名+密码登录；正式版为微信登录+手机号双绑定。</p>
 <form method="post" class="authform">
   <input name="phone" placeholder="手机号 / 用户名" required>
-  <input type="password" name="password" placeholder="密码" required>
+  <div class="coderow">
+  <input type="password" name="password" id="login-pw" placeholder="密码" required style="flex:1">
+  <button type="button" class="btn-small" onclick="var i=document.getElementById('login-pw');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁️':'🙈';" title="显示/隐藏密码">👁️</button>
+  </div>
   <button type="submit">登录</button>
 </form>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
