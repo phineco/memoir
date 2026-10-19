@@ -7,8 +7,6 @@
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="post">
   <label>家庭名称 *<br><input name="name" class="full" value="{{ form.get('name','') if form else '' }}" placeholder="如：王家" required maxlength="64"></label>
-  <label>家庭代号（网址用，可选）<br><input name="family_id" class="full" value="{{ form.get('family_id','') if form else '' }}" placeholder="如：wang，不填自动生成" maxlength="31"></label>
-  <p class="hint">代号只能用小写字母、数字和短横线，创建后不可修改。</p>
   <div class="form-actions">
     <button type="submit" class="btn-primary">创建</button>
   </div>

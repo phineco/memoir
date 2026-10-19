@@ -1768,17 +1768,11 @@ def family_new():
     error = None
     if request.method == "POST":
         from models import new_id
-        import re as _re
         name = request.form.get("name", "").strip()
-        fid = request.form.get("family_id", "").strip().lower()
         if not name:
             error = "请填写家庭名称"
-        elif fid and not _re.fullmatch(r"[a-z0-9][a-z0-9\-]{1,30}", fid):
-            error = "家庭代号只能用小写字母、数字和短横线（3~31 位）"
-        elif fid and s.query(Family).filter_by(id=fid, del_flag=0).first():
-            error = f"代号 {fid} 已被占用，换一个试试"
         else:
-            fid = fid or new_id()[:8]
+            fid = new_id()[:8]
             while s.query(Family).filter_by(id=fid).first():
                 fid = new_id()[:8]
             fam = Family(id=fid, name=name[:64], owner_user_id=me.id,
