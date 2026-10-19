@@ -9,7 +9,12 @@ OSS 配置见 .env.example。
 """
 import os
 
+from dotenv import load_dotenv
+
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 自动加载项目目录下的 .env（环境变量已设置时优先用环境变量）
+load_dotenv(os.path.join(_BASE_DIR, ".env"))
 
 
 class Config:

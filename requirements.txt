@@ -6,3 +6,4 @@ gunicorn
 bleach
 tinycss2
 requests
+python-dotenv
