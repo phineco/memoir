@@ -10,6 +10,10 @@
 <h1>《{{ iv.topic or '未命名' }}》</h1>
 {% if me and iv.author_id == me.id and (iv.publish_status or 'published') == 'draft' %}
 <p><span class="badge-draft">草稿 · 仅你可见</span> <a href="{{ url_for('main.edit_article', family_id=family.id, interview_id=iv.id) }}" class="btn-small" style="background:#5a7d9a">✏️ 继续编辑</a></p>
+{% elif (iv.visibility or 'public') == 'private' %}
+<p><span class="badge-draft">🔒 仅自己可见</span></p>
+{% elif (iv.visibility or 'public') == 'specific' %}
+<p><span class="badge-draft">👥 仅指定人可见</span></p>
 {% endif %}
 <p class="hint">🎙️ 讲述者：{% if narrator %}<a href="{{ url_for('main.person_page', family_id=family.id, person_id=narrator.id) }}">{{ narrator.name }}</a>{% else %}—{% endif %} · 讲述对象：{% if person %}<a href="{{ url_for('main.person_page', family_id=family.id, person_id=person.id) }}">{{ person.name }}</a>{% else %}—{% endif %} · {{ iv.create_date.strftime('%Y-%m-%d') if iv.create_date else '' }}</p>
 <div class="engagement">

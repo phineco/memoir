@@ -44,6 +44,33 @@
     </div>
   </fieldset>
 
+  {% set vis_sel = form.get('visibility') if form and form.get('visibility') else (cur_visibility or 'public') %}
+  {% set viewer_sel = (form.getlist('viewer_ids') if form and form.getlist('viewer_ids') else (cur_viewer_ids or [])) %}
+  <fieldset class="related-box">
+    <legend>👁️ 谁可以看</legend>
+    <div class="form-row">
+      <label class="check"><input type="radio" name="visibility" value="public" {% if vis_sel == 'public' %}checked{% endif %}> 公开（全家人可见）</label>
+      <label class="check"><input type="radio" name="visibility" value="private" {% if vis_sel == 'private' %}checked{% endif %}> 仅自己可见</label>
+      <label class="check"><input type="radio" name="visibility" value="specific" {% if vis_sel == 'specific' %}checked{% endif %}> 指定人可见</label>
+    </div>
+    <div class="checkbox-grid" id="viewer-box" style="{% if vis_sel != 'specific' %}display:none{% endif %}">
+      {% for uid, uname in members %}
+      {% if uid != me.id %}
+      <label class="check"><input type="checkbox" name="viewer_ids" value="{{ uid }}" {% if uid in viewer_sel %}checked{% endif %}> {{ uname }}</label>
+      {% endif %}
+      {% endfor %}
+    </div>
+    <p class="hint">仅自己/指定人可见的文章不会出现在周报、分享页和 AI 问答知识库中。</p>
+  </fieldset>
+  <script>
+    document.querySelectorAll('input[name="visibility"]').forEach(function(r) {
+      r.addEventListener('change', function() {
+        document.getElementById('viewer-box').style.display =
+          document.querySelector('input[name="visibility"]:checked').value === 'specific' ? '' : 'none';
+      });
+    });
+  </script>
+
   <div class="editor-toolbar-row">
     <span class="editor-label">正文</span>
     <button type="button" id="voice-btn" class="voice-btn">🎤 语音输入</button>
@@ -56,7 +83,7 @@
     <button type="submit" name="action" value="draft" class="btn-secondary">保存草稿</button>
     <button type="submit" name="action" value="publish" class="btn-primary">发布</button>
   </div>
-  <p class="hint">草稿只有你自己能看到；发布后全家人可见。{% if edit_iv %}每次保存会保留历史版本。{% endif %}</p>
+  <p class="hint">草稿只有你自己能看到；发布后按上面的"谁可以看"设置展示。{% if edit_iv %}每次保存会保留历史版本。{% endif %}</p>
 </form>
 
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>

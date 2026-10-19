@@ -7,7 +7,7 @@ from flask import Blueprint, abort, jsonify, redirect, render_template, request,
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from models import (Comment, Draft, Family, FamilyMember, Interview, InterviewPerson,
-                    Invite, Like, NewPerson, Person, PersonLink, Photo, Portrait, Quote,
+                    InterviewViewer, Invite, Like, NewPerson, Person, PersonLink, Photo, Portrait, Quote,
                     ShareSnapshot, SyncLog, TimelineEvent, User, VerificationItem,
                     WritingPlan, get_session)
 
@@ -215,10 +215,75 @@ def _week_of(dt):
 
 
 def _can_view(iv, me):
-    """草稿仅作者可见；已发布（或旧数据 NULL）所有人可见。"""
-    if (iv.publish_status or "published") == "published":
+    """草稿仅作者可见；已发布按 visibility：public 所有人可见，private 仅作者，specific 作者+白名单。"""
+    if (iv.publish_status or "published") != "published":
+        return bool(me and iv.author_id == me.id)
+    vis = iv.visibility or "public"
+    if vis == "public":
         return True
-    return bool(me and iv.author_id == me.id)
+    if not me:
+        return False
+    if iv.author_id == me.id:
+        return True
+    if vis == "specific":
+        s = _s()
+        return s.query(InterviewViewer).filter_by(
+            interview_id=iv.id, user_id=me.id, del_flag=0).first() is not None
+    return False
+
+
+def _published_only():
+    from sqlalchemy import or_
+    return or_(Interview.publish_status == "published",
+               Interview.publish_status.is_(None))
+
+
+def _visible_filter(q, s, me):
+    """故事列表 SQL 过滤：已发布且公开；或作者自己的（含草稿/私有）；或被指定可见的。"""
+    from sqlalchemy import or_, and_
+    pub = _published_only()
+    conds = [and_(pub, or_(Interview.visibility == "public",
+                           Interview.visibility.is_(None)))]
+    if me:
+        conds.append(Interview.author_id == me.id)
+        conds.append(and_(
+            pub, Interview.visibility == "specific",
+            Interview.id.in_(
+                s.query(InterviewViewer.interview_id).filter_by(
+                    user_id=me.id, del_flag=0))))
+    return q.filter(or_(*conds))
+
+
+def _family_member_users(s, family_id):
+    """家庭成员用户列表（指定可见人多选框用）。返回 [(user_id, 显示名)]。"""
+    rows = s.query(FamilyMember, User).join(
+        User, FamilyMember.user_id == User.id
+    ).filter(FamilyMember.family_id == family_id,
+             FamilyMember.del_flag == 0, User.del_flag == 0).all()
+    return [(u.id, u.nickname or u.phone or u.username or u.id)
+            for m, u in rows]
+
+
+def _save_visibility(s, iv, form, family_id, me):
+    """保存故事可见性：visibility + specific 时的白名单（先清后写）。"""
+    from models import new_id
+    vis = form.get("visibility", "public")
+    if vis not in ("public", "private", "specific"):
+        vis = "public"
+    iv.visibility = vis
+    for v in s.query(InterviewViewer).filter_by(
+            interview_id=iv.id, del_flag=0).all():
+        v.del_flag = 1
+        v.update_by = me.id
+        v.update_date = datetime.datetime.now()
+    if vis == "specific":
+        member_ids = {uid for uid, _ in _family_member_users(s, family_id)}
+        for uid in form.getlist("viewer_ids"):
+            if uid and uid in member_ids and uid != me.id:
+                s.add(InterviewViewer(id=new_id(), interview_id=iv.id,
+                                      user_id=uid, create_by=me.id,
+                                      create_date=datetime.datetime.now()))
+    return vis
 
 
 def _published_filter(q):
@@ -471,13 +536,7 @@ def _person_page_ctx(family_id, p, me):
             s.query(InterviewPerson.interview_id).filter_by(
                 person_id=p.id, del_flag=0)))
     )
-    if me:
-        from sqlalchemy import or_
-        iq = iq.filter(or_(Interview.publish_status == "published",
-                           Interview.publish_status.is_(None),
-                           Interview.author_id == me.id))
-    else:
-        iq = _published_filter(iq)
+    iq = _visible_filter(iq, s, me)
     interviews = iq.order_by(Interview.create_date.desc()).all()
     linked_user = s.query(User).filter_by(id=p.user_id).first() if p.user_id else None
     my_link = s.query(Person).filter_by(family_id=family_id, user_id=me.id,
@@ -510,13 +569,7 @@ def stories(family_id):
     q = s.query(Interview, Person).outerjoin(
         Person, Interview.person_id == Person.id
     ).filter(Interview.family_id == family_id, Interview.del_flag == 0)
-    if me:
-        from sqlalchemy import or_
-        q = q.filter(or_(Interview.publish_status == "published",
-                         Interview.publish_status.is_(None),
-                         Interview.author_id == me.id))
-    else:
-        q = _published_filter(q)
+    q = _visible_filter(q, s, me)
     rows = q.order_by(Interview.create_date.desc()).all()
     return render_template("stories.html", family=fam, rows=rows, me=me)
 
@@ -564,11 +617,29 @@ def story_detail(family_id, interview_id):
                            narrator=narrator, is_admin=_is_admin(fam, me))
 
 
-def _weekly_data(family_id, week):
+def _weekly_data(family_id, week, viewer_id=None):
+    """周报数据。viewer_id 传入时只含该用户可见的故事；不传则只含公开故事。"""
     s = _s()
     interviews = s.query(Interview).filter_by(family_id=family_id, del_flag=0).all()
-    interviews = [iv for iv in interviews
-                  if _week_of(iv.create_date) == week and (iv.publish_status or "published") == "published"]
+    if viewer_id:
+        visible_ids = {v.interview_id for v in s.query(InterviewViewer).filter_by(
+            user_id=viewer_id, del_flag=0).all()}
+    else:
+        visible_ids = set()
+
+    def _ok(iv):
+        if _week_of(iv.create_date) != week:
+            return False
+        if (iv.publish_status or "published") != "published":
+            return False
+        vis = iv.visibility or "public"
+        if vis == "public":
+            return True
+        if not viewer_id or iv.author_id == viewer_id:
+            return bool(viewer_id and iv.author_id == viewer_id)
+        return vis == "specific" and iv.id in visible_ids
+
+    interviews = [iv for iv in interviews if _ok(iv)]
     iv_ids = [iv.id for iv in interviews]
     verifs, quotes, new_persons = [], [], []
     if iv_ids:
@@ -595,7 +666,7 @@ def weekly_current(family_id):
 def weekly_report(family_id, week):
     fam = _family_or_404(family_id)
     me = _current_user()
-    data = _weekly_data(family_id, week)
+    data = _weekly_data(family_id, week, viewer_id=me.id if me else None)
     import ai as ai_mod
     ai_summary = ai_mod.get_weekly_summary(family_id, week) \
         if ai_mod.ai_enabled() else None
@@ -605,9 +676,9 @@ def weekly_report(family_id, week):
                            is_admin=_is_admin(fam, me))
 
 
-def _weekly_report_json(family_id, week):
-    """周报聚合数据（流水线设计 v0.4 §三）：API 与分享快照共用。"""
-    data = _weekly_data(family_id, week)
+def _weekly_report_json(family_id, week, viewer_id=None):
+    """周报聚合数据（流水线设计 v0.4 §三）：API 与分享快照共用。不传 viewer 只含公开故事。"""
+    data = _weekly_data(family_id, week, viewer_id=viewer_id)
     persons = data.pop("persons")
     return {
         "family_id": family_id, "week": week,
@@ -839,7 +910,8 @@ def write_article(family_id):
         if not topic or not content:
             return render_template("write.html", family=fam, persons=persons, me=me,
                                    error="标题和正文不能为空",
-                                   form=request.form)
+                                   form=request.form,
+                                   members=_family_member_users(s, family_id))
         iv = Interview(
             id=new_id(), family_id=family_id, author_id=me.id,
             person_id=subject_id, topic=topic, status="done",
@@ -852,6 +924,7 @@ def write_article(family_id):
         )
         s.add(iv)
         s.flush()
+        _save_visibility(s, iv, request.form, family_id, me)
         s.add(Draft(id=new_id(), interview_id=iv.id, version=1, is_current=True,
                     content=content, create_by=me.id,
                     create_date=datetime.datetime.now()))
@@ -869,6 +942,7 @@ def write_article(family_id):
         return redirect(url_for("main.my_drafts", family_id=family_id))
     return render_template("write.html", family=fam, persons=persons, me=me,
                            form=request.form,
+                           members=_family_member_users(s, family_id),
                            narrator_default_id=narrator_default_id)
 
 
@@ -945,6 +1019,9 @@ def edit_article(family_id, interview_id):
             return render_template("write.html", family=fam, persons=persons, me=me,
                                    error="标题和正文不能为空", form=request.form,
                                    edit_iv=iv,
+                                   members=_family_member_users(s, family_id),
+                                   cur_visibility=iv.visibility or "public",
+                                   cur_viewer_ids={v.user_id for v in s.query(InterviewViewer).filter_by(interview_id=iv.id, del_flag=0).all()},
                                    existing_content=cur_draft.content if cur_draft else "",
                                    related_ids={l.person_id for l in cur_links
                                                 if l.role == "related"})
@@ -955,6 +1032,7 @@ def edit_article(family_id, interview_id):
         iv.period_end = datetime.date.fromisoformat(p_end) if p_end else None
         iv.period_precision = precision
         iv.update_date = datetime.datetime.now()
+        _save_visibility(s, iv, request.form, family_id, me)
         if action == "publish":
             iv.publish_status = "published"
         # 旧版本保留，写新版本
@@ -990,6 +1068,9 @@ def edit_article(family_id, interview_id):
         family_id=family_id, user_id=me.id, del_flag=0).first()
     return render_template("write.html", family=fam, persons=persons, me=me,
                            form=form_data, edit_iv=iv,
+                           members=_family_member_users(s, family_id),
+                           cur_visibility=iv.visibility or "public",
+                           cur_viewer_ids={v.user_id for v in s.query(InterviewViewer).filter_by(interview_id=iv.id, del_flag=0).all()},
                            existing_content=cur_draft.content if cur_draft else "",
                            related_ids={l.person_id for l in cur_links
                                         if l.role == "related"},
@@ -1851,7 +1932,7 @@ def ai_weekly_summary(family_id, week):
                                 force=True, user_id=me.id)
     except ai_mod.AIError as e:
         return render_template("weekly.html", family=fam, week=week,
-                               **_weekly_data(family_id, week),
+                               **_weekly_data(family_id, week, viewer_id=me.id),
                                ai_summary=None, ai_enabled=True,
                                is_admin=True, ai_error=str(e))
     return redirect(url_for("main.weekly_report", family_id=family_id,

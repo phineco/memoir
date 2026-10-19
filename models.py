@@ -132,6 +132,7 @@ class Interview(AuditMixin, Base):
     period_precision = Column(String(8))  # year/month/day，精度不足时起止取当年1月1日/当年12月31日
     author_id = Column(String(64))  # 作者用户 id（用户手写文章；AI整理的可空）
     publish_status = Column(String(16), default="draft")  # draft=草稿 published=已发布；NULL 视为已发布（兼容旧数据）
+    visibility = Column(String(16), default="public")  # public=家庭可见 private=仅作者 specific=指定人；NULL 视为 public
     narrator_person_id = Column(String(64), index=True)  # 讲述者（树上人物 id；skill"讲述者确认"规则对应，对应不上时空）
 
 
@@ -234,6 +235,13 @@ class Like(AuditMixin, Base):
     __tablename__ = "likes"
     target_type = Column(String(16))
     target_id = Column(String(64), index=True)
+    user_id = Column(String(64), index=True)
+
+
+class InterviewViewer(AuditMixin, Base):
+    """故事指定可见人：visibility=specific 时的白名单。"""
+    __tablename__ = "interview_viewers"
+    interview_id = Column(String(64), index=True)
     user_id = Column(String(64), index=True)
 
 

@@ -138,6 +138,7 @@ CREATE TABLE `interviews` (
   `period_precision` varchar(8) DEFAULT NULL COMMENT '时间精度 year/month/day',
   `author_id` varchar(64) DEFAULT NULL COMMENT '作者用户 id（手写文章）',
   `publish_status` varchar(16) DEFAULT NULL COMMENT 'draft草稿/published已发布',
+  `visibility` varchar(16) DEFAULT 'public' COMMENT '可见性 public家庭可见/private仅作者/specific指定人',
   `narrator_person_id` varchar(64) DEFAULT NULL COMMENT '讲述者人物 id',
   `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
   `create_date` datetime DEFAULT NULL COMMENT '创建时间',
@@ -150,6 +151,23 @@ CREATE TABLE `interviews` (
   KEY `idx_source` (`source_file_id`),
   KEY `idx_narrator` (`narrator_person_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='整理任务表';
+
+-- 6.5 故事指定可见人
+
+CREATE TABLE `interview_viewers` (
+  `id` varchar(64) NOT NULL COMMENT '主键',
+  `interview_id` varchar(64) DEFAULT NULL COMMENT '故事 id',
+  `user_id` varchar(64) DEFAULT NULL COMMENT '可见用户 id',
+  `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+  `create_date` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+  `update_date` datetime DEFAULT NULL COMMENT '更新时间',
+  `remarks` varchar(255) DEFAULT NULL COMMENT '备注信息',
+  `del_flag` int(11) DEFAULT NULL COMMENT '逻辑删除标记（0：显示；1：隐藏）',
+  PRIMARY KEY (`id`),
+  KEY `idx_interview` (`interview_id`),
+  KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='故事指定可见人白名单';
 
 -- 7. 初稿版本
 CREATE TABLE `drafts` (

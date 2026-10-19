@@ -14,8 +14,8 @@ import re
 import requests
 
 from config import Config
-from models import (AiCache, AiMemory, AiMessage, Draft, Interview, NewPerson,
-                    Person, Quote, VerificationItem, get_session, new_id)
+from models import (AiCache, AiMemory, AiMessage, Draft, Interview, InterviewViewer,
+                    NewPerson, Person, Quote, VerificationItem, get_session, new_id)
 
 
 class AIError(Exception):
@@ -78,8 +78,20 @@ _STATUS_LABEL = {"pending": "待采访", "doing": "整理中",
                  "drafted": "初稿完成", "verified": "已核实"}
 
 
-def family_knowledge(family_id, limit=6000):
-    """把家庭已有内容组装成 AI 的知识库文本（有界）。"""
+def _story_visible_to(iv, viewer_id, visible_ids):
+    """AI 知识库用：故事是否对 viewer_id 可见。viewer_id 为空时只取公开。"""
+    if (iv.publish_status or "published") != "published":
+        return False
+    vis = iv.visibility or "public"
+    if vis == "public":
+        return True
+    if not viewer_id:
+        return False
+    return iv.author_id == viewer_id or iv.id in visible_ids
+
+
+def family_knowledge(family_id, viewer_id=None, limit=6000):
+    """把家庭已有内容组装成 AI 的知识库文本（有界）。只含 viewer 可见的故事。"""
     s = _s()
     parts = []
     persons = s.query(Person).filter_by(
@@ -94,9 +106,13 @@ def family_knowledge(family_id, limit=6000):
                 p.name, p.relation or "关系未知", life,
                 "，" + st if st else ""))
         parts.append("人物（家族树）：\n" + "\n".join(lines))
+    visible_ids = set()
+    if viewer_id:
+        visible_ids = {v.interview_id for v in s.query(InterviewViewer).filter_by(
+            user_id=viewer_id, del_flag=0).all()}
     interviews = [iv for iv in s.query(Interview).filter_by(
         family_id=family_id, del_flag=0).all()
-        if (iv.publish_status or "published") == "published"]
+        if _story_visible_to(iv, viewer_id, visible_ids)]
     if interviews:
         lines = []
         for iv in interviews:
@@ -193,7 +209,7 @@ def chat(family_id, user_id, message, family_name=""):
     if not message:
         raise AIError("消息不能为空")
     s = _s()
-    knowledge = family_knowledge(family_id)
+    knowledge = family_knowledge(family_id, viewer_id=user_id)
     memory = _user_memory(family_id, user_id)
     history = s.query(AiMessage).filter_by(
         family_id=family_id, user_id=user_id, del_flag=0).order_by(
