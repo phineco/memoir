@@ -23,7 +23,19 @@
   </div>
   <div class="form-row">
     <label>出生年 <input name="birth_year" type="number" value="{{ form.get('birth_year','') if form else '' }}"></label>
+    <label>历法
+      <select name="birth_calendar">
+        <option value="solar" {% if not form or form.get('birth_calendar','solar') == 'solar' %}selected{% endif %}>公历</option>
+        <option value="lunar" {% if form and form.get('birth_calendar') == 'lunar' %}selected{% endif %}>农历</option>
+      </select>
+    </label>
     <label>去世年 <input name="death_year" type="number" value="{{ form.get('death_year','') if form else '' }}"></label>
+    <label>历法
+      <select name="death_calendar">
+        <option value="solar" {% if not form or form.get('death_calendar','solar') == 'solar' %}selected{% endif %}>公历</option>
+        <option value="lunar" {% if form and form.get('death_calendar') == 'lunar' %}selected{% endif %}>农历</option>
+      </select>
+    </label>
     <label class="check"><input type="checkbox" name="alive" value="1" {% if form and form.get('alive') %}checked{% endif %}> 健在</label>
   </div>
   <div class="form-row">

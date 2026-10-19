@@ -189,6 +189,11 @@ def api_like():
     return jsonify({"ok": True, "liked": liked, "count": count})
 
 
+def _cal(v):
+    """日历类型校验：只接受 solar/lunar，其他按 solar。"""
+    return v if v in ("solar", "lunar") else "solar"
+
+
 def _family_or_404(family_id):
     s = _s()
     fam = s.query(Family).filter_by(id=family_id, del_flag=0).first()
@@ -359,13 +364,13 @@ def _build_tree(family_id, viewer_id=None):
     nodes = {}
     for p in persons:
         lines = [p.name]
-        # 出生/去世年月（只有年份数据时显示年份）
+        # 出生/去世年月（只有年份数据时显示年份；农历加前缀）
         if p.birth_year and p.death_year:
-            lines.append(f"{p.birth_year}–{p.death_year}")
+            lines.append(f"{p.birth_label}–{p.death_label}")
         elif p.birth_year:
-            lines.append(f"{p.birth_year}年生" if p.alive else f"生于{p.birth_year}")
+            lines.append(f"{p.birth_label}年生" if p.alive else f"生于{p.birth_label}")
         elif p.death_year:
-            lines.append(f"卒于{p.death_year}")
+            lines.append(f"卒于{p.death_label}")
         if p.aliases:
             lines.append("别名：" + "、".join(p.aliases))
         if p.user_id and p.user_id in users:
@@ -1100,6 +1105,8 @@ def tree_add(family_id):
             name=name, aliases=aliases,
             relation=request.form.get("relation", "").strip() or None,
             birth_year=birth_year, death_year=death_year,
+            birth_calendar=_cal(request.form.get("birth_calendar")),
+            death_calendar=_cal(request.form.get("death_calendar")),
             alive=bool(request.form.get("alive")),
             status=request.form.get("status") or "pending",
             gender=request.form.get("gender") or None,
@@ -1177,6 +1184,8 @@ def tree_edit(family_id, person_id):
         try:
             p.birth_year = int(request.form.get("birth_year") or 0) or None
             p.death_year = int(request.form.get("death_year") or 0) or None
+            p.birth_calendar = _cal(request.form.get("birth_calendar"))
+            p.death_calendar = _cal(request.form.get("death_calendar"))
             p.sort = int(request.form.get("sort") or 0)
         except ValueError:
             s.rollback()
@@ -1215,6 +1224,8 @@ def tree_edit(family_id, person_id):
         "name": p.name, "relation": p.relation or "",
         "aliases": "，".join(p.aliases or []), "notes": "，".join(p.notes or []),
         "birth_year": p.birth_year or "", "death_year": p.death_year or "",
+        "birth_calendar": p.birth_calendar or "solar",
+        "death_calendar": p.death_calendar or "solar",
         "sort": p.sort or 0, "status": p.status or "pending",
         "parent_id": p.parent_id, "alive": p.alive, "link_user_id": p.user_id or "",
         "gender": p.gender or "", "spouse_id": p.spouse_id or "",

@@ -25,8 +25,8 @@
 {% endif %}
 <div class="stats">
   <span>{{ status_label.get(person.status, person.status or '—') }}</span>
-  {% if person.birth_year %}<span>🎂 {{ person.birth_year }}年生</span>{% endif %}
-  {% if person.death_year %}<span>🕯️ {{ person.death_year }}年去世</span>{% endif %}
+  {% if person.birth_year %}<span>🎂 {{ person.birth_label }}年生</span>{% endif %}
+  {% if person.death_year %}<span>🕯️ {{ person.death_label }}年去世</span>{% endif %}
   {% if person.alive %}<span>💚 健在</span>{% endif %}
 </div>
 

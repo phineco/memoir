@@ -68,6 +68,8 @@ class Person(AuditMixin, Base):
     generation = Column(Integer)
     birth_year = Column(Integer)
     death_year = Column(Integer)
+    birth_calendar = Column(String(8), default="solar")  # solar=公历 lunar=农历
+    death_calendar = Column(String(8), default="solar")
     alive = Column(Boolean)
     status = Column(String(16))  # pending/doing/drafted/verified
     notes = Column(JSON)
@@ -75,6 +77,21 @@ class Person(AuditMixin, Base):
     user_id = Column(String(64), index=True)  # 关联的登录用户 id（"这是我"认领）；一个用户在一个家庭只关联一个人物
     gender = Column(String(8))  # M=男 F=女 空=未知；用于按登录者自动计算称谓
     spouse_id = Column(String(64))  # 配偶的人物 id（双向）；称谓计算时夫妻视为同一辈分单元
+
+    @staticmethod
+    def _cal_label(year, calendar):
+        """年份显示：农历加前缀，公历不加。"""
+        if not year:
+            return ""
+        return ("农历" if calendar == "lunar" else "") + str(year)
+
+    @property
+    def birth_label(self):
+        return self._cal_label(self.birth_year, self.birth_calendar)
+
+    @property
+    def death_label(self):
+        return self._cal_label(self.death_year, self.death_calendar)
 
 
 class SourceFile(AuditMixin, Base):

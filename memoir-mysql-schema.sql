@@ -59,6 +59,8 @@ CREATE TABLE `persons` (
   `generation` int(11) DEFAULT NULL COMMENT '辈分层级（0=起点本人）',
   `birth_year` int(11) DEFAULT NULL COMMENT '出生年份',
   `death_year` int(11) DEFAULT NULL COMMENT '去世年份',
+  `birth_calendar` varchar(8) DEFAULT 'solar' COMMENT '出生历法 solar公历/lunar农历',
+  `death_calendar` varchar(8) DEFAULT 'solar' COMMENT '去世历法 solar公历/lunar农历',
   `alive` tinyint(1) DEFAULT NULL COMMENT '是否健在（1 是/0 否）',
   `status` varchar(16) DEFAULT NULL COMMENT 'pending待采访/doing整理中/drafted初稿完成/verified已核实',
   `notes` json DEFAULT NULL COMMENT '备注线索数组，如["县城供销社上班"]',
