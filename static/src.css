@@ -165,12 +165,12 @@
   .chat-msg.assistant { @apply self-start bg-[#f7f3ea] border border-line/60; }
   .chat-role { @apply text-xs text-[#888] mb-1; }
   .chat-body { @apply whitespace-pre-wrap; }
-  .chatform { @apply flex gap-2 mt-3; }
-  .chatform input { @apply flex-1; }
+  .chatform { @apply flex gap-2 mt-3 items-stretch; }
+  .chatform input { @apply flex-1 text-[17px] px-3.5 py-3.5 rounded-xl; }
   .chat-toolbar { @apply flex items-center gap-3 my-2; }
   .speak-btn { @apply mt-1.5 text-xs; }
   .suggest-qs { @apply flex flex-wrap gap-2 items-center my-2.5; }
-  .suggest-q { @apply rounded-full cursor-pointer border border-line bg-white px-3.5 transition-all hover:bg-[#e3f0ff] hover:border-accent/50 shadow-sm; }
+  .suggest-q { @apply rounded-full cursor-pointer border border-line bg-white text-ink text-sm px-3.5 py-1.5 transition-all hover:bg-[#e3f0ff] hover:border-accent/50 shadow-sm; }
 }
 
 /* ============ 特殊样式（@apply 覆盖不到的） ============ */
@@ -183,10 +183,13 @@
   h1 { font-size: 22px; }
   h2 { font-size: 18px; margin-top: 28px; }
   .container { padding: 16px; }
-  .topbar-inner { padding: 10px 16px; }
+  .topbar-inner { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px; }
   .brand { font-size: 17px; }
-  .navlinks { margin-top: 6px; }
-  .navlinks a { margin-left: 0; margin-right: 14px; font-size: 15px; }
+  .topright { flex-direction: column; align-items: stretch; gap: 6px; }
+  .auth { text-align: right; }
+  .navlinks { display: flex; overflow-x: auto; white-space: nowrap; gap: 6px; padding: 4px 0; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .navlinks::-webkit-scrollbar { display: none; }
+  .navlinks a { margin: 0; flex-shrink: 0; padding: 9px 14px; font-size: 15px; background: #f7f3ea; border: 1px solid #e5ddcf; border-radius: 10px; }
   .cards { grid-template-columns: 1fr; }
   .tree-box { height: 360px; }
   .photos { gap: 12px; }
