@@ -150,7 +150,7 @@ textarea.full { font-size:16px; padding:8px; border:1px solid #ccc; border-radiu
 .table th, .table td { border:1px solid #e2ddd2; padding:6px 8px; text-align:left; }
 .table th { background:#f7f3ea; }
 .reading { background: #fff3d6; border-radius: 6px; }
-.chatlog { display:flex; flex-direction:column; gap:10px; margin:16px 0; }
+.chatlog { display:flex; flex-direction:column; gap:10px; margin:16px 0; max-height:60vh; overflow-y:auto; padding:4px; }
 .chat-msg { max-width:85%; padding:10px 14px; border-radius:12px; line-height:1.7; }
 .chat-msg.user { align-self:flex-end; background:#e3f0ff; }
 .chat-msg.assistant { align-self:flex-start; background:#f7f3ea; }
@@ -158,6 +158,8 @@ textarea.full { font-size:16px; padding:8px; border:1px solid #ccc; border-radiu
 .chat-body { white-space:pre-wrap; }
 .chatform { display:flex; gap:8px; margin-top:12px; }
 .chatform input { flex:1; }
+.chat-toolbar { display:flex; align-items:center; gap:12px; margin:8px 0; }
+.speak-btn { margin-top:6px; font-size:12px; }
 .badge { display:inline-block; background:#e8f4e8; color:#2a7a2a; font-size:12px; padding:2px 8px; border-radius:10px; margin-left:6px; }
 .coderow { display:flex; gap:8px; }
 .coderow .btn-small { white-space:nowrap; }

@@ -80,6 +80,7 @@
 {% endif %}
 <form method="post" action="{{ url_for('main.member_create_account', family_id=family.id) }}">
   <div class="form-row">
+    <label>家人姓名 *<input name="real_name" required maxlength="64" placeholder="如：王建军"></label>
     <label>家人昵称 *<input name="nickname" required maxlength="64" placeholder="如：爷爷"></label>
     <label>登录方式
       <select name="login_type">

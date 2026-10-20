@@ -203,6 +203,81 @@ _WEEKLY_PROMPT = (
 
 # ---------------- 对外接口 ----------------
 
+def _chat_complete_stream(messages, temperature=0.7, max_tokens=1500,
+                          user_id=None):
+    """流式调用 DeepSeek：逐块产出回复文本（str）。"""
+    if not ai_enabled():
+        raise AIError("AI 未启用：请配置 DEEPSEEK_API_KEY")
+    body = {"model": Config.DEEPSEEK_MODEL, "messages": messages,
+            "temperature": temperature, "max_tokens": max_tokens,
+            "stream": True}
+    safe_uid = _safe_user_id(user_id)
+    if safe_uid:
+        body["user_id"] = safe_uid
+    try:
+        r = requests.post(
+            Config.DEEPSEEK_BASE_URL.rstrip("/") + "/chat/completions",
+            headers={"Authorization": "Bearer " + Config.DEEPSEEK_API_KEY,
+                     "Content-Type": "application/json"},
+            json=body, timeout=120, stream=True)
+    except requests.RequestException as e:
+        raise AIError("AI 接口连接失败：%s" % e)
+    if r.status_code == 429:
+        raise AIError("AI 繁忙（触发并发限速），请稍后再试")
+    if r.status_code != 200:
+        raise AIError("AI 接口返回 %s：%s" % (r.status_code, r.text[:200]))
+    r.encoding = "utf-8"
+    for line in r.iter_lines(decode_unicode=True):
+        if not line or not line.startswith("data:"):
+            continue
+        payload = line[5:].strip()
+        if payload == "[DONE]":
+            break
+        try:
+            chunk = json.loads(payload)
+            delta = chunk["choices"][0].get("delta") or {}
+            piece = delta.get("content") or ""
+        except (KeyError, IndexError, ValueError):
+            continue
+        if piece:
+            yield piece
+
+
+def chat_stream(family_id, user_id, message, family_name=""):
+    """流式一轮问答：逐块产出回复；结束后存档并更新用户记忆。"""
+    message = (message or "").strip()
+    if not message:
+        raise AIError("消息不能为空")
+    s = _s()
+    knowledge = family_knowledge(family_id, viewer_id=user_id)
+    memory = _user_memory(family_id, user_id)
+    history = s.query(AiMessage).filter_by(
+        family_id=family_id, user_id=user_id, del_flag=0).order_by(
+        AiMessage.create_date.desc()).limit(10).all()
+    history = list(reversed(history))
+    messages = [{"role": "system",
+                 "content": _system_prompt(family_name or "本家庭",
+                                           knowledge, memory)}]
+    for h in history:
+        messages.append({"role": h.role, "content": h.content})
+    messages.append({"role": "user", "content": message})
+
+    parts = []
+    for piece in _chat_complete_stream(messages, user_id=user_id):
+        parts.append(piece)
+        yield piece
+    reply = "".join(parts)
+    now = datetime.datetime.now()
+    s.add(AiMessage(id=new_id(), family_id=family_id, user_id=user_id,
+                    role="user", content=message[:4000],
+                    create_by=user_id, create_date=now))
+    s.add(AiMessage(id=new_id(), family_id=family_id, user_id=user_id,
+                    role="assistant", content=reply[:4000],
+                    create_by=user_id, create_date=now))
+    s.commit()
+    _update_memory(family_id, user_id)
+
+
 def chat(family_id, user_id, message, family_name=""):
     """一轮问答：组装提示词 → 调用 → 存档 → 更新用户记忆。返回 AI 回复。"""
     message = (message or "").strip()

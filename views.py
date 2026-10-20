@@ -3,7 +3,7 @@ import datetime
 import json
 import re
 
-from flask import Blueprint, abort, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from models import (Comment, Draft, Family, FamilyMember, Interview, InterviewPerson,
@@ -28,6 +28,15 @@ def _current_user():
     if not uid:
         return None
     return _s().query(User).filter_by(id=uid, del_flag=0).first()
+
+
+@bp.before_request
+def _family_login_gate():
+    """/f/ 下所有家庭内容一律登录后可见：未登录跳登录页并带回跳地址。
+    公开面只剩：首页（未登录显示欢迎页）、登录/注册/找回、/guide、
+    /join/<code> 邀请链接、/s/<token> 分享页。"""
+    if request.path.startswith("/f/") and not _current_user():
+        return redirect(url_for("main.login", next=request.url))
 
 
 # ---------- 登录（原型：手机号+密码；生产换微信 OAuth） ----------
@@ -91,9 +100,25 @@ def register():
 def login():
     if request.method == "POST":
         from sqlalchemy import or_
+        import sms as sms_mod
+        login_mode = request.form.get("login_mode", "password")
+        s = _s()
+        if login_mode == "sms":
+            phone = request.form.get("phone", "").strip()
+            code = request.form.get("code", "").strip()
+            u = s.query(User).filter_by(phone=phone, del_flag=0).first()
+            if not u:
+                return render_template("login.html", error="该手机号未注册",
+                                       login_mode="sms")
+            try:
+                sms_mod.verify_code(phone, code, "login")
+            except sms_mod.SMSError as e:
+                return render_template("login.html", error=str(e),
+                                       login_mode="sms")
+            session["user_id"] = u.id
+            return redirect(request.args.get("next") or url_for("main.index"))
         login_id = request.form.get("phone", "").strip()  # 手机号或用户名
         password = request.form.get("password", "")
-        s = _s()
         u = s.query(User).filter(
             User.del_flag == 0,
             or_(User.phone == login_id, User.username == login_id)).first()
@@ -1802,11 +1827,14 @@ def member_create_account(family_id):
     import re as _re
     s = _s()
     nickname = request.form.get("nickname", "").strip()
+    real_name = request.form.get("real_name", "").strip()
     login_type = request.form.get("login_type", "phone")
     login_id = request.form.get("login_id", "").strip()
     password = request.form.get("password", "")
     error = None
-    if not nickname:
+    if not real_name:
+        error = "请填写家人姓名"
+    elif not nickname:
         error = "请填写家人昵称（如：爷爷）"
     elif len(password) < 6:
         error = "密码至少 6 位"
@@ -1826,7 +1854,7 @@ def member_create_account(family_id):
         session["member_form_error"] = error
         return redirect(url_for("main.family_home", family_id=family_id))
     from models import new_id
-    u = User(id=new_id(), nickname=nickname,
+    u = User(id=new_id(), nickname=nickname, name=real_name,
              phone=login_id if login_type == "phone" else None,
              username=login_id if login_type == "username" else None,
              password_hash=generate_password_hash(password),
@@ -1911,6 +1939,44 @@ def ai_ask(family_id):
                            msgs=list(reversed(msgs)),
                            ai_enabled=ai_mod.ai_enabled(),
                            error=request.args.get("error"))
+
+
+@bp.route("/f/<family_id>/ask/stream", methods=["POST"])
+def ai_ask_stream(family_id):
+    """AI 问答流式输出（SSE）：逐块返回回复文本。"""
+    me = _current_user()
+    if not me:
+        return jsonify({"error": "请先登录"}), 401
+    fam = _family_or_404(family_id)
+    import ai as ai_mod
+    if not ai_mod.ai_enabled():
+        return jsonify({"error": "AI 未启用"}), 400
+    data = request.get_json(silent=True) or {}
+    msg = (data.get("message") or "").strip()[:2000]
+    if not msg:
+        return jsonify({"error": "请输入问题"}), 400
+
+    import json as _json
+
+    def gen():
+        try:
+            for piece in ai_mod.chat_stream(family_id, me.id, msg,
+                                           family_name=fam.name):
+                yield "data: " + _json.dumps({"chunk": piece},
+                                             ensure_ascii=False) + "\n\n"
+        except ai_mod.AIError as e:
+            yield "data: " + _json.dumps({"error": str(e)},
+                                         ensure_ascii=False) + "\n\n"
+            return
+        except Exception as e:
+            yield "data: " + _json.dumps({"error": "AI 出错：%s" % e},
+                                         ensure_ascii=False) + "\n\n"
+            return
+        yield "data: [DONE]\n\n"
+
+    return Response(gen(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache",
+                             "X-Accel-Buffering": "no"})
 
 
 @bp.route("/f/<family_id>/weekly/<int:week>/ai-summary", methods=["POST"])
@@ -2195,6 +2261,9 @@ def api_sms_code():
     elif purpose == "reset":
         if not s.query(User).filter_by(phone=phone, del_flag=0).first():
             return jsonify({"ok": False, "error": "该手机号未注册"}), 400
+    elif purpose == "login":
+        if not s.query(User).filter_by(phone=phone, del_flag=0).first():
+            return jsonify({"ok": False, "error": "该手机号未注册，请先注册或联系管理员开通"}), 400
     else:
         return jsonify({"ok": False, "error": "用途不对"}), 400
     try:

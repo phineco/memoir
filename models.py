@@ -38,6 +38,7 @@ class User(AuditMixin, Base):
     phone = Column(String(20), unique=True)
     username = Column(String(32), unique=True)  # 用户名登录（管理员可为家人开通）
     nickname = Column(String(64))
+    name = Column(String(64))  # 真实姓名（为家人开通账号时必填）
     password_hash = Column(String(128))  # 原型用手机号/用户名+密码登录；生产换微信 OAuth
 
 

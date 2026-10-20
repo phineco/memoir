@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 
 CODE_TTL_MINUTES = 10
 RESEND_COOLDOWN_SECONDS = 60
-PURPOSES = ("register", "reset")
+PURPOSES = ("register", "reset", "login")
 
 
 class SMSError(Exception):

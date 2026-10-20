@@ -15,20 +15,171 @@
 <p class="error">AI 未启用：请管理员配置 DEEPSEEK_API_KEY 后使用。</p>
 {% endif %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
-<div class="chatlog">
+<div class="chatlog" id="chatlog">
 {% for m in msgs %}
   <div class="chat-msg {{ m.role }}">
     <div class="chat-role">{{ '你' if m.role == 'user' else '🤖 家音' }}</div>
     <div class="chat-body">{{ m.content }}</div>
+    {% if m.role == 'assistant' %}<div><button type="button" class="btn-small speak-btn" data-text="{{ m.content|e }}">🔊 朗读</button></div>{% endif %}
   </div>
 {% else %}
-  <p class="hint">还没有对话，试试："三叔哪年进的供销社？"、"家里还有谁没采访？"、"下周建议先采访谁？"</p>
+  <p class="hint" id="empty-hint">还没有对话，试试："三叔哪年进的供销社？"、"家里还有谁没采访？"、"下周建议先采访谁？"</p>
 {% endfor %}
 </div>
 {% if ai_enabled %}
-<form method="post" class="chatform">
-  <input name="message" class="full" placeholder="问点什么…" required maxlength="2000" autocomplete="off">
-  <button type="submit" class="btn-primary">发送</button>
+<div class="chat-toolbar">
+  <label class="hint"><input type="checkbox" id="auto-speak" checked> 🔊 自动播报 AI 回复</label>
+  <button type="button" class="btn-small" id="stop-speak" style="display:none">⏹️ 停止播报</button>
+</div>
+<form class="chatform" id="chatform">
+  <button type="button" id="voice-btn" class="btn-small" title="语音输入">🎤</button>
+  <input id="msg-input" class="full" placeholder="问点什么…（或点 🎤 语音输入）" maxlength="2000" autocomplete="off">
+  <button type="submit" class="btn-primary" id="send-btn">发送</button>
 </form>
+<p class="hint" id="voice-status" style="display:none"></p>
+<script>
+(function(){
+  var chatlog = document.getElementById('chatlog');
+  var form = document.getElementById('chatform');
+  var input = document.getElementById('msg-input');
+  var sendBtn = document.getElementById('send-btn');
+  var streamUrl = {{ url_for('main.ai_ask_stream', family_id=family.id)|tojson }};
+
+  function scrollBottom(){ chatlog.scrollTop = chatlog.scrollHeight; }
+  scrollBottom();
+
+  function esc(s){ var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function addMsg(role, text){
+    var hint = document.getElementById('empty-hint');
+    if(hint) hint.remove();
+    var div = document.createElement('div');
+    div.className = 'chat-msg ' + role;
+    div.innerHTML = '<div class="chat-role">' + (role === 'user' ? '你' : '🤖 家音') + '</div>' +
+                    '<div class="chat-body">' + esc(text) + '</div>';
+    chatlog.appendChild(div); scrollBottom();
+    return div;
+  }
+
+  function addSpeakBtn(div, text){
+    var wrap = document.createElement('div');
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'btn-small speak-btn';
+    btn.textContent = '🔊 朗读';
+    btn.onclick = function(){ speak(text); };
+    wrap.appendChild(btn); div.appendChild(wrap);
+  }
+
+  /* ---------- 语音播报 ---------- */
+  var stopBtn = document.getElementById('stop-speak');
+  function speak(text){
+    if(!('speechSynthesis' in window)){ alert('当前浏览器不支持语音播报'); return; }
+    speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN'; u.rate = 1;
+    u.onend = u.onerror = function(){ stopBtn.style.display = 'none'; };
+    stopBtn.style.display = '';
+    speechSynthesis.speak(u);
+  }
+  stopBtn.onclick = function(){ speechSynthesis.cancel(); stopBtn.style.display = 'none'; };
+  chatlog.addEventListener('click', function(e){
+    var b = e.target.closest('.speak-btn');
+    if(b && b.dataset.text) speak(b.dataset.text);
+  });
+
+  /* ---------- 流式发送 ---------- */
+  form.onsubmit = function(e){
+    e.preventDefault();
+    var text = input.value.trim();
+    if(!text || sendBtn.disabled) return;
+    if(!('EventSource' in window) && !window.fetch){ alert('浏览器太旧，请升级后使用'); return; }
+    speechSynthesis && speechSynthesis.cancel();
+    input.value = '';
+    addMsg('user', text);
+    var aiDiv = addMsg('assistant', '思考中…');
+    var body = aiDiv.querySelector('.chat-body');
+    sendBtn.disabled = true; sendBtn.textContent = '发送中…';
+
+    fetch(streamUrl, {method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: text})})
+    .then(function(resp){
+      if(!resp.ok || !resp.body) throw new Error('http ' + resp.status);
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '', full = '', started = false;
+      function pump(){
+        return reader.read().then(function(r){
+          if(r.done){ finish(); return; }
+          buf += decoder.decode(r.value, {stream: true});
+          var idx;
+          while((idx = buf.indexOf('\n\n')) >= 0){
+            var line = buf.slice(0, idx); buf = buf.slice(idx + 2);
+            if(line.indexOf('data:') !== 0) continue;
+            var payload = line.slice(5).trim();
+            if(payload === '[DONE]'){ finish(); return; }
+            try {
+              var d = JSON.parse(payload);
+              if(d.error){ body.textContent = d.error; finish(); return; }
+              if(d.chunk){
+                if(!started){ body.textContent = ''; started = true; }
+                full += d.chunk; body.textContent = full; scrollBottom();
+              }
+            } catch(err){}
+          }
+          return pump();
+        });
+      }
+      function finish(){
+        sendBtn.disabled = false; sendBtn.textContent = '发送';
+        if(full){
+          addSpeakBtn(aiDiv, full);
+          if(document.getElementById('auto-speak').checked) speak(full);
+        }
+      }
+      return pump();
+    })
+    .catch(function(){ body.textContent = '网络出错，请重试'; sendBtn.disabled = false; sendBtn.textContent = '发送'; });
+  };
+
+  /* ---------- 语音输入 ---------- */
+  var voiceBtn = document.getElementById('voice-btn');
+  var voiceStatus = document.getElementById('voice-status');
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    voiceBtn.style.display = 'none';
+  } else {
+    var rec = new SR();
+    rec.lang = 'zh-CN'; rec.interimResults = true; rec.maxAlternatives = 1;
+    var recording = false;
+    rec.onresult = function(e){
+      var final = '', interim = '';
+      for(var i = 0; i < e.results.length; i++){
+        if(e.results[i].isFinal) final += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      input.value = final || interim;
+    };
+    rec.onerror = function(e){
+      voiceStatus.textContent = '语音识别出错：' + e.error + '，请重试';
+      setTimeout(function(){ voiceStatus.style.display = 'none'; }, 3000);
+    };
+    rec.onend = function(){
+      recording = false; voiceBtn.textContent = '🎤';
+      voiceStatus.style.display = 'none';
+    };
+    voiceBtn.onclick = function(){
+      if(recording){ rec.stop(); return; }
+      try {
+        rec.start(); recording = true;
+        voiceBtn.textContent = '⏹️';
+        voiceStatus.textContent = '正在聆听…说完点 ⏹️ 结束';
+        voiceStatus.style.display = '';
+        input.focus();
+      } catch(err){}
+    };
+  }
+})();
+</script>
 {% endif %}
 {% endblock %}

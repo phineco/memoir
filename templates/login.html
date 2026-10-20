@@ -2,15 +2,54 @@
 {% block title %}登录 · 家音{% endblock %}
 {% block content %}
 <h1>登录</h1>
-<p class="hint">原型用手机号/用户名+密码登录；正式版为微信登录+手机号双绑定。</p>
-<form method="post" class="authform">
-  <input name="phone" placeholder="手机号 / 用户名" required>
-  <div class="coderow">
-  <input type="password" name="password" id="login-pw" placeholder="密码" required style="flex:1">
-  <button type="button" class="btn-small" onclick="var i=document.getElementById('login-pw');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁️':'🙈';" title="显示/隐藏密码">👁️</button>
-  </div>
-  <button type="submit">登录</button>
+<div style="margin-bottom:12px;">
+<button type="button" id="tab-pw" class="btn-small" onclick="switchMode('password')">密码登录</button>
+<button type="button" id="tab-sms" class="btn-small" onclick="switchMode('sms')">验证码登录</button>
+</div>
+<form method="post" class="authform" id="form-pw">
+<input type="hidden" name="login_mode" value="password">
+<input name="phone" placeholder="手机号 / 用户名" required>
+<div class="coderow">
+<input type="password" name="password" id="login-pw" placeholder="密码" required style="flex:1">
+<button type="button" class="btn-small" onclick="var i=document.getElementById('login-pw');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁️':'🙈';" title="显示/隐藏密码">👁️</button>
+</div>
+<button type="submit">登录</button>
 </form>
-{% if error %}<p class="error">{{ error }}</p>{% endif %}
-<p class="hint">没有账号？<a href="{{ url_for('main.register', next=request.args.get('next')) }}">去注册</a> · <a href="{{ url_for('main.forgot_password') }}">忘记密码</a></p>
+<form method="post" class="authform" id="form-sms" style="display:none">
+<input type="hidden" name="login_mode" value="sms">
+<input name="phone" id="sms-phone" placeholder="手机号" required pattern="\d{11}">
+<div class="coderow">
+<input name="code" placeholder="短信验证码" required style="flex:1">
+<button type="button" id="sendLoginCode" class="btn-small">获取验证码</button>
+</div>
+<button type="submit">登录</button>
+</form>
+{% if error %}<p class="error">{{ error}}</p>{% endif %}
+<p class="hint">没有账号？<a href="{{ url_for('main.register', next=request.args.get('next'))}}">去注册</a> · <a href="{{ url_for('main.forgot_password')}}">忘记密码</a></p>
+<script>
+function switchMode(m){
+document.getElementById('form-pw').style.display = m==='password'?'':'none';
+document.getElementById('form-sms').style.display = m==='sms'?'':'none';
+document.getElementById('tab-pw').style.fontWeight = m==='password'?'bold':'normal';
+document.getElementById('tab-sms').style.fontWeight = m==='sms'?'bold':'normal';
+}
+switchMode('{{ login_mode or "password"}}');
+document.getElementById('sendLoginCode').onclick = function(){
+var phone = document.getElementById('sms-phone').value.trim();
+var btn = this;
+fetch('{{ url_for("main.api_sms_code")}}', {method:'POST',
+headers:{'Content-Type':'application/json'},
+body: JSON.stringify({phone: phone, purpose: 'login'})})
+.then(function(r){ return r.json();})
+.then(function(d){
+if(d.ok){ alert(d.dev_mode? ('验证码：'+d.dev_code): '验证码已发送'); countdown(btn);}
+else alert(d.error||'发送失败');
+}).catch(function(){ alert('发送失败');});
+};
+function countdown(btn){
+var s = 60; btn.disabled = true;
+var t = setInterval(function(){ s--; btn.textContent = s+'s';
+if(s<=0){ clearInterval(t); btn.disabled=false; btn.textContent='获取验证码';}}, 1000);
+}
+</script>
 {% endblock %}
