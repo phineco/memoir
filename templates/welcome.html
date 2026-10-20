@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}家音 · 留住长辈的声音{% endblock %}
+{% block content %}
+<div style="text-align:center; padding: 32px 16px;">
+  <h1>🏠 家音</h1>
+  <p class="hint" style="font-size:17px; line-height:1.8;">老人口述 → AI 整理 → 家族回忆录<br>把长辈的声音，留给下一代。</p>
+  <p style="margin-top:24px;">
+    <a href="{{ url_for('main.login') }}" class="btn-primary" style="text-decoration:none; margin-right:12px;">登录</a>
+    <a href="{{ url_for('main.register') }}" style="text-decoration:none;">注册新账号</a>
+  </p>
+  <p class="hint" style="margin-top:24px;">收到家人分享链接？直接打开链接即可查看，无需登录。</p>
+</div>
+{% endblock %}

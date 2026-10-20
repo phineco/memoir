@@ -462,6 +462,9 @@ def _build_tree(family_id, viewer_id=None):
 
 @bp.route("/")
 def index():
+    me = _current_user()
+    if not me:
+        return render_template("welcome.html")
     s = _s()
     families = s.query(Family).filter_by(del_flag=0).all()
     return render_template("index.html", families=families)
