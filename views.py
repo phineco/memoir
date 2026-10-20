@@ -1777,6 +1777,13 @@ def timeline_delete(family_id, person_id, event_id):
                             person_id=person_id))
 
 
+@bp.route("/display")
+def display_preferences():
+    family_id = request.args.get("family_id")
+    fam = _family_or_404(family_id) if family_id else None
+    return render_template("display.html", family=fam)
+
+
 @bp.route("/guide")
 def guide():
     return render_template("guide.html", me=_current_user())

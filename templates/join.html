@@ -6,7 +6,7 @@
 <p>你被邀请加入这个家庭的回忆录。注册或登录后自动成为成员。</p>
 <p>
   <a href="{{ url_for('main.register', invite=invite.code) }}" class="btn-primary" style="text-decoration:none">注册并加入</a>
-  <a href="{{ url_for('main.login', next=url_for('main.join_by_invite', code=invite.code)) }}" class="btn-small" style="text-decoration:none;background:#5a7d9a">登录并加入</a>
+  <a href="{{ url_for('main.login', next=url_for('main.join_by_invite', code=invite.code)) }}" class="btn-small btn-secondary">登录并加入</a>
 </p>
 {% else %}
 <h1>邀请无效</h1>

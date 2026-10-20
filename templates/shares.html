@@ -33,7 +33,7 @@
     </form>
     {% endif %}
     <form method="post" action="{{ url_for('main.share_delete', family_id=family.id, snap_id=snap.id) }}" style="display:inline" onsubmit="return confirm('删除该分享快照？')">
-      <button type="submit" class="btn-small" style="background:#c0392b">删除</button>
+      <button type="submit" class="btn-small btn-danger">删除</button>
     </form>
   </div>
 </div>

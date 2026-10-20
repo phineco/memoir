@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}显示设置 · 家音{% endblock %}
+{% block nav %}{% if family %}{% include "_family_nav.html" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-heading"><p class="eyebrow">按照你的习惯阅读</p><h1>显示设置</h1><p class="hint">选择后立即生效，仅保存在当前浏览器。其他家人的显示不会改变。</p></div>
+<noscript><p class="error">请启用 JavaScript 后使用显示设置；当前仍可用默认样式阅读。</p></noscript>
+<form id="display-settings">
+{% for name, legend, options in [('size','文字大小',[('18','标准 · 正文 18'),('22','大字 · 正文 22'),('26','特大 · 正文 26')]),('font','字体',[('sans','清晰黑体'),('serif','书卷宋体'),('rounded','亲切圆体')]),('theme','页面外观',[('modern','清新'),('paper','暖纸'),('contrast','高对比')]),('mode','页面密度',[('standard','标准模式'),('simple','简洁模式')])] %}
+<fieldset class="settings-group"><legend>{{ legend }}</legend><div class="settings-options">
+{% for value,label in options %}<label class="setting-choice"><input type="radio" name="{{ name }}" value="{{ value }}" data-display-setting> <span>{{ label }}</span></label>{% endfor %}
+</div></fieldset>
+{% endfor %}
+<p class="hint">使用设备自带字体，圆体缺失时自动使用黑体。简洁模式增大按钮与间距，并收起家族树和快捷管理入口；完整功能可从“更多”进入。</p>
+<div class="form-actions"><button id="display-reset" class="btn-secondary" type="button">恢复默认显示</button>{% if family %}<a class="btn-primary" href="{{ url_for('main.stories',family_id=family.id) }}">返回家庭故事</a>{% else %}<a class="btn-primary" href="{{ url_for('main.index') }}">返回首页</a>{% endif %}</div>
+<p id="display-status" class="hint" role="status" aria-live="polite"></p>
+</form>
+<section class="reading-preview"><h2>阅读预览</h2><div class="prose"><p>夏天的傍晚，奶奶坐在院子里，给我们讲她小时候的故事。</p><p>这些平凡的日子，是一家人最珍贵的记忆。</p></div><p class="hint">字体、字号、主题的效果会应用到故事正文和人物小传。</p></section>
+{% endblock %}

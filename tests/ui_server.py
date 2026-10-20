@@ -22,6 +22,8 @@ s.add(User(id="ui-user", username="ui-test", nickname="测试家人",
 for fid, name in [("ui", "岁月里的家"), ("empty", "等待第一段故事的家")]:
     s.add(Family(id=fid, name=name, owner_user_id="ui-user"))
     s.add(FamilyMember(id="member-"+fid, family_id=fid, user_id="ui-user", role="owner"))
+s.add(User(id="ui-relative", username="ui-relative", nickname="另一位家人"))
+s.add(FamilyMember(id="member-relative", family_id="ui", user_id="ui-relative", role="member"))
 s.add(Person(id="grandma", family_id="ui", name="林奶奶", gender="F", birth_year=1942, alive=True, status="drafted", notes=["喜欢讲童年的事"]))
 s.add(Person(id="daughter", family_id="ui", name="林妈妈", parent_id="grandma", parent_ids="0,grandma,", gender="F", birth_year=1968, alive=True))
 s.add(Interview(id="story", family_id="ui", topic="奶奶的老院子与那个很长很长的夏天", author_id="ui-user", person_id="grandma", narrator_person_id="grandma", publish_status="published", visibility="public"))
