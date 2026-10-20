@@ -1830,35 +1830,29 @@ def member_create_account(family_id):
     s = _s()
     nickname = request.form.get("nickname", "").strip()
     real_name = request.form.get("real_name", "").strip()
-    login_type = request.form.get("login_type", "phone")
-    login_id = request.form.get("login_id", "").strip()
+    phone = request.form.get("phone", "").strip()
+    username = request.form.get("username", "").strip()
     password = request.form.get("password", "")
     error = None
     if not real_name:
         error = "请填写家人姓名"
-    elif not nickname:
-        error = "请填写家人昵称（如：爷爷）"
+    elif not _re.fullmatch(r"\d{11}", phone):
+        error = "手机号应为 11 位数字"
+    elif s.query(User).filter_by(phone=phone, del_flag=0).first():
+        error = "该手机号已注册"
+    elif username and not _re.fullmatch(r"[a-zA-Z0-9_]{3,20}", username):
+        error = "用户名为 3~20 位字母/数字/下划线"
+    elif username and s.query(User).filter_by(username=username, del_flag=0).first():
+        error = "该用户名已被占用"
     elif len(password) < 6:
         error = "密码至少 6 位"
-    elif login_type == "phone":
-        if not _re.fullmatch(r"\d{11}", login_id):
-            error = "手机号应为 11 位数字"
-        elif s.query(User).filter_by(phone=login_id, del_flag=0).first():
-            error = "该手机号已注册"
-    elif login_type == "username":
-        if not _re.fullmatch(r"[a-zA-Z0-9_]{3,20}", login_id):
-            error = "用户名为 3~20 位字母/数字/下划线"
-        elif s.query(User).filter_by(username=login_id, del_flag=0).first():
-            error = "该用户名已被占用"
-    else:
-        error = "登录方式不对"
     if error:
         session["member_form_error"] = error
         return redirect(url_for("main.family_home", family_id=family_id))
     from models import new_id
-    u = User(id=new_id(), nickname=nickname, name=real_name,
-             phone=login_id if login_type == "phone" else None,
-             username=login_id if login_type == "username" else None,
+    u = User(id=new_id(), nickname=nickname or real_name, name=real_name,
+             phone=phone,
+             username=username or None,
              password_hash=generate_password_hash(password),
              create_by=me.id, create_date=datetime.datetime.now())
     s.add(u)
@@ -1868,7 +1862,8 @@ def member_create_account(family_id):
                        create_date=datetime.datetime.now()))
     s.commit()
     # 密码只存 hash，这里一次性展示给管理员转告家人
-    session["created_account"] = {"nickname": nickname, "login": login_id,
+    session["created_account"] = {"nickname": nickname or real_name,
+                                  "login": phone + ("/" + username if username else ""),
                                   "password": password}
     return redirect(url_for("main.family_home", family_id=family_id))
 

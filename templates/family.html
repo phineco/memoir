@@ -81,18 +81,16 @@
 <form method="post" action="{{ url_for('main.member_create_account', family_id=family.id) }}">
   <div class="form-row">
     <label>家人姓名 *<input name="real_name" required maxlength="64" placeholder="如：王建军"></label>
-    <label>家人昵称 *<input name="nickname" required maxlength="64" placeholder="如：爷爷"></label>
-    <label>登录方式
-      <select name="login_type">
-        <option value="phone">手机号</option>
-        <option value="username">用户名</option>
-      </select>
-    </label>
+    <label>手机号 *<input name="phone" required maxlength="11" pattern="\d{11}" placeholder="11 位，用于登录"></label>
   </div>
   <div class="form-row">
-    <label>登录名 *<input name="login_id" required placeholder="手机号 11 位 / 用户名 3-20 位"></label>
-    <label>初始密码 *<input name="password" required minlength="6" placeholder="至少 6 位"></label>
+    <label>用户名<input name="username" maxlength="20" placeholder="选填，3-20 位字母/数字/下划线"></label>
+    <label>家人昵称<input name="nickname" maxlength="64" placeholder="选填，不填则用姓名"></label>
   </div>
+  <div class="form-row">
+    <label>初始密码 *<input type="password" name="password" required minlength="6" placeholder="至少 6 位"></label>
+  </div>
+  <p class="hint">手机号用于密码登录和验证码登录；用户名选填，设置后也可用于密码登录。昵称仅作显示用，家族中的辈分称谓请在"家族树"里设置。</p>
   <div class="form-actions"><button type="submit" class="btn-primary">开通并加入本家庭</button></div>
 </form>
 {% endif %}

@@ -276,6 +276,21 @@ nohup gunicorn -w 3 -b 127.0.0.1:8000 app:app > gunicorn.log 2>&1 &
 - [ ] 分享页 token+密码可访问
 - [ ] `SECRET_KEY` 已换成随机值
 
+### 4.9 代码更新流程（每次更新固定三步）
+
+```bash
+cd /www/wwwroot/family.scyllatech.cn/memoir-prototype   # 按实际项目路径改
+git pull
+/www/server/pyporject_evn/memoir-prototype_venv/bin/python migrate.py
+# 面板「Python 项目管理器」里重启项目（若 gunicorn 有残留进程，先 pkill -f gunicorn 杀干净再重启）
+```
+
+说明：
+- `migrate.py` 自动补齐 `migrations/` 里新增的表结构变更（读 `.env` 的 `DATABASE_URL`，直连 MySQL），
+  已手动执行过的变更会自动跳过，重复跑是安全的；可用 `--dry-run` 先看会执行哪些。
+- 不用再记零散的 ALTER：以后每次代码更新若有表结构变化，只会多一个 `migrations/00N_xxx.sql` 文件。
+- ⚠️ 仍然不要跑 `python seed.py`（它会清空 16 张表再灌演示数据，见 FAQ）。
+
 ---
 
 ## 五、环境变量总表
