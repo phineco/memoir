@@ -12,6 +12,18 @@ python seed.py        # 灌样本数据（王家：王德顺/王建军/王秀兰
 python app.py         # 启动，打开 http://localhost:5000
 ```
 
+## 样式（Tailwind CSS）
+
+页面样式由 Tailwind CSS 3 生成，编译产物 `static/tailwind.css` 自托管（已提交仓库，服务器无需装 node）。
+组件类（如 `.btn-primary`、`.card`、`.chat-msg`）在 `static/src.css` 里用 `@apply` 定义，模板可直接写工具类。
+
+改了模板里的工具类或 `src.css` 后需重新编译（本地执行，不要在服务器跑）：
+
+```bash
+npm i -D tailwindcss@3.4.17   # 首次
+./node_modules/.bin/tailwindcss -c tailwind.config.js -i static/src.css -o static/tailwind.css --minify
+```
+
 ## 页面
 
 | 地址 | 说明 |

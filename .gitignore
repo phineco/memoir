@@ -8,3 +8,4 @@ uploads/
 venv/
 .venv/
 instance/
+node_modules/

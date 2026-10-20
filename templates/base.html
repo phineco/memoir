@@ -4,10 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}家音 · 回忆录{% endblock %}</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='tailwind.css') }}">
 </head>
 <body>
 <header class="topbar">
+<div class="topbar-inner">
   <a class="brand" href="{{ url_for('main.index') }}">🏠 家音 · 回忆录</a>
   <div class="topright">
     {% block nav %}{% endblock %}
@@ -20,6 +21,7 @@
     {% endif %}
     </span>
   </div>
+</div>
 </header>
 <main class="container">
 {% block content %}{% endblock %}
