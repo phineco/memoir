@@ -13,9 +13,9 @@
 {% if is_admin %}
 <hr>
 <h2>🛠️ 家族树管理 <small class="muted">（管理员）</small></h2>
-<p><a href="{{ url_for('main.tree_add', family_id=family.id) }}" class="btn-primary" style="text-decoration:none">➕ 添加人物</a>
+<div class="form-actions"><a href="{{ url_for('main.tree_add', family_id=family.id) }}" class="btn-primary">➕ 添加人物</a>
 <a href="{{ url_for('main.share_list', family_id=family.id) }}" class="btn-secondary" style="text-decoration:none">🔗 分享管理</a>
-<a href="{{ url_for('main.sync_import', family_id=family.id) }}" class="btn-secondary" style="text-decoration:none">🔄 同步入库</a></p>
+<a href="{{ url_for('main.sync_import', family_id=family.id) }}" class="btn-secondary" style="text-decoration:none">🔄 同步入库</a></div>
 <p class="hint">如需修改或删除某位人物，请点击树上节点进入人物页操作。</p>
 {% endif %}
 {% if is_admin %}

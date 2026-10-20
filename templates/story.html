@@ -50,13 +50,14 @@
 </ul>
 
 <h2>💬 评论</h2>
-{% macro render_comment(node, depth=0) %}
-<div class="comment" style="margin-left: {{ depth * 28 }}px">
+{% macro render_comment(node, depth=0, parent_name='') %}
+<div class="comment" style="--comment-depth: {{ depth }}">
   <div class="comment-head">
     <strong>{{ comment_users[node.c.user_id].nickname if node.c.user_id in comment_users else '已注销' }}</strong>
     <span class="hint">{{ node.c.create_date.strftime('%Y-%m-%d %H:%M') if node.c.create_date else '' }}</span>
   </div>
   <div class="comment-body">{{ node.c.content }}</div>
+  {% if parent_name %}<p class="hint">回复 {{ parent_name }}</p>{% endif %}
   <div class="comment-actions">
     <button class="likebtn small {{ 'liked' if ('comment', node.c.id) in liked_ids else '' }}" data-type="comment" data-id="{{ node.c.id }}">❤️ <span class="cnt">{{ node.c.like_count or 0 }}</span></button>
     {% if me %}<button class="replybtn" data-pid="{{ node.c.id }}" data-name="{{ comment_users[node.c.user_id].nickname if node.c.user_id in comment_users else '' }}">回复</button>{% endif %}
@@ -66,8 +67,8 @@
     </form>
     {% endif %}
   </div>
-  {% for child in node.children %}{{ render_comment(child, depth + 1) }}{% endfor %}
 </div>
+{% for child in node.children %}{{ render_comment(child, depth + 1, comment_users[node.c.user_id].nickname if node.c.user_id in comment_users else '家人') }}{% endfor %}
 {% endmacro %}
 
 <div class="comments">

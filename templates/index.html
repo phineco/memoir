@@ -2,7 +2,7 @@
 {% block title %}家庭列表 · 家音{% endblock %}
 {% block content %}
 <h1>选择家庭</h1>
-{% if me %}<p><a href="{{ url_for('main.family_new') }}" class="btn-primary" style="text-decoration:none">➕ 创建家庭</a></p>{% endif %}
+{% if me %}<div class="form-actions"><a href="{{ url_for('main.family_new') }}" class="btn-primary">➕ 创建家庭</a></div>{% endif %}
 <div class="cards">
 {% for f in families %}
   <a class="card" href="{{ url_for('main.family_home', family_id=f.id) }}">

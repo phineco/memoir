@@ -1,0 +1,57 @@
+/* Shared layout rules. Tailwind continues to provide resets and utilities. */
+html { scroll-padding-block: 1rem; }
+body, main, header, footer, form, fieldset, section, article, details { min-width: 0; }
+body { overflow-wrap: anywhere; }
+fieldset { min-inline-size: 0; }
+img, video, svg { max-width: 100%; }
+input, select, textarea, button { max-width: 100%; }
+:focus-visible { outline: 3px solid #245e49; outline-offset: 3px; }
+.topbar { position: static; }
+.topbar-inner, .topright, .navlinks, .auth { min-width: 0; max-width: 100%; }
+.topright { flex: 1 1 34rem; justify-content: flex-end; }
+.navlinks { display: flex; flex-wrap: wrap; gap: .4rem; white-space: normal; }
+.navlinks a { display: inline-flex; align-items: center; min-height: 44px; margin: 0; padding: .5rem .7rem; }
+.auth { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.container, .card, .chat-msg, .chat-body, .prose, .article-body { min-width: 0; overflow-wrap: anywhere; }
+.btn-primary, .btn-secondary, .btn-small, .btn-danger, .likebtn, .replybtn,
+.read-btn, .voice-btn, .filebtn, .authform button, .commentform button {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: .4rem; min-height: 44px; max-width: 100%; white-space: normal;
+  text-align: center; vertical-align: middle; text-decoration: none; line-height: 1.5;
+}
+.form-actions, .share-actions, .upload-row, .editor-toolbar-row, .engagement,
+.chat-toolbar, .comment-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.form-actions { margin-block: 1rem; }
+.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 1rem; align-items: start; }
+.form-row label { min-width: 0; }
+input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]),
+select, textarea { min-width: 0; }
+.form-row input:not([type=checkbox]):not([type=radio]), .form-row select { width: 100%; }
+.check { display: flex; align-items: center; gap: .5rem; white-space: normal; min-height: 44px; }
+.check input { flex: 0 0 auto; }
+.readbar { flex-wrap: wrap; }
+.read-btn { flex: 1 1 12rem; }
+.speed select { width: auto; }
+.chatform { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .5rem; }
+.chatform input { width: 100%; min-width: 0; }
+.coderow { flex-wrap: wrap; }
+.coderow input { flex: 1 1 10rem; min-width: 0; }
+.table { display: block; max-width: 100%; overflow-x: auto; }
+.article-body pre { max-width: 100%; overflow-x: auto; white-space: pre; }
+.ql-toolbar { display: flex; flex-wrap: wrap; gap: .25rem; }
+.ql-toolbar .ql-formats { margin-right: .3rem; }
+.comment { margin-left: min(calc(var(--comment-depth, 0) * .5rem), 2rem); }
+@media (max-width: 768px) {
+  .topbar-inner { align-items: stretch; }
+  .topright { flex-basis: auto; align-items: stretch; }
+  .navlinks { width: 100%; flex-wrap: wrap; overflow: visible; }
+  .navlinks a { flex: 1 1 6rem; justify-content: center; }
+  .auth { justify-content: flex-end; }
+  .prose { padding: 1rem; }
+  .form-actions > button { flex: 1 1 8rem; }
+  .comment-actions form { max-width: 100%; }
+  .chatform .btn-primary { padding-inline: .85rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}
