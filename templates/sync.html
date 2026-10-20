@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block title %}同步入库 · {{ family.name }}{% endblock %}
 {% block content %}
 <div class="nav"><a href="{{ url_for('main.family_home', family_id=family.id) }}">← 返回家族树</a></div>

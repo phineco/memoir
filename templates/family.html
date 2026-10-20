@@ -1,15 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ family.name }} · 家音{% endblock %}
-{% block nav %}
-<nav class="navlinks">
-  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
-  <a href="{{ url_for('main.weekly_current', family_id=family.id) }}">📰 本周周报</a>
-  {% if me %}<a href="{{ url_for('main.plan_list', family_id=family.id) }}">📋 写作计划</a>
-  <a href="{{ url_for('main.ai_ask', family_id=family.id) }}">🤖 问 AI</a>
-  <a href="{{ url_for('main.write_article', family_id=family.id) }}">✍️ 写文章</a>
-  <a href="{{ url_for('main.my_drafts', family_id=family.id) }}">📝 草稿箱</a>{% endif %}
-</nav>
-{% endblock %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <h1>{{ family.name }} · 家族树</h1>
 <div class="stats">

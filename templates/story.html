@@ -1,11 +1,6 @@
 {% extends "base.html" %}
 {% block title %}《{{ iv.topic or '未命名' }}》 · {{ family.name }}{% endblock %}
-{% block nav %}
-<nav class="navlinks">
-  <a href="{{ url_for('main.family_home', family_id=family.id) }}">🌳 家族树</a>
-  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
-</nav>
-{% endblock %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <h1>《{{ iv.topic or '未命名' }}》</h1>
 {% if me and iv.author_id == me.id and (iv.publish_status or 'published') == 'draft' %}

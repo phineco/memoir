@@ -1,11 +1,6 @@
 {% extends "base.html" %}
 {% block title %}第 {{ week }} 周周报 · {{ family.name }}{% endblock %}
-{% block nav %}
-<nav class="navlinks">
-  <a href="{{ url_for('main.family_home', family_id=family.id) }}">🌳 家族树</a>
-  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
-</nav>
-{% endblock %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <h1>📰 {{ family.name }} · 第 {{ week }} 周周报</h1>
 <p class="hint">固定框架页面 · 数据来自云端库（原型：SQLite）· 接口：<a href="{{ url_for('main.api_weekly_report') }}?family_id={{ family.id }}&week={{ week }}">/api/weekly-report</a></p>

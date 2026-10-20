@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block title %}我的草稿 - {{ family.name }}{% endblock %}
 {% block content %}
 <div class="nav"><a href="{{ url_for('main.stories', family_id=family.id) }}">← 故事列表</a></div>

@@ -1,11 +1,6 @@
 {% extends "base.html" %}
 {% block title %}写作计划 · {{ family.name }}{% endblock %}
-{% block nav %}
-<nav class="navlinks">
-  <a href="{{ url_for('main.family_home', family_id=family.id) }}">🌳 家族树</a>
-  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
-</nav>
-{% endblock %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <h1>📋 写作计划</h1>
 <p class="hint">管理员定"先写谁"，skill 拉取当前计划后按它引导家人补故事。skill 同步接口：<code>/api/writing-plan?family_id={{ family.id }}</code></p>

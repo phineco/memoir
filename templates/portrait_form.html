@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block title %}编辑小传 - {{ person.name }}{% endblock %}
 {% block content %}
 <div class="nav"><a href="{{ url_for('main.person_page', family_id=family.id, person_id=person.id) }}">← 返回人物页</a></div>

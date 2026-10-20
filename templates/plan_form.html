@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block title %}{{ '新建' if not plan else '编辑' }}写作计划 · {{ family.name }}{% endblock %}
 {% block content %}
 <div class="nav"><a href="{{ url_for('main.plan_list', family_id=family.id) }}">← 返回计划列表</a></div>

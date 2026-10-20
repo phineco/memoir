@@ -1,11 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ person.name }} · {{ family.name }}{% endblock %}
-{% block nav %}
-<nav class="navlinks">
-  <a href="{{ url_for('main.family_home', family_id=family.id) }}">🌳 家族树</a>
-  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
-</nav>
-{% endblock %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <h1>{{ person.name }}{% if person.relation %} <small>（{{ person.relation }}）</small>{% endif %}</h1>
 {% if kinship %}<p class="kinship">🧭 与你的关系：<strong>{{ kinship }}</strong></p>{% endif %}

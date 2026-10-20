@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block title %}{% if mode == 'edit' %}编辑人物{% else %}添加人物{% endif %} - {{ family.name }}{% endblock %}
 {% block content %}
 <div class="nav"><a href="{% if mode == 'edit' %}{{ url_for('main.person_page', family_id=family.id, person_id=person.id) }}{% else %}{{ url_for('main.family_home', family_id=family.id) }}{% endif %}">← 返回</a></div>

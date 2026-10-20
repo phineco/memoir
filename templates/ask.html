@@ -1,12 +1,6 @@
 {% extends "base.html" %}
 {% block title %}问 AI · {{ family.name }}{% endblock %}
-{% block nav %}
-<nav class="navlinks">
-  <a href="{{ url_for('main.family_home', family_id=family.id) }}">🌳 家族树</a>
-  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
-  <a href="{{ url_for('main.weekly_current', family_id=family.id) }}">📰 本周周报</a>
-</nav>
-{% endblock %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <h1>🤖 问 AI</h1>
 <p class="hint">我知道"家音"这个项目是做什么的，也读过{{ family.name }}已有的全部回忆内容。
