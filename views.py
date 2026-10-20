@@ -6,6 +6,8 @@ import re
 from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from access import family_role, story_visible
+
 from models import (Comment, Draft, Family, FamilyMember, Interview, InterviewPerson,
                     InterviewViewer, Invite, Like, NewPerson, Person, PersonLink, Photo, Portrait, Quote,
                     ShareSnapshot, SyncLog, TimelineEvent, User, VerificationItem,
@@ -32,11 +34,13 @@ def _current_user():
 
 @bp.before_request
 def _family_login_gate():
-    """/f/ 下所有家庭内容一律登录后可见：未登录跳登录页并带回跳地址。
-    公开面只剩：首页（未登录显示欢迎页）、登录/注册/找回、/guide、
-    /join/<code> 邀请链接、/s/<token> 分享页。"""
-    if request.path.startswith("/f/") and not _current_user():
-        return redirect(url_for("main.login", next=request.url))
+    """所有家庭路由集中检查成员资格；API 在各自入口验证登录。"""
+    if request.path.startswith("/f/"):
+        if not _current_user():
+            return redirect(url_for("main.login", next=request.url))
+        family_id = (request.view_args or {}).get("family_id")
+        if family_id:
+            _family_or_404(family_id)
 
 
 # ---------- 登录（原型：手机号+密码；生产换微信 OAuth） ----------
@@ -171,6 +175,9 @@ def post_comment(family_id, interview_id):
         abort(404)
     content = request.form.get("content", "").strip()
     parent_id = request.form.get("parent_id", "0") or "0"
+    if parent_id != "0" and not s.query(Comment).filter_by(
+            id=parent_id, interview_id=interview_id, del_flag=0).first():
+        abort(400, "回复目标不属于这篇故事")
     if content:
         from models import new_id
         s.add(Comment(id=new_id(), interview_id=interview_id, user_id=u.id,
@@ -193,11 +200,18 @@ def api_like():
         return jsonify({"ok": False}), 400
     s = _s()
     from models import new_id
+    target = s.query(Interview if ttype == "interview" else Comment).filter_by(
+        id=tid, del_flag=0).first()
+    iv = target if ttype == "interview" else (
+        s.query(Interview).filter_by(id=target.interview_id, del_flag=0).first()
+        if target else None)
+    if not iv or not _can_view(iv, u):
+        abort(404)
     like = s.query(Like).filter_by(target_type=ttype, target_id=tid,
-                                   user_id=u.id, del_flag=0).first()
+                                   user_id=u.id).first()
     if like:
-        like.del_flag = 1
-        liked = False
+        like.del_flag = 0 if like.del_flag else 1
+        liked = like.del_flag == 0
     else:
         s.add(Like(id=new_id(), target_type=ttype, target_id=tid, user_id=u.id))
         liked = True
@@ -222,7 +236,8 @@ def _cal(v):
 def _family_or_404(family_id):
     s = _s()
     fam = s.query(Family).filter_by(id=family_id, del_flag=0).first()
-    if not fam:
+    me = _current_user()
+    if not fam or not family_role(s, family_id, me.id if me else None):
         abort(404)
     return fam
 
@@ -240,21 +255,7 @@ def _week_of(dt):
 
 
 def _can_view(iv, me):
-    """草稿仅作者可见；已发布按 visibility：public 所有人可见，private 仅作者，specific 作者+白名单。"""
-    if (iv.publish_status or "published") != "published":
-        return bool(me and iv.author_id == me.id)
-    vis = iv.visibility or "public"
-    if vis == "public":
-        return True
-    if not me:
-        return False
-    if iv.author_id == me.id:
-        return True
-    if vis == "specific":
-        s = _s()
-        return s.query(InterviewViewer).filter_by(
-            interview_id=iv.id, user_id=me.id, del_flag=0).first() is not None
-    return False
+    return story_visible(_s(), iv, me.id if me else None)
 
 
 def _published_only():
@@ -449,7 +450,8 @@ def _build_tree(family_id, viewer_id=None):
     """persons 表 parent_id 树 → ECharts tree 所需嵌套结构。"""
     s = _s()
     persons = s.query(Person).filter_by(family_id=family_id, del_flag=0).order_by(Person.sort).all()
-    users = {u.id: u.nickname or u.phone for u in s.query(User).filter_by(del_flag=0).all()}
+    users = {u.id: u.nickname or u.phone for u in s.query(User).filter_by(del_flag=0).all()
+             if family_role(s, family_id, u.id)}
     by_id = {p.id: p for p in persons}
     nodes = {}
     for p in persons:
@@ -491,7 +493,13 @@ def index():
     if not me:
         return render_template("welcome.html")
     s = _s()
-    families = s.query(Family).filter_by(del_flag=0).all()
+    from sqlalchemy import and_, or_
+    member_ids = s.query(FamilyMember.family_id).filter_by(
+        user_id=me.id, del_flag=0).filter(FamilyMember.role.in_(("owner", "admin", "member")))
+    recorded_ids = s.query(FamilyMember.family_id).filter_by(user_id=me.id)
+    families = s.query(Family).filter(Family.del_flag == 0, or_(
+        Family.id.in_(member_ids), and_(Family.owner_user_id == me.id,
+                                      ~Family.id.in_(recorded_ids)))).all()
     return render_template("index.html", families=families)
 
 
@@ -500,10 +508,13 @@ def family_home(family_id):
     fam = _family_or_404(family_id)
     s = _s()
     n_person = s.query(Person).filter_by(family_id=family_id, del_flag=0).count()
-    n_story = s.query(Interview).filter_by(family_id=family_id, del_flag=0).count()
+    visible_stories = _visible_filter(s.query(Interview).filter_by(
+        family_id=family_id, del_flag=0), s, _current_user()).all()
+    visible_ids = [iv.id for iv in visible_stories]
+    n_story = len(visible_ids)
     n_pending = s.query(VerificationItem).join(
         Interview, VerificationItem.interview_id == Interview.id
-    ).filter(Interview.family_id == family_id,
+    ).filter(Interview.family_id == family_id, Interview.id.in_(visible_ids),
              VerificationItem.status == "pending",
              VerificationItem.del_flag == 0).count()
     week = datetime.date.today().isocalendar()[1]
@@ -515,9 +526,6 @@ def family_home(family_id):
     ).filter(FamilyMember.family_id == family_id,
              FamilyMember.del_flag == 0, User.del_flag == 0)\
      .order_by(FamilyMember.role).all()
-    member_user_ids = {m.user_id for m, u in member_rows}
-    cand_users = [u for u in s.query(User).filter_by(del_flag=0).all()
-                  if u.id not in member_user_ids]
     # 可重置密码的目标：创建者→所有人；管理员→普通成员
     is_owner_now = _is_owner(fam, me)
     is_admin_now = _is_admin(fam, me)
@@ -535,7 +543,7 @@ def family_home(family_id):
                            n_pending=n_pending, week=week,
                            status_label=STATUS_LABEL, me=me,
                            is_admin=is_admin_now, is_owner=is_owner_now,
-                           member_rows=member_rows, cand_users=cand_users,
+                           member_rows=member_rows,
                            resettable_ids=resettable_ids,
                            invites=invites,
                            new_invite=session.pop("new_invite", None),
@@ -552,6 +560,12 @@ def _person_page_ctx(family_id, p, me):
         .order_by(Photo.photo_year).all()
     events = s.query(TimelineEvent).filter_by(person_id=p.id, del_flag=0)\
         .order_by(TimelineEvent.event_date).all()
+    source_ids = {e.source_interview_id for e in events if e.source_interview_id}
+    visible_source_ids = {iv.id for iv in s.query(Interview).filter(
+        Interview.id.in_(source_ids), Interview.family_id == family_id).all()
+        if _can_view(iv, me)}
+    events = [e for e in events if not e.source_interview_id
+              or e.source_interview_id in visible_source_ids]
     by_year, undated = {}, []
     for e in events:
         if e.event_date:
@@ -566,7 +580,8 @@ def _person_page_ctx(family_id, p, me):
     )
     iq = _visible_filter(iq, s, me)
     interviews = iq.order_by(Interview.create_date.desc()).all()
-    linked_user = s.query(User).filter_by(id=p.user_id).first() if p.user_id else None
+    linked_user = s.query(User).filter_by(id=p.user_id, del_flag=0).first() \
+        if p.user_id and family_role(s, family_id, p.user_id) else None
     my_link = s.query(Person).filter_by(family_id=family_id, user_id=me.id,
                                         del_flag=0).first() if me else None
     kinship = None
@@ -925,14 +940,17 @@ def write_article(family_id):
         # Quill 空编辑器提交的是 <p><br></p>，视为空
         if content in ("", "<p><br></p>", "<p></p>"):
             content = ""
-        # 白名单清洗防 XSS（非法标签去掉，合法排版保留）
-        from sanitize import sanitize_html
-        content = sanitize_html(content)
         subject_id = request.form.get("subject_id") or None
         narrator_person_id = request.form.get("narrator_person_id") or None
         if narrator_person_id and not any(p.id == narrator_person_id for p in persons):
             narrator_person_id = None
         related_ids = [pid for pid in request.form.getlist("related_ids") if pid]
+        allowed_ids = {p.id for p in persons}
+        if (subject_id and subject_id not in allowed_ids) or any(
+                pid not in allowed_ids for pid in related_ids):
+            abort(400, "关联人物必须属于本家庭")
+        from sanitize import sanitize_html
+        content = sanitize_html(content)
         p_start = request.form.get("period_start") or None
         p_end = request.form.get("period_end") or None
         precision = request.form.get("period_precision", "day")
@@ -1034,13 +1052,17 @@ def edit_article(family_id, interview_id):
         content = request.form.get("content", "").strip()
         if content in ("", "<p><br></p>", "<p></p>"):
             content = ""
-        from sanitize import sanitize_html
-        content = sanitize_html(content)
         subject_id = request.form.get("subject_id") or None
         narrator_person_id = request.form.get("narrator_person_id") or None
         if narrator_person_id and not any(p.id == narrator_person_id for p in persons):
             narrator_person_id = None
         related_ids = [pid for pid in request.form.getlist("related_ids") if pid]
+        allowed_ids = {p.id for p in persons}
+        if (subject_id and subject_id not in allowed_ids) or any(
+                pid not in allowed_ids for pid in related_ids):
+            abort(400, "关联人物必须属于本家庭")
+        from sanitize import sanitize_html
+        content = sanitize_html(content)
         p_start = request.form.get("period_start") or None
         p_end = request.form.get("period_end") or None
         precision = request.form.get("period_precision", "day")
@@ -1110,17 +1132,7 @@ def edit_article(family_id, interview_id):
 # ---------------- 家族树管理（仅家庭管理员 = 创建者） ----------------
 
 def _member_role(family_id, user_id):
-    if not user_id:
-        return None
-    m = _s().query(FamilyMember).filter_by(family_id=family_id, user_id=user_id,
-                                            del_flag=0).first()
-    if m:
-        return m.role
-    # 兼容老数据：没有成员记录时，创建者视为 owner
-    fam = _s().query(Family).filter_by(id=family_id).first()
-    if fam and fam.owner_user_id == user_id:
-        return "owner"
-    return None
+    return family_role(_s(), family_id, user_id)
 
 
 def _is_admin(fam, me):
@@ -1246,7 +1258,8 @@ def tree_edit(family_id, person_id):
     s = _s()
     p = _person_or_404(family_id, person_id)
     persons = [x for x in _tree_persons(family_id) if x.id != p.id]
-    users = _s().query(User).filter_by(del_flag=0).all()
+    users = [u for u in s.query(User).filter_by(del_flag=0).all()
+             if family_role(s, family_id, u.id)]
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         if not name:
@@ -1314,6 +1327,8 @@ def tree_edit(family_id, person_id):
                                    me=me, error=err, form=request.form,
                                    mode="edit", person=p, users=users)
         link_uid = request.form.get("link_user_id") or None
+        if link_uid and link_uid not in {u.id for u in users}:
+            abort(400, "关联账号必须是本家庭成员")
         if link_uid != p.user_id:
             if link_uid:
                 conflict = s.query(Person).filter(
@@ -1374,7 +1389,7 @@ def tree_claim(family_id, person_id):
     me = _current_user()
     if not me:
         return redirect(url_for("main.login", next=request.path))
-    _family_or_404(family_id)
+    fam = _family_or_404(family_id)
     s = _s()
     p = _person_or_404(family_id, person_id)
     if p.user_id:
@@ -1421,13 +1436,16 @@ def member_add(family_id):
     if not _is_owner(fam, me):
         abort(403)
     s = _s()
-    user_id = request.form.get("user_id") or None
+    from sqlalchemy import or_
+    login_id = request.form.get("login_id", "").strip()
     role = request.form.get("role") or "member"
     if role not in ("admin", "member"):
         role = "member"
-    u = s.query(User).filter_by(id=user_id, del_flag=0).first() if user_id else None
+    u = s.query(User).filter(User.del_flag == 0, or_(
+        User.phone == login_id, User.username == login_id)).first() if login_id else None
     if not u:
         abort(404)
+    user_id = u.id
     from models import new_id
     m = s.query(FamilyMember).filter_by(family_id=family_id, user_id=user_id).first()
     if m:
@@ -1508,10 +1526,18 @@ MAX_IMG = 10 * 1024 * 1024
 
 @bp.route("/uploads/<path:filename>")
 def uploaded_file(filename):
-    """本地后端的文件服务；OSS 后端走签名 URL，不经过这里。"""
+    """本地照片也验证所属家庭，知道 URL 不能绕过家庭权限。"""
     from config import Config
     from flask import send_from_directory
-    return send_from_directory(Config.UPLOAD_DIR, filename)
+    if not _current_user():
+        abort(401)
+    photo = _s().query(Photo).filter_by(storage_path=filename, del_flag=0).first()
+    if not photo:
+        abort(404)
+    _family_or_404(photo.family_id)
+    response = send_from_directory(Config.UPLOAD_DIR, filename)
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @bp.route("/f/<family_id>/person/<person_id>/photos/upload", methods=["POST"])
@@ -2226,7 +2252,9 @@ def plan_archive(family_id, plan_id):
 
 @bp.route("/api/writing-plan")
 def api_writing_plan():
-    """当前写作计划（供 skill 拉取）：开放接口，只返回当前计划。"""
+    """当前写作计划（供 skill 拉取）：需登录并属于该家庭。"""
+    if not _current_user():
+        return jsonify({"ok": False, "error": "need_login"}), 401
     family_id = request.args.get("family_id", "")
     _family_or_404(family_id)
     s = _s()

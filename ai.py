@@ -13,6 +13,7 @@ import re
 
 import requests
 
+from access import family_role, story_visible
 from config import Config
 from models import (AiCache, AiMemory, AiMessage, Draft, Interview, InterviewViewer,
                     NewPerson, Person, Quote, VerificationItem, get_session, new_id)
@@ -78,21 +79,11 @@ _STATUS_LABEL = {"pending": "待采访", "doing": "整理中",
                  "drafted": "初稿完成", "verified": "已核实"}
 
 
-def _story_visible_to(iv, viewer_id, visible_ids):
-    """AI 知识库用：故事是否对 viewer_id 可见。viewer_id 为空时只取公开。"""
-    if (iv.publish_status or "published") != "published":
-        return False
-    vis = iv.visibility or "public"
-    if vis == "public":
-        return True
-    if not viewer_id:
-        return False
-    return iv.author_id == viewer_id or iv.id in visible_ids
-
-
 def family_knowledge(family_id, viewer_id=None, limit=6000):
     """把家庭已有内容组装成 AI 的知识库文本（有界）。只含 viewer 可见的故事。"""
     s = _s()
+    if viewer_id and not family_role(s, family_id, viewer_id):
+        raise AIError("无权读取该家庭资料")
     parts = []
     persons = s.query(Person).filter_by(
         family_id=family_id, del_flag=0).order_by(Person.sort).all()
@@ -106,13 +97,12 @@ def family_knowledge(family_id, viewer_id=None, limit=6000):
                 p.name, p.relation or "关系未知", life,
                 "，" + st if st else ""))
         parts.append("人物（家族树）：\n" + "\n".join(lines))
-    visible_ids = set()
-    if viewer_id:
-        visible_ids = {v.interview_id for v in s.query(InterviewViewer).filter_by(
-            user_id=viewer_id, del_flag=0).all()}
     interviews = [iv for iv in s.query(Interview).filter_by(
         family_id=family_id, del_flag=0).all()
-        if _story_visible_to(iv, viewer_id, visible_ids)]
+        if (story_visible(s, iv, viewer_id, include_drafts=False) if viewer_id else
+            (iv.publish_status or "published") == "published"
+            and (iv.visibility or "public") == "public")]
+    visible_ids = {iv.id for iv in interviews}
     if interviews:
         lines = []
         for iv in interviews:
@@ -126,19 +116,20 @@ def family_knowledge(family_id, viewer_id=None, limit=6000):
         parts.append("故事：\n" + "\n".join(lines))
     quotes = s.query(Quote).join(
         Interview, Quote.interview_id == Interview.id).filter(
-        Interview.family_id == family_id,
+        Interview.family_id == family_id, Interview.id.in_(visible_ids),
         Quote.del_flag == 0).limit(8).all()
     if quotes:
         parts.append("金句：\n" + "\n".join("- %s" % q.text for q in quotes))
     verifs = s.query(VerificationItem).join(
         Interview, VerificationItem.interview_id == Interview.id).filter(
-        Interview.family_id == family_id, VerificationItem.status == "pending",
+        Interview.family_id == family_id, Interview.id.in_(visible_ids), VerificationItem.status == "pending",
         VerificationItem.del_flag == 0).limit(10).all()
     if verifs:
         parts.append("待核实（还没解决）：\n" +
                      "\n".join("- %s" % v.text for v in verifs))
     nps = s.query(NewPerson).filter_by(
         family_id=family_id, join_tree="pending", del_flag=0).limit(8).all()
+    nps = [n for n in nps if not n.interview_id or n.interview_id in visible_ids]
     if nps:
         parts.append("待定是否入树的新人物：\n" +
                      "\n".join("- %s（%s）" % (n.name, n.context or "")

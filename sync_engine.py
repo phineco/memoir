@@ -14,7 +14,6 @@ import re
 from models import (Draft, Interview, InterviewPerson, NewPerson, Person,
                     PersonIdMap, Quote, SyncLog, TimelineEvent,
                     VerificationItem, WritingPlan, new_id)
-from sanitize import sanitize_html
 
 SUPPORTED = ("tree_upsert", "interview_upsert", "verification_update",
              "new_person", "person_status", "revision_sync", "plan_progress")
@@ -24,13 +23,19 @@ class SyncError(Exception):
     pass
 
 
+def sanitize_html(content):
+    # 仅在写入正文时加载清洗器；所有正文入口仍使用同一白名单。
+    from sanitize import sanitize_html as clean
+    return clean(content)
+
+
 def _resolve_person(s, family_id, skill_id=None, name=None):
     """skill 人物 → 本站 Person：先查映射表，再姓名精确匹配，再别名匹配。"""
     if skill_id:
         m = s.query(PersonIdMap).filter_by(
             family_id=family_id, skill_id=skill_id).first()
         if m:
-            p = s.query(Person).filter_by(id=m.person_id, del_flag=0).first()
+            p = s.query(Person).filter_by(id=m.person_id, family_id=family_id, del_flag=0).first()
             if p:
                 return p
     if name:
@@ -215,8 +220,8 @@ def _apply_interview_upsert(s, family_id, payload, user_id, now):
     return iv.id, summary
 
 
-def _interview_by_client(s, client_id):
-    log = s.query(SyncLog).filter_by(client_id=client_id, status="ok").first()
+def _interview_by_client(s, family_id, client_id):
+    log = s.query(SyncLog).filter_by(family_id=family_id, client_id=client_id, status="ok").first()
     if log and log.target_id:
         return log.target_id
     return None
@@ -224,9 +229,10 @@ def _interview_by_client(s, client_id):
 
 def _apply_verification_update(s, family_id, payload, user_id, now):
     iv_id = payload.get("interview_id") or _interview_by_client(
-        s, payload.get("interview_client_id"))
-    if not iv_id:
-        raise SyncError("找不到对应访谈（interview_client_id 未入库）")
+        s, family_id, payload.get("interview_client_id"))
+    if not iv_id or not s.query(Interview).filter_by(
+            id=iv_id, family_id=family_id, del_flag=0).first():
+        raise SyncError("找不到本家庭对应访谈")
     item_text = (payload.get("item_text") or "").strip()
     q = s.query(VerificationItem).filter_by(interview_id=iv_id, del_flag=0)
     item = None
@@ -277,7 +283,10 @@ def _apply_revision_sync(s, family_id, payload, user_id, now):
         kind, action = rv.get("kind"), rv.get("action")
         if kind == "verify":
             iv_id = rv.get("interview_id") or _interview_by_client(
-                s, rv.get("interview_client_id"))
+                s, family_id, rv.get("interview_client_id"))
+            if iv_id and not s.query(Interview).filter_by(
+                    id=iv_id, family_id=family_id, del_flag=0).first():
+                raise SyncError("修订目标不属于本家庭")
             if not iv_id:
                 notes.append(f"跳过：找不到访谈（{rv.get('item_text', '')[:15]}）")
                 continue
@@ -306,7 +315,10 @@ def _apply_revision_sync(s, family_id, payload, user_id, now):
             n_ok += 1
         elif kind == "draft":
             iv_id = rv.get("interview_id") or _interview_by_client(
-                s, rv.get("interview_client_id"))
+                s, family_id, rv.get("interview_client_id"))
+            if iv_id and not s.query(Interview).filter_by(
+                    id=iv_id, family_id=family_id, del_flag=0).first():
+                raise SyncError("修订目标不属于本家庭")
             if not iv_id:
                 notes.append("跳过：修订找不到访谈")
                 continue
@@ -395,6 +407,8 @@ _HANDLERS = {
 
 def apply_sync(s, family_id, packet, user_id):
     """应用一个 sync-json 数据包。返回 (ok, summary)。幂等，失败抛 SyncError。"""
+    if not isinstance(packet, dict) or not isinstance(packet.get("payload", {}), dict):
+        raise SyncError("数据包及 payload 必须是 JSON 对象")
     ptype = (packet or {}).get("type")
     client_id = (packet or {}).get("clientId")
     payload = (packet or {}).get("payload") or {}
@@ -406,7 +420,11 @@ def apply_sync(s, family_id, packet, user_id):
     if dup:
         return False, f"重复数据包，已跳过（{dup.create_date:%Y-%m-%d %H:%M} 已入库）"
     now = datetime.datetime.now()
-    target_id, summary = _HANDLERS[ptype](s, family_id, payload, user_id, now)
+    try:
+        target_id, summary = _HANDLERS[ptype](s, family_id, payload, user_id, now)
+    except Exception:
+        s.rollback()
+        raise
     s.add(SyncLog(id=new_id(), family_id=family_id, op_type=ptype,
                   client_id=client_id, target_id=target_id, status="ok",
                   summary=summary[:500], create_by=user_id, create_date=now))
@@ -429,7 +447,7 @@ def apply_sync(s, family_id, packet, user_id):
 def log_sync_failure(s, family_id, packet, user_id, error):
     """入库失败也记一笔（client_id 加 failed: 前缀，不占用幂等键）。"""
     now = datetime.datetime.now()
-    packet = packet or {}
+    packet = packet if isinstance(packet, dict) else {}
     client_id = packet.get("clientId") or new_id()
     s.add(SyncLog(id=new_id(), family_id=family_id,
                   op_type=packet.get("type") or "unknown",

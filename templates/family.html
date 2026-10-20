@@ -42,12 +42,9 @@
   {% endfor %}
 </ul>
 {% if is_owner %}
-{% if cand_users %}
 <form method="post" action="{{ url_for('main.member_add', family_id=family.id) }}" class="form-row">
   <label>添加成员
-    <select name="user_id">
-      {% for u in cand_users %}<option value="{{ u.id }}">{{ u.nickname or u.phone }}（{{ u.phone }}）</option>{% endfor %}
-    </select>
+    <input name="login_id" placeholder="已注册的手机号或用户名" required>
   </label>
   <label>角色
     <select name="role">
@@ -57,7 +54,6 @@
   </label>
   <button type="submit" class="btn-primary">添加</button>
 </form>
-{% endif %}
 <p class="hint">仅创建者可添加/移除成员、设置管理员。权限按家庭隔离，A 家庭的管理员管不了 B 家庭。</p>
 {% endif %}
 {% endif %}
