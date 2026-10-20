@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}第 {{ week }} 周周报 · {{ family.name }}{% endblock %}
+{% block title %}{{ year }} 年第 {{ week }} 周周报 · {{ family.name }}{% endblock %}
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
-<h1>📰 {{ family.name }} · 第 {{ week }} 周周报</h1>
-<p class="hint">固定框架页面 · 数据来自云端库（原型：SQLite）· 接口：<a href="{{ url_for('main.api_weekly_report') }}?family_id={{ family.id }}&week={{ week }}">/api/weekly-report</a></p>
+<h1>📰 {{ family.name }} · {{ year }} 年第 {{ week }} 周周报</h1>
+<p class="hint">按 ISO 年与周数汇总 · 接口：<a href="{{ url_for('main.api_weekly_report') }}?family_id={{ family.id }}&year={{ year }}&week={{ week }}">/api/weekly-report</a></p>
 {% set ra_prefix = 'weekly' %}{% set ra_label = '朗读周报' %}{% set ra_target = 'weeklyBody' %}
 {% include '_read_aloud.html' %}
 <div id="weeklyBody">
@@ -15,7 +15,7 @@
 </div>
 {% elif ai_error %}<p class="error">{{ ai_error }}</p>
 {% elif ai_enabled and is_admin %}
-<form method="post" action="{{ url_for('main.ai_weekly_summary', family_id=family.id, week=week) }}">
+<form method="post" action="{{ url_for('main.ai_weekly_summary', family_id=family.id, year=year, week=week) }}">
   <button type="submit" class="btn-primary">✨ 生成 AI 导读</button>
 </form>
 {% elif not ai_enabled %}

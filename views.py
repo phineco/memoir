@@ -3,10 +3,11 @@ import datetime
 import json
 import re
 
-from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request, session, stream_with_context, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from access import family_role, story_visible
+from reporting import current_period, report_period
 
 from models import (Comment, Draft, Family, FamilyMember, Interview, InterviewPerson,
                     InterviewViewer, Invite, Like, NewPerson, Person, PersonLink, Photo, Portrait, Quote,
@@ -250,8 +251,11 @@ def _person_or_404(family_id, person_id):
     return p
 
 
-def _week_of(dt):
-    return dt.isocalendar()[1] if dt else None
+def _report_period(week=None, year=None):
+    try:
+        return report_period(week, year)
+    except (ValueError, TypeError, OverflowError):
+        abort(400, "年份或 ISO 周数无效")
 
 
 def _can_view(iv, me):
@@ -517,7 +521,7 @@ def family_home(family_id):
     ).filter(Interview.family_id == family_id, Interview.id.in_(visible_ids),
              VerificationItem.status == "pending",
              VerificationItem.del_flag == 0).count()
-    week = datetime.date.today().isocalendar()[1]
+    year, week = current_period()
     me = _current_user()
     viewer = s.query(Person).filter_by(family_id=family_id, user_id=me.id,
                                        del_flag=0).first() if me else None
@@ -660,10 +664,12 @@ def story_detail(family_id, interview_id):
                            narrator=narrator, is_admin=_is_admin(fam, me))
 
 
-def _weekly_data(family_id, week, viewer_id=None):
+def _weekly_data(family_id, week, viewer_id=None, year=None):
     """周报数据。viewer_id 传入时只含该用户可见的故事；不传则只含公开故事。"""
+    year, week, start, end = _report_period(week, year)
     s = _s()
-    interviews = s.query(Interview).filter_by(family_id=family_id, del_flag=0).all()
+    interviews = s.query(Interview).filter_by(family_id=family_id, del_flag=0).filter(
+        Interview.create_date >= start, Interview.create_date < end).all()
     if viewer_id:
         visible_ids = {v.interview_id for v in s.query(InterviewViewer).filter_by(
             user_id=viewer_id, del_flag=0).all()}
@@ -671,8 +677,6 @@ def _weekly_data(family_id, week, viewer_id=None):
         visible_ids = set()
 
     def _ok(iv):
-        if _week_of(iv.create_date) != week:
-            return False
         if (iv.publish_status or "published") != "published":
             return False
         vis = iv.visibility or "public"
@@ -691,8 +695,14 @@ def _weekly_data(family_id, week, viewer_id=None):
             VerificationItem.del_flag == 0).all()
         quotes = s.query(Quote).filter(
             Quote.interview_id.in_(iv_ids), Quote.del_flag == 0).all()
-    new_persons = s.query(NewPerson).filter_by(family_id=family_id, del_flag=0).all()
-    new_persons = [np for np in new_persons if _week_of(np.create_date) == week]
+    new_persons = s.query(NewPerson).filter_by(family_id=family_id, del_flag=0).filter(
+        NewPerson.create_date >= start, NewPerson.create_date < end).all()
+    source_ids = {np.interview_id for np in new_persons if np.interview_id}
+    visible_sources = {iv.id for iv in s.query(Interview).filter(
+        Interview.id.in_(source_ids), Interview.family_id == family_id,
+        Interview.del_flag == 0).all() if _ok(iv)}
+    new_persons = [np for np in new_persons if not np.interview_id
+                   or np.interview_id in visible_sources]
     persons = {p.id: p for p in
                s.query(Person).filter_by(family_id=family_id, del_flag=0).all()}
     return {"interviews": interviews, "verifs": verifs, "quotes": quotes,
@@ -701,30 +711,33 @@ def _weekly_data(family_id, week, viewer_id=None):
 
 @bp.route("/f/<family_id>/weekly")
 def weekly_current(family_id):
-    week = datetime.date.today().isocalendar()[1]
-    return redirect(url_for("main.weekly_report", family_id=family_id, week=week))
+    year, week = current_period()
+    return redirect(url_for("main.weekly_report", family_id=family_id, year=year, week=week))
 
 
 @bp.route("/f/<family_id>/weekly/<int:week>")
-def weekly_report(family_id, week):
+@bp.route("/f/<family_id>/weekly/<int:year>/<int:week>")
+def weekly_report(family_id, week, year=None):
+    year, week, _, _ = _report_period(week, year if year is not None else request.args.get("year"))
     fam = _family_or_404(family_id)
     me = _current_user()
-    data = _weekly_data(family_id, week, viewer_id=me.id if me else None)
+    data = _weekly_data(family_id, week, viewer_id=me.id if me else None, year=year)
     import ai as ai_mod
-    ai_summary = ai_mod.get_weekly_summary(family_id, week) \
+    ai_summary = ai_mod.get_weekly_summary(family_id, week, year=year) \
         if ai_mod.ai_enabled() else None
-    return render_template("weekly.html", family=fam, week=week, **data,
+    return render_template("weekly.html", family=fam, year=year, week=week, **data,
                            ai_summary=ai_summary,
                            ai_enabled=ai_mod.ai_enabled(),
                            is_admin=_is_admin(fam, me))
 
 
-def _weekly_report_json(family_id, week, viewer_id=None):
+def _weekly_report_json(family_id, week, viewer_id=None, year=None):
     """周报聚合数据（流水线设计 v0.4 §三）：API 与分享快照共用。不传 viewer 只含公开故事。"""
-    data = _weekly_data(family_id, week, viewer_id=viewer_id)
+    year, week, start, end = _report_period(week, year)
+    data = _weekly_data(family_id, week, viewer_id=viewer_id, year=year)
     persons = data.pop("persons")
     return {
-        "family_id": family_id, "week": week,
+        "family_id": family_id, "year": year, "week": week,
         "stories": [{"id": iv.id, "topic": iv.topic,
                      "person": persons[iv.person_id].name if iv.person_id in persons else None,
                      "narrator": persons[iv.narrator_person_id].name if iv.narrator_person_id in persons else None,
@@ -738,7 +751,9 @@ def _weekly_report_json(family_id, week, viewer_id=None):
              "correction": v.correction} for v in data["verifs"]],
         "new_persons": [{"name": np.name, "context": np.context,
                          "join_tree": np.join_tree} for np in data["new_persons"]],
-        "unsynced_count": 0,
+        "unsynced_count": _s().query(SyncLog).filter_by(
+            family_id=family_id, status="failed", del_flag=0).filter(
+                SyncLog.create_date >= start, SyncLog.create_date < end).count(),
     }
 
 
@@ -748,15 +763,9 @@ def api_weekly_report():
     if not _current_user():
         return jsonify({"ok": False, "error": "need_login"}), 401
     family_id = request.args.get("family_id")
-    week = int(request.args.get("week", datetime.date.today().isocalendar()[1]))
     _family_or_404(family_id)
-    data = _weekly_report_json(family_id, week)
-    # unsynced_count：本周同步失败、待人工处理的条数（读同步状态表）
-    s = _s()
-    failed = s.query(SyncLog).filter_by(family_id=family_id,
-                                        status="failed").all()
-    data["unsynced_count"] = sum(
-        1 for l in failed if l.create_date and _week_of(l.create_date) == week)
+    year, week, _, _ = _report_period(request.args.get("week"), request.args.get("year"))
+    data = _weekly_report_json(family_id, week, year=year)
     return jsonify(data)
 
 
@@ -809,8 +818,8 @@ def share_new(family_id):
         abort(403)
     import re as _re
     s = _s()
-    week = datetime.date.today().isocalendar()[1]
-    rj = _weekly_report_json(family_id, week)
+    year, week = current_period()
+    rj = _weekly_report_json(family_id, week, year=year)
     drafts = {d.interview_id: d for d in s.query(Draft).filter(
         Draft.interview_id.in_([st["id"] for st in rj["stories"]]),
         Draft.is_current == True, Draft.del_flag == 0).all()}  # noqa: E712
@@ -823,11 +832,11 @@ def share_new(family_id):
             summary = text.strip()[:120]
         stories.append({"title": st["topic"], "person": st["person"] or "",
                         "narrator": st["narrator"] or "", "summary": summary})
-    title = f"{fam.name} · 回忆录（第{week}周）"
+    title = f"{fam.name} · 回忆录（{year}年第{week}周）"
     from models import new_id
     snap = ShareSnapshot(
         id=new_id(), family_id=family_id, title=title, status="draft",
-        content_json={"title": title, "stories": stories,
+        content_json={"title": title, "year": year, "week": week, "stories": stories,
                       "quotes": rj["quotes"],
                       "tree_note": f"本周新增 {len(stories)} 篇故事，金句 {len(rj['quotes'])} 条"},
         create_by=me.id, create_date=datetime.datetime.now())
@@ -1798,6 +1807,8 @@ def api_sync():
     if not me:
         return jsonify({"ok": False, "error": "need_login"}), 401
     data = request.get_json(force=True, silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "请求体必须是 JSON 对象"}), 400
     fam = _family_or_404(data.get("family_id"))
     if not _is_admin(fam, me):
         return jsonify({"ok": False, "error": "forbidden"}), 403
@@ -1997,14 +2008,16 @@ def ai_ask_stream(family_id):
             return
         yield "data: [DONE]\n\n"
 
-    return Response(gen(), mimetype="text/event-stream",
+    return Response(stream_with_context(gen()), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache",
                              "X-Accel-Buffering": "no"})
 
 
 @bp.route("/f/<family_id>/weekly/<int:week>/ai-summary", methods=["POST"])
-def ai_weekly_summary(family_id, week):
-    """生成本周 AI 导读（管理员，结果按周缓存）。"""
+@bp.route("/f/<family_id>/weekly/<int:year>/<int:week>/ai-summary", methods=["POST"])
+def ai_weekly_summary(family_id, week, year=None):
+    """生成指定 ISO 年周导读；旧入口默认当前 ISO 年。"""
+    year, week, _, _ = _report_period(week, year if year is not None else request.args.get("year"))
     me = _current_user()
     fam = _family_or_404(family_id)
     if not _is_admin(fam, me):
@@ -2014,15 +2027,15 @@ def ai_weekly_summary(family_id, week):
         abort(400, "AI 未启用：请配置 DEEPSEEK_API_KEY")
     try:
         ai_mod.summarize_weekly(family_id, week,
-                                _weekly_report_json(family_id, week),
-                                force=True, user_id=me.id)
+                                _weekly_report_json(family_id, week, year=year),
+                                force=True, user_id=me.id, year=year)
     except ai_mod.AIError as e:
-        return render_template("weekly.html", family=fam, week=week,
-                               **_weekly_data(family_id, week, viewer_id=me.id),
+        return render_template("weekly.html", family=fam, year=year, week=week,
+                               **_weekly_data(family_id, week, viewer_id=me.id, year=year),
                                ai_summary=None, ai_enabled=True,
                                is_admin=True, ai_error=str(e))
     return redirect(url_for("main.weekly_report", family_id=family_id,
-                            week=week))
+                            year=year, week=week))
 
 
 # ---------------- 写作/采访计划 ----------------

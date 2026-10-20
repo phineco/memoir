@@ -31,7 +31,7 @@ python app.py
 | 人物 | `/f/<family_id>/person/<person_id>`；小传、照片、时间轴、关联故事 |
 | 故事 | `/f/<family_id>/stories`；阅读、朗读、评论与追评、点赞 |
 | 创作 | `/f/<family_id>/write`、`/f/<family_id>/drafts`；富文本、浏览器语音输入、草稿、可见性 |
-| 周报 | `/f/<family_id>/weekly`；故事、金句、待核实和新人物；可生成 AI 导读 |
+| 周报 | `/f/<family_id>/weekly`、`/f/<family_id>/weekly/<year>/<week>`；故事、金句、待核实和新人物；可生成 AI 导读 |
 | 分享 | `/f/<family_id>/shares`；管理员确认后凭 `/s/<token>` 和密码访问快照 |
 | 写作计划 | `/f/<family_id>/plans`；管理员定计划，可使用 AI 建议 |
 | AI 问答 | `/f/<family_id>/ask`；流式回答、聊天记录和用户记忆 |
@@ -67,6 +67,14 @@ Flask + Jinja2、SQLAlchemy、Tailwind CSS 3；家族树 ECharts、编辑器 Qui
 
 AI 采用资料摘录拼接提示词，并非全文检索：家庭知识默认上限约 6,000 字符，每篇故事摘录约 200 字符。资料多时可能无法覆盖所有故事；提示词要求“不虚构”不能替代家人核实。向供应商传递内部 `user_id` 也不能替代本站权限控制。
 
+## 长期保存与周报时间
+
+周报按 **ISO 年 + 周数** 区分，API 使用 `year`、`week`，返回值包含年份；省略年份或打开旧链接时取当前 ISO 年。年末某些日期属于下一 ISO 年，并非按公历年份直接截取。导读缓存使用 `weekly:<family_id>:<year>:<week>`；旧无年份缓存保留供核查，但不自动复用，请重新生成。
+
+`APP_TIMEZONE` 默认 `Asia/Shanghai`，用于判断当前年周。历史审计时间是无时区本地时间，服务进程 `TZ` 应与该设置一致；已有数据若原先使用其他时区，先核对时间含义再安排迁移，不能自动猜测转换。
+
+备份与隔离恢复命令见 [BACKUP.md](BACKUP.md)。归档包含数据库及本地媒体；OSS 必须先导出对象。恢复只写入空目标，不能覆盖现有数据库或照片目录。
+
 ## 样式开发与测试
 
 修改模板工具类或 `static/src.css` 后，在本地编译并提交 `static/tailwind.css`：
@@ -76,7 +84,7 @@ npm install --no-save --package-lock=false tailwindcss@3.4.17
 ./node_modules/.bin/tailwindcss -c tailwind.config.js -i static/src.css -o static/tailwind.css --minify
 ```
 
-服务器只需 Python 依赖。测试使用独立数据库，不运行演示 seed，不调用真实 AI / 短信：
+服务器只需 Python 依赖。测试使用独立数据库，不运行演示 seed，不调用真实 AI / 短信。GitHub Actions 提供 Python 3.10 / 3.12 回归及 MySQL 5.7 迁移、原生备份恢复验证：
 
 ```bash
 python -m pip install -r requirements-dev.txt
@@ -88,4 +96,5 @@ python -m pytest -q
 - [架构与能力边界](memoir-website-architecture.md)
 - [sync-json 同步协议](memoir-sync-design.md)
 - [部署、初始化与升级](DEPLOY.md)
+- [备份、验证与隔离恢复](BACKUP.md)
 - [项目约束](AGENTS.md) / [项目记忆](MEMORY.md)

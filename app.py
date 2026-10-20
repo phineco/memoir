@@ -2,7 +2,7 @@
 from flask import Flask, session
 
 from config import Config
-from models import User, get_session, init_db
+from models import User, get_session, init_db, remove_session
 from views import bp
 
 
@@ -12,6 +12,10 @@ def create_app():
     app.secret_key = Config.SECRET_KEY
     init_db(Config.DATABASE_URL)
     app.register_blueprint(bp)
+
+    @app.teardown_appcontext
+    def close_session(error=None):
+        remove_session()
 
     @app.context_processor
     def inject_user():

@@ -15,6 +15,7 @@ import requests
 
 from access import family_role, story_visible
 from config import Config
+from reporting import report_period, weekly_cache_key
 from models import (AiCache, AiMemory, AiMessage, Draft, Interview, InterviewViewer,
                     NewPerson, Person, Quote, VerificationItem, get_session, new_id)
 
@@ -338,11 +339,12 @@ def _update_memory(family_id, user_id):
         pass  # 记忆更新失败不影响问答
 
 
-def get_weekly_summary(family_id, week):
+def get_weekly_summary(family_id, week, year=None):
     """读缓存的周报导读（dict 或 None）。"""
+    year, week, _, _ = report_period(week, year)
     s = _s()
     c = s.query(AiCache).filter_by(
-        cache_key="weekly:%s:%s" % (family_id, week), del_flag=0).first()
+        family_id=family_id, cache_key=weekly_cache_key(family_id, year, week), del_flag=0).first()
     if not c or not c.content:
         return None
     try:
@@ -351,13 +353,14 @@ def get_weekly_summary(family_id, week):
         return None
 
 
-def summarize_weekly(family_id, week, weekly_json, force=False, user_id=None):
+def summarize_weekly(family_id, week, weekly_json, force=False, user_id=None, year=None):
     """生成周报 AI 导读并缓存。weekly_json 为周报聚合 dict。返回 dict。"""
+    year, week, _, _ = report_period(week, year if year is not None else weekly_json.get("year"))
     if not force:
-        cached = get_weekly_summary(family_id, week)
+        cached = get_weekly_summary(family_id, week, year=year)
         if cached:
             return cached
-    slim = {"stories": [{"topic": st.get("topic"), "person": st.get("person"),
+    slim = {"year": year, "week": week, "stories": [{"topic": st.get("topic"), "person": st.get("person"),
                          "narrator": st.get("narrator")}
                         for st in weekly_json.get("stories", [])],
             "quotes": weekly_json.get("quotes", [])[:8],
@@ -374,7 +377,7 @@ def summarize_weekly(family_id, week, weekly_json, force=False, user_id=None):
     data = json.loads(out)
     s = _s()
     now = datetime.datetime.now()
-    key = "weekly:%s:%s" % (family_id, week)
+    key = weekly_cache_key(family_id, year, week)
     c = s.query(AiCache).filter_by(cache_key=key, del_flag=0).first()
     blob = json.dumps(data, ensure_ascii=False)
     if c:

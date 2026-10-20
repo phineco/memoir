@@ -260,6 +260,10 @@ _Session = None
 
 def init_db(database_url: str):
     global _engine, _Session
+    if _Session is not None:
+        _Session.remove()
+    if _engine is not None:
+        _engine.dispose()
     _engine = create_engine(database_url)
     Base.metadata.create_all(_engine)
     _Session = scoped_session(sessionmaker(bind=_engine))
@@ -267,6 +271,11 @@ def init_db(database_url: str):
 
 def get_session():
     return _Session()
+
+
+def remove_session():
+    if _Session is not None:
+        _Session.remove()
 
 
 class SyncLog(AuditMixin, Base):
@@ -317,7 +326,7 @@ class AiCache(AuditMixin, Base):
     """AI 生成结果缓存（如周报导读），key 唯一，生成一次重复用。"""
     __tablename__ = "ai_cache"
     family_id = Column(String(64), index=True)
-    cache_key = Column(String(128), unique=True)  # 如 weekly:wang:42
+    cache_key = Column(String(128), unique=True)  # 如 weekly:wang:2026:42
     content = Column(Text)
 
 

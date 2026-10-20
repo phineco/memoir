@@ -9,3 +9,11 @@ venv/
 .venv/
 instance/
 node_modules/
+
+.pytest_cache/
+backups/
+*.tar.gz
+*.db-wal
+*.db-shm
+.env.*
+!.env.example

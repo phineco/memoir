@@ -63,7 +63,7 @@ mysql -h 127.0.0.1 -u memoir -p memoir < memoir-mysql-schema.sql
 .venv/bin/python create_admin.py --phone 13800000000 --nickname 主持人 --family-name 我的家
 ```
 
-业务表共 28 张，`schema_migrations` 由迁移程序维护。已有库不能重新导入建表 SQL。`create_admin.py` 交互输入密码，不清空已有记录；**生产不得执行 `seed.py`**。`install.sh` 是旧的演示安装入口，不用于已有数据库部署。
+业务表共 28 张，`schema_migrations` 由迁移程序维护。已有库不能重新导入建表 SQL。`create_admin.py` 交互输入密码，不清空已有记录；**生产不得执行 `seed.py`**。`install.sh` 只建立项目虚拟环境、安装依赖和缺省配置，不再自动执行 seed 或修改数据库。
 
 ## 四、服务与 HTTPS
 
@@ -78,6 +78,7 @@ After=network.target
 User=memoir
 WorkingDirectory=/opt/memoir
 EnvironmentFile=/opt/memoir/.env
+Environment=TZ=Asia/Shanghai
 ExecStart=/opt/memoir/.venv/bin/gunicorn -w 3 -b 127.0.0.1:8000 app:app
 Restart=always
 UMask=0077
@@ -116,7 +117,7 @@ server {
 
 ## 五、已有部署升级
 
-先备份数据库和照片，记录当前 Git 提交与环境配置位置；在测试库验证迁移及恢复。维护窗口内停止写入，再依次执行：
+先按 [备份与恢复演练](BACKUP.md) 备份数据库和照片，记录当前 Git 提交与环境配置位置；在测试库验证迁移及恢复。维护窗口内停止写入，再依次执行：
 
 ```bash
 cd /opt/memoir
@@ -126,6 +127,8 @@ git pull --ff-only
 .venv/bin/python migrate.py
 sudo systemctl restart memoir
 ```
+
+`--dry-run` 只读预演，不建数据库或迁移记录表。周报当前年周按 `APP_TIMEZONE`（默认 Asia/Shanghai），服务 `TZ` 须与之相同；旧无时区时间需核对后再调整。
 
 迁移文件按文件名顺序执行并记录；新表由模型初始化创建，新列由迁移文件管理。不要改写已应用迁移，新增独立迁移文件。MySQL DDL 不保证事务回滚，失败时先核对实际表结构再恢复或继续，不能假设回滚 Git 就回滚了数据。
 

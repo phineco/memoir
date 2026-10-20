@@ -68,7 +68,7 @@
 
 核实动作：`confirm` 确认，`correct` 修正，`skip` 保持待核实并记为下周追问。全文修订保留旧版本，正名把旧名记入备注。`interview_client_id` 指最初故事入库包的 `clientId`，只允许引用当前家庭故事。
 
-带家庭成员会话调用 `GET /api/writing-plan?family_id=<id>` 读取当前计划，调用 `GET /api/weekly-report?family_id=<id>&week=<week>` 读取周报。周报 API 仅导出家庭内 public 已发布故事，不导出私有或指定人故事。
+带家庭成员会话调用 `GET /api/writing-plan?family_id=<id>` 读取当前计划，调用 `GET /api/weekly-report?family_id=<id>&year=<iso-year>&week=<week>` 读取周报。周报 API 仅导出家庭内 public 已发布故事，不导出私有或指定人故事。
 
 ## 五、结果、幂等与事务
 
@@ -76,5 +76,5 @@
 - 重复包：`ok=true, applied=false`，不再次写入。
 - 协议或跨家庭目标错误：HTTP 400；未登录 401，管理员不足 403，无家庭权限 404。
 - 修改在事务内执行，失败回滚；可识别的同步错误记入失败日志，修正后可复用原 `clientId`。
-- 当前仅有基础结构校验，不是完整 JSON Schema 校验，异常嵌套字段仍可能报服务器错误。
+- 当前有基础结构与类型错误处理，不是完整 JSON Schema 校验；无法解析或写入的包返回可识别错误并回滚。
 - `sync_log` 记录结果；管理员应阅读摘要核对，不把 HTTP 成功视为所有条目都已对应。

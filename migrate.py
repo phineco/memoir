@@ -22,6 +22,7 @@
 import os
 import re
 import sys
+from pathlib import Path
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _MIGRATIONS_DIR = os.path.join(_BASE_DIR, "migrations")
@@ -115,11 +116,20 @@ def _adapt(stmt: str, dialect: str) -> str:
     return stmt
 
 
-def main() -> int:
-    dry_run = "--dry-run" in sys.argv
-    url = Config.DATABASE_URL
+def run_migrations(url, dry_run=False, migrations_dir=None):
+    """可测试的迁移入口。预演只读，不创建数据库或迁移记录表。"""
+    from sqlalchemy import inspect
+    from sqlalchemy.engine import make_url
+
     dialect = _dialect(url)
-    files = sorted(f for f in os.listdir(_MIGRATIONS_DIR)
+    parsed = make_url(url)
+    if parsed.get_backend_name() not in ("sqlite", "mysql"):
+        raise ValueError("只支持 SQLite / MySQL")
+    if dialect == "sqlite" and parsed.database not in (None, "", ":memory:") \
+            and not Path(parsed.database).is_file():
+        raise ValueError("数据库文件不存在；请先初始化，迁移不会创建空库")
+    migrations_dir = migrations_dir or _MIGRATIONS_DIR
+    files = sorted(f for f in os.listdir(migrations_dir)
                    if f.endswith(".sql"))
     if not files:
         print("migrations/ 下没有 .sql 文件，无事可做。")
@@ -127,15 +137,16 @@ def main() -> int:
 
     eng, conn, text = _connect(url)
     try:
-        _ensure_migrations_table(conn, text, dialect)
-        done = _applied(conn, text)
+        if not dry_run:
+            _ensure_migrations_table(conn, text, dialect)
+        done = _applied(conn, text) if inspect(conn).has_table("schema_migrations") else set()
         pending = [f for f in files if f not in done]
         if not pending:
             print("数据库已是最新，无需迁移。")
             return 0
         for f in pending:
-            path = os.path.join(_MIGRATIONS_DIR, f)
-            stmts = _split_statements(open(path, encoding="utf-8").read())
+            path = Path(migrations_dir) / f
+            stmts = _split_statements(path.read_text(encoding="utf-8"))
             print("== %s：%d 条语句" % (f, len(stmts)))
             for stmt in stmts:
                 m = _ALTER_ADD_COL.match(stmt)
@@ -157,9 +168,16 @@ def main() -> int:
                 print("   已记录。")
         print("完成。" if not dry_run else "dry-run 结束，未改动数据库。")
         return 0
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
         eng.dispose()
+
+
+def main() -> int:
+    return run_migrations(Config.DATABASE_URL, dry_run="--dry-run" in sys.argv)
 
 
 if __name__ == "__main__":

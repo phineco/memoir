@@ -1,0 +1,46 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sqlite:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+
+  mysql:
+    runs-on: ubuntu-latest
+    container: python:3.12-bookworm
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: memoir-ci-only
+          MYSQL_ROOT_HOST: '%'
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmemoir-ci-only"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      MEMOIR_TEST_MYSQL_ADMIN_URL: mysql+pymysql://root:memoir-ci-only@mysql:3306/mysql?charset=utf8mb4
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update && apt-get install -y --no-install-recommends default-mysql-client
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest -q tests/test_mysql.py

@@ -14,6 +14,7 @@ import re
 from models import (Draft, Interview, InterviewPerson, NewPerson, Person,
                     PersonIdMap, Quote, SyncLog, TimelineEvent,
                     VerificationItem, WritingPlan, new_id)
+from sqlalchemy.exc import SQLAlchemyError
 
 SUPPORTED = ("tree_upsert", "interview_upsert", "verification_update",
              "new_person", "person_status", "revision_sync", "plan_progress")
@@ -414,21 +415,24 @@ def apply_sync(s, family_id, packet, user_id):
     payload = (packet or {}).get("payload") or {}
     if ptype not in SUPPORTED:
         raise SyncError(f"未知的数据包类型：{ptype}（支持 {', '.join(SUPPORTED)}）")
-    if not client_id:
-        raise SyncError("缺少 clientId（幂等去重用），请 skill 侧生成 uuid")
+    if not isinstance(client_id, str) or not client_id or len(client_id) > 64:
+        raise SyncError("clientId 必须是 1-64 字符的字符串，请 skill 侧生成 uuid")
     dup = s.query(SyncLog).filter_by(client_id=client_id).first()
     if dup:
         return False, f"重复数据包，已跳过（{dup.create_date:%Y-%m-%d %H:%M} 已入库）"
     now = datetime.datetime.now()
     try:
         target_id, summary = _HANDLERS[ptype](s, family_id, payload, user_id, now)
+        s.add(SyncLog(id=new_id(), family_id=family_id, op_type=ptype,
+                      client_id=client_id, target_id=target_id, status="ok",
+                      summary=summary[:500], create_by=user_id, create_date=now))
+        s.commit()
+    except (ValueError, TypeError, KeyError, AttributeError, SQLAlchemyError):
+        s.rollback()
+        raise SyncError("同步数据无效或写入失败，请核对字段类型与目标记录") from None
     except Exception:
         s.rollback()
         raise
-    s.add(SyncLog(id=new_id(), family_id=family_id, op_type=ptype,
-                  client_id=client_id, target_id=target_id, status="ok",
-                  summary=summary[:500], create_by=user_id, create_date=now))
-    s.commit()
     return True, summary
 
 
@@ -450,8 +454,9 @@ def log_sync_failure(s, family_id, packet, user_id, error):
     packet = packet if isinstance(packet, dict) else {}
     client_id = packet.get("clientId") or new_id()
     s.add(SyncLog(id=new_id(), family_id=family_id,
-                  op_type=packet.get("type") or "unknown",
-                  client_id=f"failed:{client_id}", target_id=None,
+                  op_type=str(packet.get("type") or "unknown")[:32],
+                  client_id=f"failed:{new_id()}", target_id=None,
+                  remarks=f"原包 clientId: {client_id}"[:255],
                   status="failed", summary=str(error)[:500],
                   create_by=user_id, create_date=now))
     s.commit()
