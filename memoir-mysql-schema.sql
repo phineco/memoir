@@ -1,6 +1,6 @@
 -- ============================================================
--- 「家音」回忆录网站 · MySQL 5.7 建表 SQL v0.1
--- 日期：2026-10-16
+-- 「家音」回忆录网站 · MySQL 5.7 新库基线（28 张业务表）
+-- 日期：2026-10-20
 -- 规范：每表含统一审计字段（id/create_by/create_date/update_by/
 --       update_date/remarks/del_flag）；id 由应用生成（uuid/短id）；
 --       del_flag 0=显示 1=隐藏；ENGINE=InnoDB CHARSET=utf8mb4
@@ -16,6 +16,7 @@ CREATE TABLE `users` (
   `phone` varchar(20) DEFAULT NULL COMMENT '手机号',
   `username` varchar(32) DEFAULT NULL COMMENT '用户名（管理员为家人开通）',
   `nickname` varchar(64) DEFAULT NULL COMMENT '昵称',
+  `name` varchar(64) DEFAULT NULL COMMENT '真实姓名',
   `password_hash` varchar(128) DEFAULT NULL COMMENT '密码哈希',
   `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
   `create_date` datetime DEFAULT NULL COMMENT '创建时间',

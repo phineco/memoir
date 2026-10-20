@@ -1,6 +1,6 @@
 """sync-json 入库引擎：把 skill 输出的数据包写入本站 DB。
 
-数据包格式见 memoir-sync-design.md §五（网站侧实现补充见文末注释）。
+数据包格式见 memoir-sync-design.md（网站侧实现补充见文末注释）。
 
 匹配原则（诚实优先）：
 - 人物只按「映射表 skill_id → person_id」或「姓名精确匹配」对应，对不上绝不硬挂；
