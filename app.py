@@ -1,5 +1,6 @@
 """Flask 应用入口。"""
-from flask import Flask, session
+import re
+from flask import Flask, request, session
 
 from config import Config
 from models import User, get_session, init_db, remove_session
@@ -12,6 +13,16 @@ def create_app():
     app.secret_key = Config.SECRET_KEY
     init_db(Config.DATABASE_URL)
     app.register_blueprint(bp)
+    from assets import asset_resolver
+    asset_url = asset_resolver(app.root_path)
+
+    @app.after_request
+    def cache_policy(response):
+        if request.path.startswith("/static/dist/") and re.search(r"\.[0-9a-f]{16}\.(css|js)$", request.path) and response.status_code in (200, 304):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif response.mimetype == "text/html":
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.teardown_appcontext
     def close_session(error=None):
@@ -22,7 +33,7 @@ def create_app():
         uid = session.get("user_id")
         me = get_session().query(User).filter_by(id=uid, del_flag=0).first() if uid else None
         from storage import storage_url
-        return {"me": me, "storage_url": storage_url}
+        return {"me": me, "storage_url": storage_url, "asset_url": asset_url}
 
     return app
 

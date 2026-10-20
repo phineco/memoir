@@ -7,12 +7,12 @@
 <p class="hint">短信服务未配置（开发模式）：点"获取验证码"后验证码会直接显示。</p>
 {% endif %}
 <form method="post" class="authform">
-<input name="phone" id="phone" placeholder="手机号（11 位）" required>
+<input name="phone" id="phone" placeholder="手机号（11 位）" required aria-label="手机号（11 位）">
 <div class="coderow">
-<input name="code" placeholder="短信验证码" required style="flex:1">
+<input name="code" placeholder="短信验证码" required style="flex:1" aria-label="短信验证码">
 <button type="button" id="sendCode" class="btn-small">获取验证码</button>
 </div>
-<input type="password" name="password" placeholder="新密码（至少 6 位）" required>
+<input type="password" name="password" placeholder="新密码（至少 6 位）" required aria-label="新密码（至少 6 位）">
 <button type="submit">重置密码并登录</button>
 </form>
 {% if error %}<p class="error">{{ error}}</p>{% endif %}

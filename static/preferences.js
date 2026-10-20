@@ -14,6 +14,7 @@
   function apply(value) {
     current = normalize(value);
     Object.keys(current).forEach(function(k){document.documentElement.setAttribute('data-'+k,current[k]);});
+    document.dispatchEvent(new Event('memoir:display-change'));
     document.querySelectorAll('[data-display-setting]').forEach(function(input){input.checked=current[input.name] === input.value;});
   }
   apply(current);

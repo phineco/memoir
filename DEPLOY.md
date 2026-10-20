@@ -150,3 +150,75 @@ sudo systemctl restart memoir
 - OSS 照片打不开：核对浏览器能访问的 endpoint、URL 有效期与桶配置。
 - 模块找不到：检查实际 gunicorn 使用的虚拟环境，不能只在另一个 Python 中安装依赖。
 - SQLite 与 MySQL 数据互迁：本仓库不提供自动跨引擎数据转换；需另行验证迁移方案，不能在已有数据上重灌 seed。
+
+## 八、UI 构建与版本发布（推荐更新方式）
+
+本轮 UI 不涉及数据库结构迁移。Tailwind 与测试工具只在开发机/CI 运行，生产接收 Python 源码及 `static/dist/`。ECharts、Quill 和字体均不依赖运行时外网下载；字体使用设备字体。
+
+开发或 CI：
+
+```bash
+python tools/frontend.py bootstrap
+python tools/frontend.py build
+python tools/frontend.py check
+python -m pytest -q
+npm ci --ignore-scripts
+npx playwright install --with-deps chromium
+UI_BROWSER_CHANNEL=chromium UI_SCREENSHOTS=ui-artifacts python tools/run_ui.py
+python tools/frontend.py release --version ui-20261020 --output dist/memoir-ui-20261020.tar.gz
+```
+
+工具下载与依赖安装需要网络；已有固定版本 Tailwind 工具可通过 `TAILWIND_BIN` 指定，执行前校验官方哈希。Python 依赖仍按 `requirements.txt` 安装，本轮未更换后端版本。CI 在 SQLite、MySQL 和 UI 回归均通过后生成发布包、校验清单和截图，上传为 Actions artifacts；不自动部署。
+
+`release` 只打包允许的源码与静态资源，记录文件 SHA-256 到 `RELEASE.json`，排除 `.env`、数据库、照片、虚拟环境和备份。发布前必须执行 `check` 与测试；`release` 会再检查依赖和静态文件完整性。不要把发布包当作数据备份。
+
+建议生产目录：
+
+```text
+/opt/memoir/
+  current -> releases/memoir-ui-20261020
+  releases/                  每个版本一份代码和独立 .venv
+  shared/.env                配置与密钥
+  shared/uploads/            本地照片（若使用）
+  shared/memoir.db            SQLite（若使用）
+  shared/static/             历次带指纹资源，累积保留
+```
+
+首次转到此结构，先备份并由管理员迁入原配置/资料，再确认配置中的 `DATABASE_URL` 与 `UPLOAD_DIR` 是稳定的绝对路径。MySQL 或 OSS 的现有存储位置不变。应用启动前配置好 `shared/.env`，不能用发布包覆盖。
+
+在服务器核对下载的 `SHA256SUMS` 后解包到 `releases/`；以下示例中的版本名要换为实际值：
+
+```bash
+cd /opt/memoir
+sha256sum -c SHA256SUMS
+mkdir -p releases shared/static
+tar -xzf memoir-ui-20261020.tar.gz -C releases
+release_dir=/opt/memoir/releases/memoir-ui-20261020
+python3 "$release_dir/tools/frontend.py" verify-release
+ln -s /opt/memoir/shared/.env "$release_dir/.env"
+python3 -m venv "$release_dir/.venv"
+"$release_dir/.venv/bin/python" -m pip install -r "$release_dir/requirements.txt"
+cp "$release_dir"/static/dist/*.css "$release_dir"/static/dist/*.js /opt/memoir/shared/static/
+```
+
+systemd 中将 `WorkingDirectory` 改为 `/opt/memoir/current`、`EnvironmentFile` 改为 `/opt/memoir/shared/.env`、`ExecStart` 改为 `/opt/memoir/current/.venv/bin/gunicorn -w 3 -b 127.0.0.1:8000 app:app`。nginx 增加以下规则，使发布切换中的旧页面仍能加载旧指纹资源：
+
+```nginx
+location ~ ^/static/dist/(.+\.[0-9a-f]{16}\.(?:css|js))$ {
+    alias /opt/memoir/shared/static/$1;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+}
+```
+
+HTML 由应用返回 `no-store`；缓存只针对带指纹的 CSS/JS，修改内容会生成新地址。使用 Flask 静态资源而未配置 nginx 规则时仍可运行，但跨版本请求的旧文件需自行保留。共享指纹目录至少保留回滚窗口内的资源。
+
+准备完成后，记录旧 `current` 目标，在维护窗口执行 Linux 原子链接切换与服务重启：
+
+```bash
+ln -s releases/memoir-ui-20261020 /opt/memoir/current.next
+mv -Tf /opt/memoir/current.next /opt/memoir/current
+sudo systemctl daemon-reload
+sudo systemctl restart memoir
+```
+
+在实际域名检查登录、读故事、保存草稿、家庭管理和手机大字模式。若本次 UI 发布异常，将上面链接指向已记录的旧版本，原子替换并重启；配置、数据库和照片始终留在 `shared`。保留旧版本 `.venv` 和静态资源，不需重新安装或还原数据。未来含数据库迁移的发布必须另行评估回滚，不能仅切代码。

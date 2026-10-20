@@ -5,7 +5,7 @@
   <h1>🔒 {{ snap.title or '分享内容' }}</h1>
   <p class="hint">该分享设有访问密码，请输入后查看。</p>
   <form method="post" class="pwdform">
-    <input type="password" name="password" placeholder="访问密码" autofocus>
+    <input type="password" name="password" placeholder="访问密码" autofocus aria-label="访问密码">
     <button type="submit">进入</button>
   </form>
   {% if error %}<p class="error">{{ error }}</p>{% endif %}

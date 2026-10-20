@@ -9,3 +9,10 @@ def test_management_keeps_admin_boundary(client, login):
     response = client.post('/f/a/members/create-account', data={})
     assert response.location.endswith('/f/a/manage')
     assert '请填写家人姓名' in client.get(response.location).get_data(as_text=True)
+
+
+def test_existing_draft_editor_handles_loaded_form_dict(client, login):
+    login('owner-a')
+    response = client.get('/f/a/story/draft-a/edit')
+    assert response.status_code == 200
+    assert 'content-draft-a' in response.get_data(as_text=True)

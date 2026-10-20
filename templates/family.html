@@ -16,31 +16,35 @@
 {% endblock %}
 {% block script %}
 {% if persons %}
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="{{ asset_url('vendor/echarts-5.5.0.min.js') }}"></script>
 <script>
 const treeData = {{ tree | tojson }};
 const fid = "{{ family.id }}";
 if (typeof echarts !== 'undefined') {
-const chart = echarts.init(document.getElementById('tree'));
-chart.setOption({
-  tooltip: {trigger: 'item', triggerOn: 'mousemove'},
-  series: [{
-    type: 'tree', data: [treeData],
-    top: '5%', bottom: '5%', left: '10%', right: '10%',
-    symbolSize: 14, orient: 'vertical',
-    label: {fontSize: 14, color: '#333'},
-    leaves: {label: {fontSize: 14}},
-    expandAndCollapse: true, initialTreeDepth: -1,
-    animationDuration: 550
-  }]
-});
-chart.on('click', function(params) {
-  if (params.data && params.data.person_id) {
-    location.href = '/f/' + fid + '/person/' + params.data.person_id;
+  const disclosure = document.getElementById('family-tree');
+  let chart;
+  function drawTree() {
+    if (!disclosure.open) return;
+    if (!chart) {
+      chart = echarts.init(document.getElementById('tree'));
+      chart.on('click', function(params) {
+        if (params.data && params.data.person_id) location.href = '/f/' + encodeURIComponent(fid) + '/person/' + encodeURIComponent(params.data.person_id);
+      });
+    }
+    const style = getComputedStyle(document.documentElement);
+    const size = Math.max(18, Number(document.documentElement.dataset.size) || 18);
+    chart.setOption({
+      tooltip: {trigger:'item'},
+      series:[{type:'tree',data:[treeData],top:'8%',bottom:'8%',left:'14%',right:'14%',symbolSize:18,orient:'vertical',
+        label:{fontSize:size,color:style.getPropertyValue('--ink').trim(),fontFamily:style.getPropertyValue('--font-ui').trim()},
+        leaves:{label:{fontSize:size}},lineStyle:{color:style.getPropertyValue('--muted').trim()},
+        expandAndCollapse:true,initialTreeDepth:-1,animation:!matchMedia('(prefers-reduced-motion: reduce)').matches}]
+    });
+    chart.resize();
   }
-});
-window.addEventListener('resize', () => chart.resize());
-document.getElementById('family-tree').addEventListener('toggle', () => chart.resize());
+  disclosure.addEventListener('toggle',drawTree);
+  window.addEventListener('resize',()=>{if(chart)chart.resize();});
+  document.addEventListener('memoir:display-change',drawTree);
 }
 </script>
 {% endif %}

@@ -5,7 +5,7 @@
 {% if me %}<div class="form-actions"><a href="{{ url_for('main.family_new') }}" class="btn-primary">➕ 创建家庭</a></div>{% endif %}
 <div class="cards">
 {% for f in families %}
-  <a class="card" href="{{ url_for('main.stories', family_id=f.id) }}">
+  <a class="card" data-family-choice="{{ f.id }}" href="{{ url_for('main.stories', family_id=f.id) }}">
     <div class="card-title">{{ f.name }}</div>
     <div class="card-sub">打开家庭故事 →</div>
   </a>

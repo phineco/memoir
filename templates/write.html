@@ -2,7 +2,7 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block title %}{% if edit_iv %}编辑草稿{% else %}写文章{% endif %} - {{ family.name }}{% endblock %}
 {% block content %}
-<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
+<link href="{{ asset_url('vendor/quill-2.0.3.snow.css') }}" rel="stylesheet">
 <div class="nav"><a href="{% if edit_iv %}{{ url_for('main.story_detail', family_id=family.id, interview_id=edit_iv.id) }}{% else %}{{ url_for('main.stories', family_id=family.id) }}{% endif %}">← 返回</a></div>
 <h2>{% if edit_iv %}✏️ 编辑草稿{% else %}✍️ 写文章{% endif %}</h2>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
@@ -58,7 +58,7 @@
 
   </details>
   {% set vis_sel = form.get('visibility') if form and form.get('visibility') else (cur_visibility or 'public') %}
-  {% set viewer_sel = (form.getlist('viewer_ids') if form and form.getlist('viewer_ids') else (cur_viewer_ids or [])) %}
+  {% set viewer_sel = (form.getlist('viewer_ids') if request.method == 'POST' else (cur_viewer_ids or [])) %}
   <fieldset class="related-box">
     <legend>👁️ 谁可以看</legend>
     <div class="form-row">
@@ -91,9 +91,9 @@
   <p class="hint">草稿只有你自己能看到；发布后按上面的"谁可以看"设置展示。{% if edit_iv %}每次保存会保留历史版本。{% endif %}</p>
 </form>
 
-<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script src="{{ asset_url('vendor/quill-2.0.3.js') }}"></script>
 <script>
-const initialContent = {{ (existing_content or '') | tojson }};
+const initialContent = {{ ((form.get('content','') if form else '') if request.method == 'POST' else (existing_content or '')) | tojson }};
 const quill = typeof Quill === 'undefined' ? null : new Quill('#editor', {
   theme: 'snow', placeholder: '写下这段回忆……', modules: {toolbar: '#editor-toolbar'}
 });

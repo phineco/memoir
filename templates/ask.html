@@ -35,7 +35,7 @@
   <button type="button" class="btn-small" id="stop-speak" style="display:none">⏹️ 停止播报</button>
 </div>
 <form class="chatform" id="chatform">
-  <button type="button" id="voice-btn" class="btn-small" title="语音输入" aria-label="语音输入">🎤</button>
+  <button type="button" id="voice-btn" class="btn-small" title="语音输入" aria-label="语音输入">🎤 语音输入</button>
   <label class="sr-only" for="msg-input">你的问题</label><input id="msg-input" class="full" placeholder="问点什么…（或点 🎤 语音输入）" maxlength="2000" autocomplete="off">
   <button type="submit" class="btn-primary" id="send-btn">发送</button>
 </form>
@@ -177,14 +177,14 @@
       setTimeout(function(){ voiceStatus.style.display = 'none'; }, 3000);
     };
     rec.onend = function(){
-      recording = false; voiceBtn.textContent = '🎤';
+      recording = false; voiceBtn.textContent = '🎤 语音输入';
       voiceStatus.style.display = 'none';
     };
     voiceBtn.onclick = function(){
       if(recording){ rec.stop(); return; }
       try {
         rec.start(); recording = true;
-        voiceBtn.textContent = '⏹️';
+        voiceBtn.textContent = '⏹️ 停止';
         voiceStatus.textContent = '正在聆听…说完点 ⏹️ 结束';
         voiceStatus.style.display = '';
         input.focus();

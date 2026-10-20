@@ -15,7 +15,7 @@ _ALLOWED_TAGS = [
 _ALLOWED_ATTRS = {
     "span": ["style", "class"],  # Quill 的颜色/字号走 span style
     "p": ["class"], "h1": ["class"], "h2": ["class"], "h3": ["class"],
-    "ul": ["class"], "ol": ["class"], "li": ["class"],  # ql-align-*/ql-indent-*
+    "ul": ["class"], "ol": ["class"], "li": ["class", "data-list"],  # ql-align-*/ql-indent-*
 }
 _CSS = CSSSanitizer(allowed_css_properties=[
     "color", "background-color", "font-size", "text-align",

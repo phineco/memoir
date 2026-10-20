@@ -77,12 +77,20 @@ AI 采用资料摘录拼接提示词，并非全文检索：家庭知识默认�
 
 ## 样式开发与测试
 
-修改模板工具类或 `static/src.css` 后，在本地编译并提交 `static/tailwind.css`：
+保留 Tailwind 3.4.17，布局、按钮和主题由 `static/ui.css` 统一维护。前端构建工具及第三方文件的固定版本与 SHA-256 见 `tools/frontend.lock.json`；UI 测试依赖锁在 `package-lock.json`。服务器使用已提交的 `static/dist/`，无需 Node 或 CDN。
 
 ```bash
-npm install --no-save --package-lock=false tailwindcss@3.4.17
-./node_modules/.bin/tailwindcss -c tailwind.config.js -i static/src.css -o static/tailwind.css --minify
+python tools/frontend.py bootstrap
+python tools/frontend.py build
+python tools/frontend.py check
+npm ci --ignore-scripts
+npx playwright install chromium
+UI_BROWSER_CHANNEL=chromium python tools/run_ui.py
 ```
+
+修改模板工具类、样式、脚本或固定版本依赖后，重建并提交 `static/dist/`。`bootstrap` 仅开发/CI 需要联网；已具备对应版本的独立工具时可指定 `TAILWIND_BIN`，执行前仍核对官方校验值。UI 测试始终使用临时 SQLite 与上传目录，并屏蔽第三方资源请求。
+
+显示设置支持本地字体、18/22/26 正文字号、清新/暖纸/高对比主题与简洁模式，仅保存在当前浏览器，不修改其他家人的习惯。构建及版本发布见 [部署文档](DEPLOY.md)。
 
 服务器只需 Python 依赖。测试使用独立数据库，不运行演示 seed，不调用真实 AI / 短信。GitHub Actions 提供 Python 3.10 / 3.12 回归及 MySQL 5.7 迁移、原生备份恢复验证：
 

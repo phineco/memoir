@@ -17,3 +17,10 @@ backups/
 *.db-shm
 .env.*
 !.env.example
+
+.tools/
+ui-artifacts/
+
+# Serve committed bundles even when a developer globally ignores dist.
+!static/dist/
+!static/dist/**

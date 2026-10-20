@@ -1,0 +1,41 @@
+{
+  "tailwind": {
+    "version": "3.4.17",
+    "base_url": "https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.17/",
+    "binaries": {
+      "tailwindcss-linux-arm64": "69b1378b8133192d7d2feb12a116fa12d035594f58db3eff215879e4ad8cf39b",
+      "tailwindcss-linux-armv7": "704e7d91afba6e1f630889afd0d7db36b4634e628512cc141d504a5beae28860",
+      "tailwindcss-linux-x64": "7d24f7fa191d2193b78cd5f5a42a6093e14409521908529f42d80b11fde1f1d4",
+      "tailwindcss-macos-arm64": "a1d0c7985759accca0bf12e51ac1dcbf0f6cf2fffb62e6e0f62d091c477a10a3",
+      "tailwindcss-macos-x64": "6cbdad74be776c087ffa5e9a057512c54898f9fe8828d3362212dfe32fc933a3",
+      "tailwindcss-windows-arm64.exe": "76f516476784c00f1562160b5758e3d8f0e6c48957efb26b5b50fbdfd76aa382",
+      "tailwindcss-windows-x64.exe": "67f1c5e3f5a03406a7bf5badf5ada09b79f3ae78ec43450c15f7e983068da346"
+    }
+  },
+  "vendor": {
+    "static/vendor/quill-2.0.3.js": {
+      "url": "https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js",
+      "sha256": "f6157c72ac9b3f51cdead426335688a027b12405d9d6a4daadd38a676b2d7ff2"
+    },
+    "static/vendor/quill-2.0.3.snow.css": {
+      "url": "https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css",
+      "sha256": "1c7948cd13aa92fac6390319bc1e5e461823da171519d3a768db56164f871636"
+    },
+    "static/vendor/quill-LICENSE": {
+      "url": "https://cdn.jsdelivr.net/npm/quill@2.0.3/LICENSE",
+      "sha256": "395c12b616d6f58238b4be39284d4d9221b58dd6e1f1e34d9ab537e34abbb022"
+    },
+    "static/vendor/echarts-LICENSE": {
+      "url": "https://cdn.jsdelivr.net/npm/echarts@5.5.0/LICENSE",
+      "sha256": "634293835b43a6dd2094fa39182a3d9a6b9ca43b7fdb9ac354e8037af2a3093a"
+    },
+    "static/vendor/echarts-NOTICE": {
+      "url": "https://cdn.jsdelivr.net/npm/echarts@5.5.0/NOTICE",
+      "sha256": "fa99ac3af859d0e13166906dc53a73ad34a08898da7e8ae83407275496e9e30c"
+    },
+    "static/vendor/echarts-5.5.0.min.js": {
+      "url": "https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js",
+      "sha256": "42f8329d989b6f6539dd2b15bbdf0d82025762ac112fbb60dc57b27d7bcf3946"
+    }
+  }
+}

@@ -9,6 +9,6 @@
 <a class="card" href="{{ url_for('main.'+endpoint, family_id=family.id) }}"><h2 class="card-title">{{ title }}</h2><p class="card-sub">{{ description }}</p></a>
 {% endfor %}
 {% if is_admin %}<a class="card" href="{{ url_for('main.family_manage',family_id=family.id) }}"><h2 class="card-title">家庭管理</h2><p class="card-sub">人物、成员、账号、邀请与分享</p></a>{% endif %}
-<a class="card" href="{{ url_for('main.index') }}"><h2 class="card-title">切换家庭</h2><p class="card-sub">回到你的家庭列表</p></a>
+<a class="card" href="{{ url_for('main.index', switch=1) }}"><h2 class="card-title">切换家庭</h2><p class="card-sub">回到你的家庭列表</p></a>
 </div>
 {% endblock %}

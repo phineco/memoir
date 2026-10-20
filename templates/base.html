@@ -4,15 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}家音 · 回忆录{% endblock %}</title>
-<script src="{{ url_for('static', filename='preferences.js') }}"></script>
-<link rel="stylesheet" href="{{ url_for('static', filename='tailwind.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+<script src="{{ asset_url('preferences.js') }}"></script>
+<link rel="stylesheet" href="{{ asset_url('app.css') }}">
 </head>
-<body>
+<body data-user-id="{{ me.id if me else '' }}" data-family-id="{{ family.id if family else '' }}" {% if request.endpoint == 'main.index' and me %}data-family-picker{% endif %}>
 <a class="skip-link" href="#main-content">跳到正文</a>
 <header class="topbar">
 <div class="topbar-inner">
-  <a class="brand" href="{{ url_for('main.index') }}"><span class="brand-mark" aria-hidden="true">家</span> 家音</a>
+  <a class="brand" href="{{ url_for('main.index', switch=1) }}"><span class="brand-mark" aria-hidden="true">家</span> 家音</a>
   <div class="topright">
     {% block nav %}{% endblock %}
     <span class="auth">
@@ -31,7 +30,8 @@
 {% block content %}{% endblock %}
 </main>
 <footer class="footer"><span>© 2026 安徽锡拉科技有限公司</span> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">皖ICP备17001829号-1</a></footer>
-<script src="{{ url_for('static', filename='read-aloud.js') }}"></script>
+<script src="{{ asset_url('read-aloud.js') }}"></script>
+<script src="{{ asset_url('family-context.js') }}"></script>
 {% block script %}{% endblock %}
 </body>
 </html>
