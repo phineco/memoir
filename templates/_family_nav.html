@@ -1,9 +1,6 @@
-<nav class="navlinks">
-  <a href="{{ url_for('main.family_home', family_id=family.id) }}">🌳 家族树</a>
-  <a href="{{ url_for('main.stories', family_id=family.id) }}">📖 故事</a>
-  <a href="{{ url_for('main.weekly_current', family_id=family.id) }}">📰 本周周报</a>
-  <a href="{{ url_for('main.plan_list', family_id=family.id) }}">📋 写作计划</a>
-  <a href="{{ url_for('main.ai_ask', family_id=family.id) }}">🤖 问 AI</a>
-  <a href="{{ url_for('main.write_article', family_id=family.id) }}">✍️ 写文章</a>
-  <a href="{{ url_for('main.my_drafts', family_id=family.id) }}">📝 草稿箱</a>
+{% set endpoint = request.endpoint or '' %}
+<nav class="navlinks" aria-label="家庭导航">
+{% for endpoint_name, label, active in [('stories','故事',endpoint in ['main.stories','main.story_detail']),('family_home','家人',endpoint in ['main.family_home','main.person_page']),('write_article','记录',endpoint in ['main.write_article','main.edit_article']),('family_more','更多',endpoint not in ['main.stories','main.story_detail','main.family_home','main.person_page','main.write_article','main.edit_article'])] %}
+<a href="{{ url_for('main.' + endpoint_name, family_id=family.id) }}" {% if active %}aria-current="page"{% endif %}>{{ label }}</a>
+{% endfor %}
 </nav>

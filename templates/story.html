@@ -4,7 +4,7 @@
 {% block content %}
 <h1>《{{ iv.topic or '未命名' }}》</h1>
 {% if me and iv.author_id == me.id and (iv.publish_status or 'published') == 'draft' %}
-<p><span class="badge-draft">草稿 · 仅你可见</span> <a href="{{ url_for('main.edit_article', family_id=family.id, interview_id=iv.id) }}" class="btn-small" style="background:#5a7d9a">✏️ 继续编辑</a></p>
+<p><span class="badge-draft">草稿 · 仅你可见</span> <a href="{{ url_for('main.edit_article', family_id=family.id, interview_id=iv.id) }}" class="btn-small btn-secondary">✏️ 继续编辑</a></p>
 {% elif (iv.visibility or 'public') == 'private' %}
 <p><span class="badge-draft">🔒 仅自己可见</span></p>
 {% elif (iv.visibility or 'public') == 'specific' %}
@@ -63,7 +63,7 @@
     {% if me %}<button class="replybtn" data-pid="{{ node.c.id }}" data-name="{{ comment_users[node.c.user_id].nickname if node.c.user_id in comment_users else '' }}">回复</button>{% endif %}
     {% if me and node.c.content != '（该评论已删除）' and (node.c.user_id == me.id or is_admin) %}
     <form method="post" action="{{ url_for('main.comment_delete', family_id=family.id, interview_id=iv.id, comment_id=node.c.id) }}" style="display:inline" onsubmit="return confirm('删除这条评论？')">
-      <button type="submit" class="btn-small" style="background:#999">删除</button>
+      <button type="submit" class="btn-small btn-danger">删除</button>
     </form>
     {% endif %}
   </div>

@@ -3,7 +3,7 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <h1>🤖 问 AI</h1>
-<p class="hint">我知道"家音"这个项目是做什么的，也读过{{ family.name }}已有的全部回忆内容。
+<p class="hint">我会参考{{ family.name }}中你有权查看的回忆摘录，内容可能不完整。
 可以问我家里的事（我会注明出处）、让我找缺失的内容、或帮你规划下周采访谁。不知道的事我会直说，绝不编。</p>
 {% if not ai_enabled %}
 <p class="error">AI 未启用：请管理员配置 DEEPSEEK_API_KEY 后使用。</p>
@@ -35,8 +35,8 @@
   <button type="button" class="btn-small" id="stop-speak" style="display:none">⏹️ 停止播报</button>
 </div>
 <form class="chatform" id="chatform">
-  <button type="button" id="voice-btn" class="btn-small" title="语音输入">🎤</button>
-  <input id="msg-input" class="full" placeholder="问点什么…（或点 🎤 语音输入）" maxlength="2000" autocomplete="off">
+  <button type="button" id="voice-btn" class="btn-small" title="语音输入" aria-label="语音输入">🎤</button>
+  <label class="sr-only" for="msg-input">你的问题</label><input id="msg-input" class="full" placeholder="问点什么…（或点 🎤 语音输入）" maxlength="2000" autocomplete="off">
   <button type="submit" class="btn-primary" id="send-btn">发送</button>
 </form>
 <p class="hint" id="voice-status" style="display:none"></p>

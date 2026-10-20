@@ -521,10 +521,29 @@ def family_home(family_id):
     ).filter(Interview.family_id == family_id, Interview.id.in_(visible_ids),
              VerificationItem.status == "pending",
              VerificationItem.del_flag == 0).count()
-    year, week = current_period()
     me = _current_user()
     viewer = s.query(Person).filter_by(family_id=family_id, user_id=me.id,
                                        del_flag=0).first() if me else None
+    return render_template("family.html", family=fam,
+                           tree=_build_tree(family_id, viewer.id if viewer else None),
+                           persons=_tree_persons(family_id), n_person=n_person,
+                           n_story=n_story, n_pending=n_pending,
+                           is_admin=_is_admin(fam, me))
+
+
+@bp.route("/f/<family_id>/more")
+def family_more(family_id):
+    fam = _family_or_404(family_id)
+    return render_template("more.html", family=fam, is_admin=_is_admin(fam, _current_user()))
+
+
+@bp.route("/f/<family_id>/manage")
+def family_manage(family_id):
+    fam = _family_or_404(family_id)
+    me = _current_user()
+    if not _is_admin(fam, me):
+        abort(403)
+    s = _s()
     member_rows = s.query(FamilyMember, User).join(
         User, FamilyMember.user_id == User.id
     ).filter(FamilyMember.family_id == family_id,
@@ -541,10 +560,7 @@ def family_home(family_id):
     invites = s.query(Invite).filter_by(
         family_id=family_id, del_flag=0).order_by(
         Invite.create_date.desc()).limit(10).all()
-    return render_template("family.html", family=fam,
-                           tree=_build_tree(family_id, viewer.id if viewer else None),
-                           n_person=n_person, n_story=n_story,
-                           n_pending=n_pending, week=week,
+    return render_template("manage.html", family=fam,
                            status_label=STATUS_LABEL, me=me,
                            is_admin=is_admin_now, is_owner=is_owner_now,
                            member_rows=member_rows,
@@ -1468,7 +1484,7 @@ def member_add(family_id):
                            role=role, create_by=me.id,
                            create_date=datetime.datetime.now()))
     s.commit()
-    return redirect(url_for("main.family_home", family_id=family_id))
+    return redirect(url_for("main.family_manage", family_id=family_id))
 
 
 @bp.route("/f/<family_id>/members/<member_id>/remove", methods=["POST"])
@@ -1490,7 +1506,7 @@ def member_remove(family_id, member_id):
     m.update_by = me.id
     m.update_date = datetime.datetime.now()
     s.commit()
-    return redirect(url_for("main.family_home", family_id=family_id))
+    return redirect(url_for("main.family_manage", family_id=family_id))
 
 
 # ---------------- 人物小传编辑（管理员；版本化） ----------------
@@ -1885,7 +1901,7 @@ def member_create_account(family_id):
         error = "密码至少 6 位"
     if error:
         session["member_form_error"] = error
-        return redirect(url_for("main.family_home", family_id=family_id))
+        return redirect(url_for("main.family_manage", family_id=family_id))
     from models import new_id
     u = User(id=new_id(), nickname=nickname or real_name, name=real_name,
              phone=phone,
@@ -1902,7 +1918,7 @@ def member_create_account(family_id):
     session["created_account"] = {"nickname": nickname or real_name,
                                   "login": phone + ("/" + username if username else ""),
                                   "password": password}
-    return redirect(url_for("main.family_home", family_id=family_id))
+    return redirect(url_for("main.family_manage", family_id=family_id))
 
 
 # ---------------- 管理员重置成员密码 ----------------
@@ -1928,7 +1944,7 @@ def member_reset_password(family_id, member_id):
     new_password = request.form.get("new_password", "")
     if len(new_password) < 6:
         session["member_form_error"] = "新密码至少 6 位"
-        return redirect(url_for("main.family_home", family_id=family_id))
+        return redirect(url_for("main.family_manage", family_id=family_id))
     u.password_hash = generate_password_hash(new_password)
     u.update_by = me.id
     u.update_date = datetime.datetime.now()
@@ -1937,7 +1953,7 @@ def member_reset_password(family_id, member_id):
         "nickname": u.nickname or u.phone or u.username,
         "login": u.phone or u.username or "",
         "password": new_password}
-    return redirect(url_for("main.family_home", family_id=family_id))
+    return redirect(url_for("main.family_manage", family_id=family_id))
 
 
 # ---------------- AI 问答 & 周报导读 ----------------
@@ -2389,7 +2405,7 @@ def invite_create(family_id):
     session["new_invite"] = {"code": code,
                              "url": url_for("main.join_by_invite", code=code,
                                             _external=True)}
-    return redirect(url_for("main.family_home", family_id=family_id))
+    return redirect(url_for("main.family_manage", family_id=family_id))
 
 
 def _valid_invite(code):

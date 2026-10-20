@@ -38,4 +38,6 @@ s.commit()
 ai.ai_enabled = lambda: True  # 展示界面；底层 key 为空，无法调用真实模型。
 
 if __name__ == "__main__":
+    import logging
+    logging.getLogger("werkzeug").setLevel(logging.ERROR)
     app.run(host="127.0.0.1", port=int(os.environ.get("UI_TEST_PORT", "5015")), debug=False)

@@ -9,6 +9,17 @@
 <form method="post" id="write-form" action="{% if edit_iv %}{{ url_for('main.edit_article', family_id=family.id, interview_id=edit_iv.id) }}{% endif %}">
   <label>标题<br><input name="topic" class="full" value="{{ form.get('topic','') if form else '' }}" required></label>
 
+  <div class="editor-toolbar-row">
+    <span class="editor-label">正文</span>
+    <button type="button" id="voice-btn" class="voice-btn">🎤 语音输入</button>
+    <span id="voice-status" class="voice-status"></span>
+  </div>
+  <div id="editor-toolbar" role="toolbar" aria-label="正文格式">
+<button type="button" class="ql-bold" aria-label="加粗" title="加粗"></button><button type="button" class="ql-italic" aria-label="斜体" title="斜体"></button><button type="button" class="ql-list" value="bullet" aria-label="项目列表" title="项目列表"></button><button type="button" class="ql-blockquote" aria-label="引用" title="引用"></button><button type="button" class="ql-clean" aria-label="清除格式" title="清除格式"></button></div>
+<div id="editor"></div><label id="editor-fallback-label" hidden>正文<textarea id="editor-fallback" class="full" rows="10"></textarea></label>
+  <input type="hidden" name="content" id="content-input">
+
+  <details class="disclosure" id="story-details"><summary>补充人物与时间（选填）</summary>
   <div class="form-row">
     <label>讲述对象
       <select name="subject_id">
@@ -45,12 +56,13 @@
     </div>
   </fieldset>
 
+  </details>
   {% set vis_sel = form.get('visibility') if form and form.get('visibility') else (cur_visibility or 'public') %}
   {% set viewer_sel = (form.getlist('viewer_ids') if form and form.getlist('viewer_ids') else (cur_viewer_ids or [])) %}
   <fieldset class="related-box">
     <legend>👁️ 谁可以看</legend>
     <div class="form-row">
-      <label class="check"><input type="radio" name="visibility" value="public" {% if vis_sel == 'public' %}checked{% endif %}> 公开（全家人可见）</label>
+      <label class="check"><input type="radio" name="visibility" value="public" {% if vis_sel == 'public' %}checked{% endif %}> 全家人可见</label>
       <label class="check"><input type="radio" name="visibility" value="private" {% if vis_sel == 'private' %}checked{% endif %}> 仅自己可见</label>
       <label class="check"><input type="radio" name="visibility" value="specific" {% if vis_sel == 'specific' %}checked{% endif %}> 指定人可见</label>
     </div>
@@ -72,50 +84,40 @@
     });
   </script>
 
-  <div class="editor-toolbar-row">
-    <span class="editor-label">正文</span>
-    <button type="button" id="voice-btn" class="voice-btn">🎤 语音输入</button>
-    <span id="voice-status" class="voice-status"></span>
-  </div>
-  <div id="editor"></div>
-  <input type="hidden" name="content" id="content-input">
-
   <div class="form-actions">
     <button type="submit" name="action" value="draft" class="btn-secondary">保存草稿</button>
-    <button type="submit" name="action" value="publish" class="btn-primary">发布</button>
+    <button type="submit" name="action" value="publish" class="btn-primary">发布故事</button>
   </div>
   <p class="hint">草稿只有你自己能看到；发布后按上面的"谁可以看"设置展示。{% if edit_iv %}每次保存会保留历史版本。{% endif %}</p>
 </form>
 
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <script>
-const quill = new Quill('#editor', {
-  theme: 'snow',
-  placeholder: '写下这段回忆……',
-  modules: { toolbar: [
-    [{header:[1,2,3,false]}],
-    [{size:['small',false,'large','huge']}],
-    ['bold','italic','underline','strike'],
-    [{color:[]},{background:[]}],
-    [{list:'ordered'},{list:'bullet'}],
-    [{align:[]}],
-    ['blockquote','code-block'],
-    ['clean']
-  ]}
+const initialContent = {{ (existing_content or '') | tojson }};
+const quill = typeof Quill === 'undefined' ? null : new Quill('#editor', {
+  theme: 'snow', placeholder: '写下这段回忆……', modules: {toolbar: '#editor-toolbar'}
 });
-{% if existing_content %}quill.root.innerHTML = {{ existing_content | tojson }};{% endif %}
-
+if (quill) {
+  if (initialContent) quill.root.innerHTML = initialContent;
+  quill.root.setAttribute('aria-label', '故事正文');
+} else {
+  document.getElementById('editor-toolbar').hidden = true;
+  document.getElementById('editor').hidden = true;
+  document.getElementById('editor-fallback-label').hidden = false;
+  document.getElementById('editor-fallback').value = initialContent;
+  document.getElementById('voice-status').textContent = '格式编辑器暂不可用，可在文本框继续编辑。';
+}
 document.getElementById('write-form').addEventListener('submit', function(){
-  document.getElementById('content-input').value = quill.root.innerHTML;
+  document.getElementById('content-input').value = quill ? quill.root.innerHTML : document.getElementById('editor-fallback').value;
 });
 
 // ---- 语音转文字（浏览器 Web Speech API，Chrome/Edge/Safari 14.1+）----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const voiceBtn = document.getElementById('voice-btn');
 const voiceStatus = document.getElementById('voice-status');
-if (!SR) {
+if (!SR || !quill) {
   voiceBtn.disabled = true;
-  voiceStatus.textContent = '当前浏览器不支持语音输入';
+  voiceStatus.textContent = quill ? '当前浏览器不支持语音输入' : '格式编辑器暂不可用，可使用文本框。';
 } else {
   let rec = null, listening = false, baseIndex = 0;
   voiceBtn.addEventListener('click', function(){

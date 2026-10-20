@@ -36,7 +36,7 @@
     </form>
     {% endif %}
     <form method="post" action="{{ url_for('main.plan_archive', family_id=family.id, plan_id=plan.id) }}" style="display:inline" onsubmit="return confirm('归档后不再作为当前计划，确定吗？')">
-      <button type="submit" class="btn-small" style="background:#999">归档</button>
+      <button type="submit" class="btn-small btn-danger">归档</button>
     </form>
   </div>
   {% endif %}

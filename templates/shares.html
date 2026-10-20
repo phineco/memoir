@@ -14,17 +14,17 @@
 <div class="share-item">
   <div><strong>{{ snap.title }}</strong>
     {% if snap.status == 'published' %}<span class="badge">已发布</span>
-    {% else %}<span class="badge" style="background:#999">待确认</span>{% endif %}
+    {% else %}<span class="badge btn-danger">待确认</span>{% endif %}
   </div>
   <div class="muted">{{ snap.create_date.strftime('%Y-%m-%d %H:%M') if snap.create_date else '' }}</div>
   {% if snap.status == 'published' and snap.token %}
   <div>链接：<a href="{{ url_for('main.share_page', token=snap.token) }}">{{ url_for('main.share_page', token=snap.token, _external=True) }}</a></div>
   {% endif %}
   <div class="share-actions">
-    <a href="{{ url_for('main.share_preview', family_id=family.id, snap_id=snap.id) }}" class="btn-small" style="background:#5a7d9a;text-decoration:none">预览</a>
+    <a href="{{ url_for('main.share_preview', family_id=family.id, snap_id=snap.id) }}" class="btn-small btn-secondary">预览</a>
     {% if snap.status == 'published' %}
     <form method="post" action="{{ url_for('main.share_unpublish', family_id=family.id, snap_id=snap.id) }}" style="display:inline" onsubmit="return confirm('下线后该链接立即失效，确定吗？')">
-      <button type="submit" class="btn-small" style="background:#999">下线</button>
+      <button type="submit" class="btn-small btn-danger">下线</button>
     </form>
     {% else %}
     <form method="post" action="{{ url_for('main.share_publish', family_id=family.id, snap_id=snap.id) }}" style="display:inline">

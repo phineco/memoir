@@ -10,7 +10,7 @@ const fs = require('node:fs');
     const response = await context.request.post(base + '/login', {form:{phone:'ui-test', password:'ui-test-only'}});
     assert.equal(response.status(), 200);
     const page = await context.newPage();
-    const paths = ['/', '/f/ui', '/f/empty', '/f/ui/stories', '/f/ui/story/story', '/f/ui/person/grandma', '/f/ui/write', '/f/ui/ask', '/f/ui/plans', '/f/ui/shares', '/f/ui/sync'];
+    const paths = ['/', '/f/ui', '/f/empty', '/f/ui/stories', '/f/ui/story/story', '/f/ui/person/grandma', '/f/ui/write', '/f/ui/ask', '/f/ui/more', '/f/ui/manage', '/f/ui/plans', '/f/ui/shares', '/f/ui/sync'];
     let checks = 0;
     for (const width of [320,390,768,1280]) {
       await page.setViewportSize({width,height:900});

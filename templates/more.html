@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}更多 · {{ family.name }}{% endblock %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
+{% block content %}
+<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>更多</h1><p class="hint">继续整理回忆，或邀请家人一起加入。</p></div>
+<div class="cards menu-cards">
+{% for endpoint, title, description in [('my_drafts','我的草稿','接着写，还没讲完的故事'),('weekly_current','本周周报','看看这一周的新回忆'),('plan_list','写作计划','想想下一次和谁聊聊'),('ai_ask','问 AI','从可见的回忆摘录中寻找线索')] %}
+<a class="card" href="{{ url_for('main.'+endpoint, family_id=family.id) }}"><h2 class="card-title">{{ title }}</h2><p class="card-sub">{{ description }}</p></a>
+{% endfor %}
+{% if is_admin %}<a class="card" href="{{ url_for('main.family_manage',family_id=family.id) }}"><h2 class="card-title">家庭管理</h2><p class="card-sub">人物、成员、账号、邀请与分享</p></a>{% endif %}
+<a class="card" href="{{ url_for('main.index') }}"><h2 class="card-title">切换家庭</h2><p class="card-sub">回到你的家庭列表</p></a>
+</div>
+{% endblock %}

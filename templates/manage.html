@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}家庭管理 · {{ family.name }}{% endblock %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
+{% block content %}<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>家庭管理</h1><p class="hint">管理人物、成员和邀请。日常阅读请进入故事或家人。</p></div>
+{% if is_admin %}
+<hr>
+<h2>🛠️ 家族树管理 <small class="muted">（管理员）</small></h2>
+<div class="form-actions"><a href="{{ url_for('main.tree_add', family_id=family.id) }}" class="btn-primary">➕ 添加人物</a>
+<a href="{{ url_for('main.share_list', family_id=family.id) }}" class="btn-secondary" style="text-decoration:none">🔗 分享管理</a>
+<a href="{{ url_for('main.sync_import', family_id=family.id) }}" class="btn-secondary" style="text-decoration:none">🔄 同步入库</a></div>
+<p class="hint">如需修改或删除某位人物，请点击树上节点进入人物页操作。</p>
+{% endif %}
+{% if is_admin %}
+<hr>
+<h2>👥 成员 <small class="muted">（管理员可重置成员密码）</small></h2>
+{% if reset_notice %}
+<p class="success">✅ 密码已重置（仅显示一次，请转告家人）：<strong>{{ reset_notice.nickname }}</strong>，登录名 <code>{{ reset_notice.login }}</code>，新密码 <code>{{ reset_notice.password }}</code></p>
+{% endif %}
+<ul class="card-list">
+  {% for m, u in member_rows %}
+  <li class="card">{{ u.nickname or u.phone or u.username }} <span class="muted">（{{ u.phone or u.username or '' }}）</span> — <strong>{{ {'owner':'创建者','admin':'管理员','member':'成员'}[m.role] }}</strong>
+    {% if is_owner and m.role != 'owner' %}
+    <form method="post" action="{{ url_for('main.member_remove', family_id=family.id, member_id=m.id) }}" style="display:inline" onsubmit="return confirm('确定移除该成员吗？')">
+      <button type="submit" class="btn-small btn-danger">移除</button>
+    </form>
+    {% endif %}
+    {% if u.id in resettable_ids %}
+    <form method="post" action="{{ url_for('main.member_reset_password', family_id=family.id, member_id=m.id) }}" style="display:inline" onsubmit="return confirm('确定重置 {{ u.nickname or u.phone or u.username }} 的密码吗？')">
+      <input name="new_password" placeholder="新密码≥6位" required minlength="6" style="width:110px">
+      <button type="submit" class="btn-small btn-secondary">重置密码</button>
+    </form>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% if is_owner %}
+<form method="post" action="{{ url_for('main.member_add', family_id=family.id) }}" class="form-row">
+  <label>添加成员
+    <input name="login_id" placeholder="已注册的手机号或用户名" required>
+  </label>
+  <label>角色
+    <select name="role">
+      <option value="admin">管理员</option>
+      <option value="member">成员</option>
+    </select>
+  </label>
+  <button type="submit" class="btn-primary">添加</button>
+</form>
+<p class="hint">仅创建者可添加/移除成员、设置管理员。权限按家庭隔离，A 家庭的管理员管不了 B 家庭。</p>
+{% endif %}
+{% endif %}
+{% if is_admin %}
+<hr>
+<h2>➕ 为家人开通账号 <small class="muted">（管理员）</small></h2>
+<p class="hint">老人不会注册？由你代他开通：设好登录名和密码，告诉他直接登录就行。开通后自动加入本家庭成为成员。</p>
+{% if member_form_error %}<p class="error">{{ member_form_error }}</p>{% endif %}
+{% if created_account %}
+<p class="success">✅ 账号已开通（仅显示一次，请记下转告家人）：<strong>{{ created_account.nickname }}</strong>，登录名 <code>{{ created_account.login }}</code>，密码 <code>{{ created_account.password }}</code></p>
+{% endif %}
+<form method="post" action="{{ url_for('main.member_create_account', family_id=family.id) }}">
+  <div class="form-row">
+    <label>家人姓名 *<input name="real_name" required maxlength="64" placeholder="如：王建军"></label>
+    <label>手机号 *<input name="phone" required maxlength="11" pattern="\d{11}" placeholder="11 位，用于登录"></label>
+  </div>
+  <div class="form-row">
+    <label>用户名<input name="username" maxlength="20" placeholder="选填，3-20 位字母/数字/下划线"></label>
+    <label>家人昵称<input name="nickname" maxlength="64" placeholder="选填，不填则用姓名"></label>
+  </div>
+  <div class="form-row">
+    <label>初始密码 *<input type="password" name="password" required minlength="6" placeholder="至少 6 位"></label>
+  </div>
+  <p class="hint">手机号用于密码登录和验证码登录；用户名选填，设置后也可用于密码登录。昵称仅作显示用，家族中的辈分称谓请在"家族树"里设置。</p>
+  <div class="form-actions"><button type="submit" class="btn-primary">开通并加入本家庭</button></div>
+</form>
+{% endif %}
+{% if is_admin %}
+<hr>
+<h2>📨 邀请家人 <small class="muted">（管理员）</small></h2>
+<p class="hint">生成邀请链接发给家人，对方注册/登录后自动加入本家庭。适合会自己操作的年轻人；老人不会注册还是走"为家人开通账号"。</p>
+{% if new_invite %}
+<p class="success">✅ 邀请已生成（复制发给家人）：<br><code>{{ new_invite.url }}</code></p>
+{% endif %}
+<form method="post" action="{{ url_for('main.invite_create', family_id=family.id) }}" class="form-row">
+  <label>有效天数<input name="days" value="7" style="width:70px"></label>
+  <label>使用次数（0=不限）<input name="max_uses" value="0" style="width:70px"></label>
+  <button type="submit" class="btn-primary">生成邀请链接</button>
+</form>
+{% if invites %}
+<ul class="card-list">
+  {% for inv in invites %}
+  <li class="card"><code>/join/{{ inv.code }}</code>
+    <span class="muted">已用 {{ inv.used_count or 0 }}{% if inv.max_uses %}/{{ inv.max_uses }}{% endif %} 次
+    · {{ inv.expire_at.strftime('%m-%d') if inv.expire_at else '长期' }}过期</span></li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endif %}
+{% endblock %}

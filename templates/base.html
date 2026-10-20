@@ -8,9 +8,10 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
 </head>
 <body>
+<a class="skip-link" href="#main-content">跳到正文</a>
 <header class="topbar">
 <div class="topbar-inner">
-  <a class="brand" href="{{ url_for('main.index') }}">🏠 家音 · 回忆录</a>
+  <a class="brand" href="{{ url_for('main.index') }}"><span class="brand-mark" aria-hidden="true">家</span> 家音</a>
   <div class="topright">
     {% block nav %}{% endblock %}
     <span class="auth">
@@ -24,7 +25,7 @@
   </div>
 </div>
 </header>
-<main class="container">
+<main class="container" id="main-content" tabindex="-1">
 {% block content %}{% endblock %}
 </main>
 <footer class="footer"><span>© 2026 安徽锡拉科技有限公司</span> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">皖ICP备17001829号-1</a></footer>

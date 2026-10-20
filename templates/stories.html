@@ -2,16 +2,16 @@
 {% block title %}故事 · {{ family.name }}{% endblock %}
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
-<h1>📖 故事</h1>
+<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>一家人的故事</h1><p class="hint">记住那些平凡、珍贵、值得再讲一遍的日子。</p><div class="form-actions"><a class="btn-primary" href="{{ url_for('main.write_article', family_id=family.id) }}">记录一段回忆</a></div></div>
 <div class="cards">
 {% for iv, person in rows %}
   <a class="card" href="{{ url_for('main.story_detail', family_id=family.id, interview_id=iv.id) }}">
     <div class="card-title">《{{ iv.topic or '未命名' }}》{% if iv.publish_status == 'draft' %} <span class="badge-draft">草稿</span>{% endif %}</div>
-    <div class="card-sub">{{ person.name if person else '—' }} · {{ iv.create_date.strftime('%Y-%m-%d') if iv.create_date else '' }} · {{ iv.status }}</div>
+    <div class="card-sub">{{ person.name if person else '—' }} · {{ iv.create_date.strftime('%Y-%m-%d') if iv.create_date else '' }} </div>
     {% if iv.period_start or iv.period_end %}<div class="card-sub">📅 {{ iv.period_start.strftime('%Y') if iv.period_start else '?' }} → {{ iv.period_end.strftime('%Y') if iv.period_end else '?' }}</div>{% endif %}
   </a>
 {% else %}
-  <p class="hint">暂无故事。</p>
+  <section class="empty-state"><h2>第一段故事，可以很简单</h2><p>小时候住在哪里？最拿手的一道菜是什么？从一句话开始。</p><a class="btn-primary" href="{{ url_for('main.write_article', family_id=family.id) }}">写下第一段回忆</a></section>
 {% endfor %}
 </div>
 {% endblock %}
