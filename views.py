@@ -729,7 +729,9 @@ def _weekly_report_json(family_id, week, viewer_id=None):
 
 @bp.route("/api/weekly-report")
 def api_weekly_report():
-    """周报聚合接口（流水线设计 v0.4 §三）。"""
+    """周报聚合接口（流水线设计 v0.4 §三）。仅登录用户可调。"""
+    if not _current_user():
+        return jsonify({"ok": False, "error": "need_login"}), 401
     family_id = request.args.get("family_id")
     week = int(request.args.get("week", datetime.date.today().isocalendar()[1]))
     _family_or_404(family_id)
