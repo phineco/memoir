@@ -160,6 +160,9 @@ textarea.full { font-size:16px; padding:8px; border:1px solid #ccc; border-radiu
 .chatform input { flex:1; }
 .chat-toolbar { display:flex; align-items:center; gap:12px; margin:8px 0; }
 .speak-btn { margin-top:6px; font-size:12px; }
+.suggest-qs { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0 4px; }
+.suggest-q { border-radius:16px; cursor:pointer; }
+.suggest-q:hover { background:#e3f0ff; }
 .badge { display:inline-block; background:#e8f4e8; color:#2a7a2a; font-size:12px; padding:2px 8px; border-radius:10px; margin-left:6px; }
 .coderow { display:flex; gap:8px; }
 .coderow .btn-small { white-space:nowrap; }

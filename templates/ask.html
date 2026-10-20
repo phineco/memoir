@@ -15,6 +15,15 @@
 <p class="error">AI 未启用：请管理员配置 DEEPSEEK_API_KEY 后使用。</p>
 {% endif %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if ai_enabled %}
+<div class="suggest-qs">
+  <span class="hint">常用问题：</span>
+  <button type="button" class="btn-small suggest-q">家里还有谁没采访？</button>
+  <button type="button" class="btn-small suggest-q">下周建议先采访谁？</button>
+  <button type="button" class="btn-small suggest-q">帮我总结一下本周的新故事</button>
+  <button type="button" class="btn-small suggest-q">时间线上有矛盾或缺失吗？</button>
+</div>
+{% endif %}
 <div class="chatlog" id="chatlog">
 {% for m in msgs %}
   <div class="chat-msg {{ m.role }}">
@@ -141,6 +150,15 @@
     })
     .catch(function(){ body.textContent = '网络出错，请重试'; sendBtn.disabled = false; sendBtn.textContent = '发送'; });
   };
+
+  /* ---------- 常用问题 ---------- */
+  var suggBtns = document.querySelectorAll('.suggest-q');
+  for(var si = 0; si < suggBtns.length; si++){
+    suggBtns[si].onclick = function(){
+      input.value = this.textContent.trim();
+      input.focus();
+    };
+  }
 
   /* ---------- 语音输入 ---------- */
   var voiceBtn = document.getElementById('voice-btn');
