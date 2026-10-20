@@ -13,6 +13,15 @@
   code { @apply bg-[#f0ebe0] px-1.5 py-0.5 rounded text-[0.9em] font-sans; }
   ul { list-style: disc; padding-left: 1.4em; }
   ol { list-style: decimal; padding-left: 1.4em; }
+  /* 无类名输入框的兜底样式（防 preflight 裸奔；组件层可覆盖） */
+  input[type=text], input[type=password], input[type=date], input[type=number],
+  input:not([type]), select, textarea {
+    @apply border border-[#ccc] rounded-lg px-2.5 py-2 text-[16px] bg-white;
+  }
+  input[type=text]:focus, input[type=password]:focus, input[type=date]:focus,
+  input[type=number]:focus, input:not([type]):focus, select:focus, textarea:focus {
+    @apply outline-none ring-2 ring-accent/40 border-accent;
+  }
 }
 
 /* ============ 组件（类名与旧版兼容） ============ */
