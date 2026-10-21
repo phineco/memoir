@@ -182,3 +182,49 @@ body {font-size:var(--body-size);}
 .invite-card>div {flex:1 1 16rem;min-width:0;}
 .invite-link {overflow-wrap:anywhere;}
 .invite-qr {width:256px;height:256px;max-width:100%;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px;image-rendering:pixelated;}
+
+/* Family management uses URL-backed sections so each task has room to breathe. */
+.management-tabs {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;padding:.5rem;margin-bottom:2rem;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);}
+.management-tabs a {display:flex;align-items:center;justify-content:center;min-height:48px;padding:.65rem .5rem;border:1px solid transparent;border-radius:12px;text-align:center;color:var(--ink);font-size:1rem;line-height:1.5;}
+.management-tabs a:hover {background:var(--surface-soft);color:var(--accent);}
+.management-tabs a[aria-current=page] {background:var(--accent);color:var(--on-accent);font-weight:700;}
+.management-section-heading {margin-bottom:1.25rem;}
+.management-section-heading h2,.management-panel h2 {border:0;padding:0;margin:0 0 .5rem;}
+.management-section-heading p,.management-panel>p {margin:0 0 1rem;}
+.management-panel {margin-block:1.5rem;}
+.management-panel:first-child {margin-top:0;}
+.management-form .form-row {grid-template-columns:repeat(2,minmax(0,1fr));align-items:end;}
+.management-form input,.management-form select {display:block;width:100%;max-width:none;min-height:3rem;margin-top:.35rem;border:1px solid var(--line);padding:.6rem .75rem;line-height:1.5;}
+.management-form label {font-size:1rem;}
+.management-form .form-row+.hint {margin-top:1rem;}
+.management-content .form-actions {margin:1.25rem 0 0;}
+.member-list {display:grid;gap:.75rem;}
+.member-list .member-card {margin:0;}
+.member-heading {display:flex;align-items:start;justify-content:space-between;gap:1rem;}
+.member-heading>div {min-width:0;}
+.member-heading h3,.management-tool h3 {font-size:1.1rem;font-weight:700;margin:0;}
+.member-heading p {margin:.25rem 0 0;}
+.member-role {flex-shrink:0;font-size:.875rem;border-radius:8px;padding:.2rem .6rem;background:var(--surface-soft);color:var(--accent);}
+.member-controls {margin-top:.75rem;border-top:1px solid var(--line);padding-top:.25rem;}
+.member-controls summary {padding:.5rem 0;}
+.member-controls .management-form {max-width:30rem;padding-top:.75rem;}
+.member-remove {margin-top:1.25rem;border-top:1px solid var(--line);padding-top:1rem;}
+.member-remove p {margin:0;}
+.management-related {margin-top:1.5rem;}
+.management-related a {display:inline-block;min-height:44px;padding:.35rem .2rem;text-decoration:underline;}
+.management-history {margin-top:2rem;}
+.management-tools {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;}
+.management-tool {display:flex;flex-direction:column;}
+.management-tool>p {margin:.75rem 0 1.25rem;}
+.management-tool .form-actions {margin-top:auto;}
+.management-tool .form-actions a {width:100%;}
+:root[data-mode="simple"] .management-tabs a {min-height:56px;}
+@media(max-width:768px) {
+ .management-tabs {grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:1.5rem;}
+ .management-form .form-row,.management-tools {grid-template-columns:minmax(0,1fr);}
+ .management-content .form-actions>* {flex:1 1 100%;}
+ .management-content .form-actions>a {width:100%;}
+ .member-heading {flex-wrap:wrap;gap:.5rem;}
+}
+
+.management-content .card:hover {transform:none;box-shadow:0 3px 15px #1e382508;border-color:var(--line);}

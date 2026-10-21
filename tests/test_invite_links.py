@@ -37,10 +37,10 @@ def test_existing_invites_and_old_session_urls_are_rebuilt(client,login):
     login()
     with client.session_transaction() as session:
         session['new_invite']={'code':'test-invite-a','url':'http://127.0.0.1:443/join/test-invite-a'}
-    html=client.get('/f/a/manage').get_data(as_text=True)
+    html=client.get('/f/a/manage/invites').get_data(as_text=True)
     assert html.count('https://family.scyllatech.cn/join/test-invite-a') >= 2
     assert '127.0.0.1' not in html
-    html=client.get('/f/a/manage').get_data(as_text=True)
+    html=client.get('/f/a/manage/invites').get_data(as_text=True)
     assert 'https://family.scyllatech.cn/join/test-invite-a' in html
     assert '/f/a/invites/qr-a/qr.png' in html
 
@@ -71,7 +71,7 @@ def test_qr_and_link_follow_configured_public_origin(client,login,app):
     login()
     png=client.get('/f/a/invites/qr-a/qr.png',headers={'X-Forwarded-Host':'attacker.example'})
     assert png.data==qr_png('https://new-family.example/join/test-invite-a')
-    assert 'https://new-family.example/join/test-invite-a' in client.get('/f/a/manage').get_data(as_text=True)
+    assert 'https://new-family.example/join/test-invite-a' in client.get('/f/a/manage/invites').get_data(as_text=True)
 
 
 def test_qr_requires_current_family_admin_permission(client,login):
@@ -98,7 +98,7 @@ def test_expired_used_or_deleted_invites_have_no_download(client,login,state):
     login()
     response=client.get('/f/a/invites/qr-a/qr.png')
     assert response.status_code==(404 if state.get('del_flag') else 410)
-    assert '下载二维码（PNG）' not in client.get('/f/a/manage').get_data(as_text=True)
+    assert '下载二维码（PNG）' not in client.get('/f/a/manage/invites').get_data(as_text=True)
 
 
 @pytest.mark.parametrize('value',['','ftp://example.com','https://example.com/path','https://example.com?x=1','https://user:password@example.com','https://example.com/#hash','https://example.com:bad','https://exam ple.com'])

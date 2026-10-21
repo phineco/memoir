@@ -564,18 +564,23 @@ def family_more(family_id):
     return render_template("more.html", family=fam, is_admin=_is_admin(fam, _current_user()))
 
 
-@bp.route("/f/<family_id>/manage")
-def family_manage(family_id):
+@bp.route("/f/<family_id>/manage", defaults={"section": "members"})
+@bp.route("/f/<family_id>/manage/<section>")
+def family_manage(family_id, section):
     fam = _family_or_404(family_id)
     me = _current_user()
     if not _is_admin(fam, me):
         abort(403)
+    if section not in ("members", "accounts", "invites", "tools"):
+        abort(404)
     s = _s()
     member_rows = s.query(FamilyMember, User).join(
         User, FamilyMember.user_id == User.id
     ).filter(FamilyMember.family_id == family_id,
              FamilyMember.del_flag == 0, User.del_flag == 0)\
      .order_by(FamilyMember.role).all()
+    member_rows.sort(key=lambda row: ({"owner": 0, "admin": 1, "member": 2}.get(row[0].role, 3),
+                                       row[1].nickname or row[1].username or row[1].id))
     # 可重置密码的目标：创建者→所有人；管理员→普通成员
     is_owner_now = _is_owner(fam, me)
     is_admin_now = _is_admin(fam, me)
@@ -587,22 +592,32 @@ def family_manage(family_id):
     invites = s.query(Invite).filter_by(
         family_id=family_id, del_flag=0).order_by(
         Invite.create_date.desc()).limit(10).all()
-    notice = session.pop("new_invite", None)
+
+    def take_notice(key, target):
+        if section != target:
+            return None
+        value = session.get(key)
+        if isinstance(value, dict) and value.get("family_id", family_id) != family_id:
+            return None
+        return session.pop(key, None)
+
+    notice = take_notice("new_invite", "invites")
     new_invite = None
     if isinstance(notice, dict) and isinstance(notice.get("code"), str):
         pending = s.query(Invite).filter_by(family_id=family_id, code=notice["code"], del_flag=0).first()
         if pending and _invite_active(pending):
             new_invite = {"code": pending.code}
-    return render_template("manage.html", family=fam,
+    return render_template("manage.html", family=fam, section=section,
                            status_label=STATUS_LABEL, me=me,
                            is_admin=is_admin_now, is_owner=is_owner_now,
                            member_rows=member_rows,
                            resettable_ids=resettable_ids,
                            invites=invites,
                            new_invite=new_invite, invite_url=_invite_url, invite_active=_invite_active,
-                           created_account=session.pop("created_account", None),
-                           reset_notice=session.pop("reset_notice", None),
-                           member_form_error=session.pop("member_form_error", None))
+                           created_account=take_notice("created_account", "accounts"),
+                           reset_notice=take_notice("reset_notice", "members"),
+                           reset_error=take_notice("reset_error", "members"),
+                           member_form_error=take_notice("member_form_error", "accounts"))
 
 
 def _person_page_ctx(family_id, p, me):
@@ -1941,8 +1956,8 @@ def member_create_account(family_id):
     elif len(password) < 6:
         error = "密码至少 6 位"
     if error:
-        session["member_form_error"] = error
-        return redirect(url_for("main.family_manage", family_id=family_id))
+        session["member_form_error"] = {"family_id": family_id, "message": error}
+        return redirect(url_for("main.family_manage", family_id=family_id, section="accounts"))
     from models import new_id
     u = User(id=new_id(), nickname=nickname or real_name, name=real_name,
              phone=phone,
@@ -1956,10 +1971,10 @@ def member_create_account(family_id):
                        create_date=datetime.datetime.now()))
     s.commit()
     # 密码只存 hash，这里一次性展示给管理员转告家人
-    session["created_account"] = {"nickname": nickname or real_name,
+    session["created_account"] = {"family_id": family_id, "nickname": nickname or real_name,
                                   "login": phone + ("/" + username if username else ""),
                                   "password": password}
-    return redirect(url_for("main.family_manage", family_id=family_id))
+    return redirect(url_for("main.family_manage", family_id=family_id, section="accounts"))
 
 
 # ---------------- 管理员重置成员密码 ----------------
@@ -1984,14 +1999,14 @@ def member_reset_password(family_id, member_id):
         abort(403)  # 管理员不能重置创建者/其他管理员的密码
     new_password = request.form.get("new_password", "")
     if len(new_password) < 6:
-        session["member_form_error"] = "新密码至少 6 位"
+        session["reset_error"] = {"family_id": family_id, "message": "新密码至少 6 位"}
         return redirect(url_for("main.family_manage", family_id=family_id))
     u.password_hash = generate_password_hash(new_password)
     u.update_by = me.id
     u.update_date = datetime.datetime.now()
     s.commit()
     session["reset_notice"] = {
-        "nickname": u.nickname or u.phone or u.username,
+        "family_id": family_id, "nickname": u.nickname or u.phone or u.username,
         "login": u.phone or u.username or "",
         "password": new_password}
     return redirect(url_for("main.family_manage", family_id=family_id))
@@ -2443,8 +2458,8 @@ def invite_create(family_id):
                  create_by=me.id, create_date=now)
     s.add(inv)
     s.commit()
-    session["new_invite"] = {"code": code}
-    return redirect(url_for("main.family_manage", family_id=family_id))
+    session["new_invite"] = {"family_id": family_id, "code": code}
+    return redirect(url_for("main.family_manage", family_id=family_id, section="invites"))
 
 
 def _invite_url(code):

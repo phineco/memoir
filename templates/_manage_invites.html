@@ -1,0 +1,32 @@
+<section class="card management-panel" aria-labelledby="invite-heading">
+  <h2 id="invite-heading">邀请家人加入</h2><p class="hint">把链接或二维码发给家人，对方注册或登录后即可加入本家庭。</p>
+  {% if new_invite %}<p class="success" role="status">邀请已生成（复制发给家人）：<br><code>{{ invite_url(new_invite.code) }}</code></p>{% endif %}
+  <form method="post" action="{{ url_for('main.invite_create',family_id=family.id) }}" class="management-form">
+    <div class="form-row">
+      <label>有效天数<input type="number" name="days" value="7" min="1" max="365" required></label>
+      <label>最多使用次数<input type="number" name="max_uses" value="0" min="0" required aria-describedby="invite-uses-hint"></label>
+    </div>
+    <p class="hint" id="invite-uses-hint">有效天数为 1–365 天；使用次数填 0 表示不限。</p>
+    <div class="form-actions"><button type="submit" class="btn-primary">生成邀请链接</button></div>
+  </form>
+</section>
+<section aria-labelledby="invite-history-heading" class="management-history">
+  <div class="management-section-heading"><h2 id="invite-history-heading">最近的邀请</h2><p class="hint">显示最近 10 条；链接和二维码共用有效期及使用次数。</p></div>
+{% if invites %}
+<ul class="card-list">
+  {% for inv in invites %}
+  <li class="card invite-card">
+    {% if invite_active(inv) %}
+    <div><p class="hint">邀请链接</p><a class="invite-link" href="{{ invite_url(inv.code) }}" target="_blank" rel="noopener noreferrer">{{ invite_url(inv.code) }}</a>
+    <p class="hint">已用 {{ inv.used_count or 0 }}{% if inv.max_uses %}/{{ inv.max_uses }}{% endif %} 次 · {{ inv.expire_at.strftime('%Y-%m-%d') if inv.expire_at else '长期' }}有效</p>
+    <div class="form-actions"><a class="btn-secondary" href="{{ url_for('main.invite_qr',family_id=family.id,invite_id=inv.id,download=1) }}">下载二维码（PNG）</a></div></div>
+    <img class="invite-qr" src="{{ url_for('main.invite_qr',family_id=family.id,invite_id=inv.id) }}" alt="家庭邀请二维码，扫描后打开上方邀请链接" loading="lazy" width="256" height="256">
+    {% else %}
+    <div><p>此邀请已过期或使用次数已用尽</p><p class="hint">请生成新的邀请，原二维码不会延长有效期。</p></div>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% if not invites %}<div class="empty-state"><p>还没有邀请，生成后可在这里查看链接和下载二维码。</p></div>{% endif %}
+</section>

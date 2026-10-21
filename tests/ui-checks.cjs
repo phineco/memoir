@@ -16,7 +16,7 @@ const fs = require('node:fs');
     });
     const page = await context.newPage();
     page.on('pageerror',error=>errors.push(error.message));
-    const paths = ['/?switch=1', '/f/ui', '/f/empty', '/f/ui/stories', '/f/ui/story/story', '/f/ui/person/grandma', '/f/ui/write', '/f/ui/ask', '/f/ui/more', '/account?family_id=ui', '/guide?family_id=ui', '/account/drafts?family_id=ui', '/f/ui/manage', '/f/ui/tree/add', '/f/ui/tree/grandma/edit', '/display?family_id=ui', '/f/ui/plans', '/f/ui/shares', '/f/ui/sync'];
+    const paths = ['/?switch=1', '/f/ui', '/f/empty', '/f/ui/stories', '/f/ui/story/story', '/f/ui/person/grandma', '/f/ui/write', '/f/ui/ask', '/f/ui/more', '/account?family_id=ui', '/guide?family_id=ui', '/account/drafts?family_id=ui', '/f/ui/manage', '/f/ui/manage/accounts', '/f/ui/manage/invites', '/f/ui/manage/tools', '/f/ui/tree/add', '/f/ui/tree/grandma/edit', '/display?family_id=ui', '/f/ui/plans', '/f/ui/shares', '/f/ui/sync'];
     let checks = 0;
     for (const width of [320,375,390,430,768,1280,1440]) {
       await page.setViewportSize({width,height:900});
@@ -31,7 +31,7 @@ const fs = require('node:fs');
         assert.deepEqual(bad,[], `${width} ${path}: small targets`);
         const covered=await page.locator('.form-actions a, .form-actions button, .navlinks a').evaluateAll(ns=>ns.filter(n=>{
           const r=n.getBoundingClientRect();
-          if(!r.width || !r.height || r.top<0 || r.bottom>innerHeight)return false;
+          if(!n.checkVisibility() || !r.width || !r.height || r.top<0 || r.bottom>innerHeight)return false;
           const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
           return !hit || !n.contains(hit);
         }).map(n=>n.textContent.trim()));
@@ -189,10 +189,10 @@ const fs = require('node:fs');
     await page.getByRole('button',{name:'保存修改',exact:true}).click();
     await page.waitForURL('**/person/*');
     assert.match(await page.locator('.stats').innerText(),/公历 1940年2月28日/);
-    await page.goto(base+'/f/ui/manage');
+    await page.goto(base+'/f/ui/manage/invites');
     await page.locator('[name=days]').fill('7');
     await page.getByRole('button',{name:'生成邀请链接',exact:true}).click();
-    await page.waitForURL('**/f/ui/manage');
+    await page.waitForURL('**/f/ui/manage/invites');
     const invitation=page.locator('.invite-card').first();
     assert.match(await invitation.locator('.invite-link').innerText(),/^https:\/\/family\.scyllatech\.cn\/join\/[A-Za-z0-9_-]+$/);
     await invitation.locator('img').scrollIntoViewIfNeeded();
@@ -205,6 +205,40 @@ const fs = require('node:fs');
     const stream=await download.createReadStream();const chunks=[];
     for await(const chunk of stream)chunks.push(chunk);
     assert(Buffer.concat(chunks).subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])));
+    // URL sections survive refresh; expanded member controls stay usable at large sizes.
+    await page.goto(base+'/f/ui/manage');
+    await page.getByRole('link',{name:'开通账号',exact:true}).click();
+    await page.reload();
+    assert.equal(await page.locator('.management-tabs [aria-current=page]').innerText(),'开通账号');
+    assert.equal(await page.locator('input[name=days]').count(),0);
+    await page.goto(base+'/display?family_id=ui');
+    await page.locator('input[name=size][value="26"]').check();
+    await page.locator('input[name=mode][value=simple]').check();
+    for(const width of [320,390,1280]) {
+      await page.setViewportSize({width,height:900});
+      await page.goto(base+'/f/ui/manage');
+      await page.locator('.member-controls').evaluateAll(ns=>ns.forEach(n=>n.open=true));
+      await page.locator('.member-heading h3').first().evaluate(n=>n.prepend('这是用于核查长昵称布局的家庭管理员'));
+      assert(await page.locator('input[name=new_password]').first().isVisible());
+      const bad=await page.locator('.member-controls button, .management-tabs a').evaluateAll(ns=>ns.filter(n=>{
+        const r=n.getBoundingClientRect();return r.width<43 || r.height<43;
+      }).map(n=>n.textContent.trim()));
+      assert.deepEqual(bad,[]);
+      const dims=await page.evaluate(()=>[document.documentElement.scrollWidth,document.documentElement.clientWidth]);
+      assert(dims[0]<=dims[1]+1,`open member controls ${width}: ${dims}`);
+      const alignment=await page.locator('.member-controls form').evaluateAll(ns=>ns.map(n=>{
+        const button=n.querySelector('button'),field=n.querySelector('input');
+        return !field || (button.getBoundingClientRect().top>=field.getBoundingClientRect().bottom && Math.abs(button.getBoundingClientRect().left-field.getBoundingClientRect().left)<=1);
+      }));
+      assert(alignment.every(Boolean),'password actions should align below fields');
+      if(width===1280) {
+        const bottoms=await page.locator('.management-panel .form-row input, .management-panel .form-row select').evaluateAll(ns=>ns.map(n=>n.getBoundingClientRect().bottom));
+        assert(Math.max(...bottoms)-Math.min(...bottoms)<=1,'member inputs should share a baseline');
+      }
+      if(process.env.UI_SCREENSHOTS)await page.screenshot({path:`${process.env.UI_SCREENSHOTS}/members-expanded-large-${width}.png`,fullPage:true});
+      checks++;
+    }
+    await page.goto(base+'/display?family_id=ui');await page.locator('#display-reset').click();
     const unavailable=await browser.newContext();
     await unavailable.addInitScript(() => Object.defineProperty(window,'localStorage',{get(){throw Error('storage unavailable');}}));
     const settings=await unavailable.newPage();
@@ -215,7 +249,7 @@ const fs = require('node:fs');
     await unavailable.close();
     if(process.env.UI_SCREENSHOTS) {
       fs.mkdirSync(process.env.UI_SCREENSHOTS,{recursive:true});
-      for (const [name,path,width] of [['family-mobile','/f/ui',390],['story-mobile','/f/ui/story/story',390],['family-desktop','/f/ui',1280],['write-mobile','/f/ui/write',390],['account-mobile','/account?family_id=ui',390],['dates-mobile','/f/ui/tree/add',390],['dates-desktop','/f/ui/tree/add',1280],['invite-mobile','/f/ui/manage',390]]) {
+      for (const [name,path,width] of [['family-mobile','/f/ui',390],['story-mobile','/f/ui/story/story',390],['family-desktop','/f/ui',1280],['write-mobile','/f/ui/write',390],['account-mobile','/account?family_id=ui',390],['dates-mobile','/f/ui/tree/add',390],['dates-desktop','/f/ui/tree/add',1280],['invite-mobile','/f/ui/manage/invites',390],['members-mobile','/f/ui/manage',390],['members-desktop','/f/ui/manage',1280],['create-account-desktop','/f/ui/manage/accounts',1280],['tools-desktop','/f/ui/manage/tools',1280]]) {
         await page.setViewportSize({width,height:844}); await page.goto(base+path); await page.screenshot({path:`${process.env.UI_SCREENSHOTS}/${name}.png`,fullPage:true});
       }
     }

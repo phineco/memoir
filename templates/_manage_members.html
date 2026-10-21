@@ -1,0 +1,45 @@
+<div class="management-section-heading"><h2>家庭成员 <span class="muted">{{ member_rows|length }} 人</span></h2><p class="hint">成员是能登录本家庭的账号。家族树上的人物请到“资料工具”维护。</p></div>
+{% if reset_error %}<p class="error" role="alert">{{ reset_error.message }}</p>{% endif %}
+{% if reset_notice %}<p class="success" role="status">密码已重置（仅显示一次，请转告家人）：<strong>{{ reset_notice.nickname }}</strong>，登录名 <code>{{ reset_notice.login }}</code>，新密码 <code>{{ reset_notice.password }}</code></p>{% endif %}
+<ul class="card-list member-list">
+  {% for m, u in member_rows %}
+  <li class="card member-card">
+    <div class="member-heading">
+      <div><h3>{{ u.nickname or u.phone or u.username }}{% if u.id == me.id %}<span class="muted">（我）</span>{% endif %}</h3><p class="hint">登录名：{{ u.phone or u.username or '未设置' }}</p></div>
+      <span class="member-role">{{ {'owner':'创建者','admin':'管理员','member':'成员'}.get(m.role, m.role) }}</span>
+    </div>
+    {% if u.id in resettable_ids or (is_owner and m.role != 'owner') %}
+    <details class="member-controls">
+      <summary>账号操作<span class="sr-only">：{{ u.nickname or u.phone or u.username }}</span></summary>
+      {% if u.id in resettable_ids %}
+      <form method="post" action="{{ url_for('main.member_reset_password',family_id=family.id,member_id=m.id) }}" class="management-form" onsubmit="return confirm('确定重置此成员的密码吗？')">
+        <label for="password-{{ m.id }}">新密码</label>
+        <input id="password-{{ m.id }}" type="password" name="new_password" autocomplete="new-password" placeholder="至少 6 位" required minlength="6">
+        <div class="form-actions"><button type="submit" class="btn-secondary">重置密码</button></div>
+      </form>
+      {% endif %}
+      {% if is_owner and m.role != 'owner' %}
+      <form method="post" action="{{ url_for('main.member_remove',family_id=family.id,member_id=m.id) }}" class="member-remove" onsubmit="return confirm('确定移除该成员吗？移除后将无法访问本家庭。')">
+        <p class="hint">移除后，此账号将无法访问本家庭。</p>
+        <div class="form-actions"><button type="submit" class="btn-secondary btn-danger">移除成员</button></div>
+      </form>
+      {% endif %}
+    </details>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% if is_owner %}
+<section class="card management-panel" aria-labelledby="add-member-heading">
+  <h2 id="add-member-heading">添加已有账号</h2><p class="hint">对方已注册家音时，输入手机号或用户名直接加入。</p>
+  <form method="post" action="{{ url_for('main.member_add',family_id=family.id) }}" class="management-form">
+    <div class="form-row">
+      <label>手机号或用户名<input name="login_id" placeholder="已注册的手机号或用户名" required autocomplete="off"></label>
+      <label>加入后的角色<select name="role"><option value="member">成员</option><option value="admin">管理员</option></select></label>
+    </div>
+    <p class="hint">管理员可维护资料、邀请家人和重置普通成员密码；仅创建者可添加已有账号、设置管理员及移除成员。</p>
+    <div class="form-actions"><button type="submit" class="btn-primary">添加到本家庭</button></div>
+  </form>
+</section>
+{% else %}<p class="hint">管理员只能重置普通成员密码。添加已有账号、设置管理员及移除成员，请联系家庭创建者。</p>{% endif %}
+<p class="hint management-related">家人还没有账号？<a href="{{ url_for('main.family_manage',family_id=family.id,section='accounts') }}">代为开通账号</a>，或<a href="{{ url_for('main.family_manage',family_id=family.id,section='invites') }}">发送邀请</a>让家人自行注册。</p>
