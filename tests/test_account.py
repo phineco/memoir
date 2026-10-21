@@ -28,3 +28,19 @@ def test_my_drafts_only_lists_own_drafts_in_current_memberships(client, login):
     assert 'public-a' not in html
     member=s.query(FamilyMember).filter_by(id='ma').one();member.del_flag=1;s.commit()
     assert 'draft-a' not in client.get('/account/drafts').get_data(as_text=True)
+
+
+def test_help_preserves_family_navigation_and_auth_controls(client, login):
+    login()
+    home=client.get('/f/a').get_data(as_text=True)
+    assert '/guide?family_id=a' in home and '>帮助</a>' in home
+    help_html=client.get('/guide?family_id=a').get_data(as_text=True)
+    for href in ['/f/a/stories','/f/a/write','/f/a/more','/account?family_id=a']:
+        assert href in home and href in help_html
+    assert 'aria-label="家庭导航"' in help_html
+    assert '退出' in help_html and '使用帮助' in help_html
+    assert 'javascript:history.back()' not in help_html
+    assert client.get('/guide?family_id=b').status_code == 404
+    client.get('/logout')
+    guest=client.get('/guide').get_data(as_text=True)
+    assert '登录' in guest and '注册' in guest

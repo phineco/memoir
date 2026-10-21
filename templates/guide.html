@@ -1,15 +1,16 @@
 {% extends "base.html" %}
-{% block title %}使用指南 · 家音{% endblock %}
-{% block nav %}<nav class="navlinks"><a href="javascript:history.back()">← 返回上一页</a></nav>{% endblock %}
+{% block title %}使用帮助 · 家音{% endblock %}
+{% block nav %}{% if family %}{% include "_family_nav.html" %}{% endif %}{% endblock %}
 {% block content %}
-<h1>📖 使用指南</h1>
-<p class="hint">家音是家庭的口述回忆录：老人讲、AI 整理、全家一起看和纠正，最后印成书。</p>
+<h1>📖 使用帮助</h1>
+<p class="hint">家音是家庭的口述回忆录：老人讲、AI 整理、全家一起看和纠正，逐步积累成一家人的回忆。</p>
 
+<p class="hint">点击顶部的用户名称进入个人中心，可调整显示设置或继续编辑我的草稿。</p>
 <h2>🚀 三步上手</h2>
 <ol class="steps">
-  <li><strong>认领身份</strong> — 注册登录后，在家族树上找到自己，进人物页点「👤这是我」。之后树上会显示你的名字，称谓也会变成"对你：…"。</li>
+  <li><strong>认领身份</strong> — 注册登录后，在“家人”中找到自己，进人物页点「👤这是我」。之后树上会显示你的名字，称谓也会变成"对你：…"。</li>
   <li><strong>看故事、听故事</strong> — 「📖故事」列表点开一篇，点「🔊朗读全文」，手机放着听就行，适合不方便看字的老人。人物小传和每周周报也有朗读按钮。</li>
-  <li><strong>写下回忆</strong> — 点「✍️写文章」，支持富文本和🎤语音转文字，写完可「保存草稿」（只自己可见）或「发布」（全家可见）。</li>
+  <li><strong>写下回忆</strong> — 点「记录」，支持富文本和🎤语音转文字，写完可「保存草稿」（只自己可见）或「发布」（按选择的范围可见）。</li>
 </ol>
 
 <h2>👪 家人能做什么</h2>

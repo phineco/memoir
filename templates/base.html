@@ -15,7 +15,7 @@
   <div class="topright">
     {% block nav %}{% endblock %}
     <span class="auth">
-    <a href="{{ url_for('main.guide') }}">📖 指南</a>
+    <a href="{{ url_for('main.guide', family_id=family.id if family else None) }}">帮助</a>
     {% if me %}
       <a href="{{ url_for('main.account', family_id=family.id if family else None) }}" aria-label="个人中心：{{ me.nickname }}">👤 {{ me.nickname }}</a> <a href="{{ url_for('main.logout') }}">退出</a>
     {% else %}

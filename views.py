@@ -1813,7 +1813,9 @@ def display_preferences():
 
 @bp.route("/guide")
 def guide():
-    return render_template("guide.html", me=_current_user())
+    family_id = request.args.get("family_id")
+    fam = _family_or_404(family_id) if family_id else None
+    return render_template("guide.html", family=fam)
 
 
 # ---------------- sync-json 同步入库（管理员） ----------------
