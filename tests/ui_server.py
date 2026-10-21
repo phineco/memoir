@@ -13,7 +13,7 @@ os.environ.update(DATABASE_URL="sqlite:///" + str(Path(_workspace.name) / "ui.db
 from app import app
 import ai
 from models import (AiMessage, Comment, Draft, Family, FamilyMember, Interview,
-                    Person, Portrait, TimelineEvent, User, get_session)
+                    Person, Portrait, TimelineEvent, User, Invite, get_session)
 from werkzeug.security import generate_password_hash
 
 s = get_session()
@@ -36,6 +36,9 @@ for depth in range(14):
                   parent_id=f"comment-{depth-1}" if depth else "0",
                   content="这段回忆我也记得。" + ("长文字"*24 if depth == 5 else "")))
 s.add(AiMessage(id="message", family_id="ui", user_id="ui-user", role="assistant", content="可以从一张老照片开始，聊聊照片里的人和那一天的事。"))
+import datetime
+s.add(Invite(id="ui-invite",family_id="ui",code="ui-invite-only",max_uses=5,used_count=0,
+             expire_at=datetime.datetime.now()+datetime.timedelta(days=7)))
 s.commit()
 ai.ai_enabled = lambda: True  # 展示界面；底层 key 为空，无法调用真实模型。
 

@@ -10,6 +10,8 @@ from views import bp
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    from invite_links import public_base_url
+    app.config["PUBLIC_BASE_URL"] = public_base_url(app.config["PUBLIC_BASE_URL"])
     app.secret_key = Config.SECRET_KEY
     init_db(Config.DATABASE_URL)
     app.register_blueprint(bp)

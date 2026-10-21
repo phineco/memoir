@@ -189,6 +189,22 @@ const fs = require('node:fs');
     await page.getByRole('button',{name:'保存修改',exact:true}).click();
     await page.waitForURL('**/person/*');
     assert.match(await page.locator('.stats').innerText(),/公历 1940年2月28日/);
+    await page.goto(base+'/f/ui/manage');
+    await page.locator('[name=days]').fill('7');
+    await page.getByRole('button',{name:'生成邀请链接',exact:true}).click();
+    await page.waitForURL('**/f/ui/manage');
+    const invitation=page.locator('.invite-card').first();
+    assert.match(await invitation.locator('.invite-link').innerText(),/^https:\/\/family\.scyllatech\.cn\/join\/[A-Za-z0-9_-]+$/);
+    await invitation.locator('img').scrollIntoViewIfNeeded();
+    await page.waitForFunction(()=>document.querySelector('.invite-qr')?.naturalWidth>=256);
+    const [download]=await Promise.all([
+      page.waitForEvent('download'),
+      invitation.getByRole('link',{name:'下载二维码（PNG）',exact:true}).click()
+    ]);
+    assert.equal(download.suggestedFilename(),'family-invite.png');
+    const stream=await download.createReadStream();const chunks=[];
+    for await(const chunk of stream)chunks.push(chunk);
+    assert(Buffer.concat(chunks).subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])));
     const unavailable=await browser.newContext();
     await unavailable.addInitScript(() => Object.defineProperty(window,'localStorage',{get(){throw Error('storage unavailable');}}));
     const settings=await unavailable.newPage();
@@ -199,12 +215,12 @@ const fs = require('node:fs');
     await unavailable.close();
     if(process.env.UI_SCREENSHOTS) {
       fs.mkdirSync(process.env.UI_SCREENSHOTS,{recursive:true});
-      for (const [name,path,width] of [['family-mobile','/f/ui',390],['story-mobile','/f/ui/story/story',390],['family-desktop','/f/ui',1280],['write-mobile','/f/ui/write',390],['account-mobile','/account?family_id=ui',390],['dates-mobile','/f/ui/tree/add',390],['dates-desktop','/f/ui/tree/add',1280]]) {
+      for (const [name,path,width] of [['family-mobile','/f/ui',390],['story-mobile','/f/ui/story/story',390],['family-desktop','/f/ui',1280],['write-mobile','/f/ui/write',390],['account-mobile','/account?family_id=ui',390],['dates-mobile','/f/ui/tree/add',390],['dates-desktop','/f/ui/tree/add',1280],['invite-mobile','/f/ui/manage',390]]) {
         await page.setViewportSize({width,height:844}); await page.goto(base+path); await page.screenshot({path:`${process.env.UI_SCREENSHOTS}/${name}.png`,fullPage:true});
       }
     }
     assert.deepEqual(external,[], 'unexpected external runtime resources');
     assert.deepEqual(errors,[], 'browser JavaScript errors');
-    console.log(`UI layout: ${checks} pages/viewports passed; comments, profile/help navigation, dual-calendar create/edit, display preferences and story workflows passed.`);
+    console.log(`UI layout: ${checks} pages/viewports passed; comments, profile/help navigation, dual-calendar create/edit, invite QR download and story workflows passed.`);
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

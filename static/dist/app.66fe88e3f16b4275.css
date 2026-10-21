@@ -178,3 +178,8 @@ body {font-size:var(--body-size);}
 .date-parts label {min-width:0;font-size:1rem;}
 .date-parts input,.date-parts select {width:100%;max-width:none;padding-inline:.4rem;}
 .calendar-date .check {margin-top:.75rem;}
+
+.invite-card {display:flex;flex-wrap:wrap;gap:1.5rem;align-items:center;}
+.invite-card>div {flex:1 1 16rem;min-width:0;}
+.invite-link {overflow-wrap:anywhere;}
+.invite-qr {width:256px;height:256px;max-width:100%;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px;image-rendering:pixelated;}

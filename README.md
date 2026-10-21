@@ -107,6 +107,10 @@ python -m pytest -q
 
 **已有数据库更新此版本前须执行 `002_person_dual_calendar_dates.sql` 增量迁移**，具体顺序见 [部署文档](DEPLOY.md) 的双历日期升级说明；不能仅替换代码后直接启动。
 
+## 邀请链接与二维码
+
+家庭管理中的有效邀请同时提供公开链接和可下载的 PNG 二维码。公开域名由 `PUBLIC_BASE_URL` 配置，默认 `https://family.scyllatech.cn`，避免反向代理生成内网地址。二维码在本站生成，预览和下载不消耗邀请次数；旧邀请码仍可使用原来的有效期和次数。
+
 ## 资料导航
 
 - [架构与能力边界](memoir-website-architecture.md)

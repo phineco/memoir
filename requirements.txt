@@ -7,3 +7,4 @@ bleach
 tinycss2
 requests
 python-dotenv
+segno==1.6.6

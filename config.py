@@ -20,6 +20,7 @@ load_dotenv(os.path.join(_BASE_DIR, ".env"))
 class Config:
     DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///memoir.db")
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+    PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://family.scyllatech.cn")
     APP_TIMEZONE = os.environ.get("APP_TIMEZONE", "Asia/Shanghai")
 
     # ---- 环境开关 ----

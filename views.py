@@ -3,7 +3,7 @@ import datetime
 import json
 import re
 
-from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request, session, stream_with_context, url_for
+from flask import Blueprint, Response, abort, current_app, send_file, jsonify, redirect, render_template, request, session, stream_with_context, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from access import family_role, story_visible
@@ -587,13 +587,19 @@ def family_manage(family_id):
     invites = s.query(Invite).filter_by(
         family_id=family_id, del_flag=0).order_by(
         Invite.create_date.desc()).limit(10).all()
+    notice = session.pop("new_invite", None)
+    new_invite = None
+    if isinstance(notice, dict) and isinstance(notice.get("code"), str):
+        pending = s.query(Invite).filter_by(family_id=family_id, code=notice["code"], del_flag=0).first()
+        if pending and _invite_active(pending):
+            new_invite = {"code": pending.code}
     return render_template("manage.html", family=fam,
                            status_label=STATUS_LABEL, me=me,
                            is_admin=is_admin_now, is_owner=is_owner_now,
                            member_rows=member_rows,
                            resettable_ids=resettable_ids,
                            invites=invites,
-                           new_invite=session.pop("new_invite", None),
+                           new_invite=new_invite, invite_url=_invite_url, invite_active=_invite_active,
                            created_account=session.pop("created_account", None),
                            reset_notice=session.pop("reset_notice", None),
                            member_form_error=session.pop("member_form_error", None))
@@ -2437,23 +2443,43 @@ def invite_create(family_id):
                  create_by=me.id, create_date=now)
     s.add(inv)
     s.commit()
-    session["new_invite"] = {"code": code,
-                             "url": url_for("main.join_by_invite", code=code,
-                                            _external=True)}
+    session["new_invite"] = {"code": code}
     return redirect(url_for("main.family_manage", family_id=family_id))
 
 
+def _invite_url(code):
+    path = url_for("main.join_by_invite", code=code, _external=False)
+    return current_app.config["PUBLIC_BASE_URL"] + path
+
+
+def _invite_active(inv):
+    return bool(inv and not inv.del_flag
+                and (not inv.expire_at or inv.expire_at > datetime.datetime.now())
+                and (not inv.max_uses or (inv.used_count or 0) < inv.max_uses))
+
+
 def _valid_invite(code):
-    s = _s()
-    inv = s.query(Invite).filter_by(code=code, del_flag=0).first()
+    inv = _s().query(Invite).filter_by(code=code, del_flag=0).first()
+    return inv if _invite_active(inv) else None
+
+
+@bp.route("/f/<family_id>/invites/<invite_id>/qr.png")
+def invite_qr(family_id, invite_id):
+    fam = _family_or_404(family_id)
+    if not _is_admin(fam, _current_user()):
+        abort(403)
+    inv = _s().query(Invite).filter_by(id=invite_id, family_id=family_id, del_flag=0).first()
     if not inv:
-        return None
-    now = datetime.datetime.now()
-    if inv.expire_at and inv.expire_at < now:
-        return None
-    if inv.max_uses and inv.used_count >= inv.max_uses:
-        return None
-    return inv
+        abort(404)
+    if not _invite_active(inv):
+        abort(410, "邀请已过期或使用次数已用尽")
+    from io import BytesIO
+    from invite_links import qr_png
+    response = send_file(BytesIO(qr_png(_invite_url(inv.code))), mimetype="image/png",
+                         as_attachment=request.args.get("download") == "1",
+                         download_name="family-invite.png", max_age=0)
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @bp.route("/join/<code>")
