@@ -71,6 +71,20 @@ class Person(AuditMixin, Base):
     death_year = Column(Integer)
     birth_calendar = Column(String(8), default="solar")  # solar=公历 lunar=农历
     death_calendar = Column(String(8), default="solar")
+    birth_solar_year = Column(Integer)
+    birth_solar_month = Column(Integer)
+    birth_solar_day = Column(Integer)
+    birth_lunar_year = Column(Integer)
+    birth_lunar_month = Column(Integer)
+    birth_lunar_day = Column(Integer)
+    birth_lunar_leap = Column(Boolean, default=False)
+    death_solar_year = Column(Integer)
+    death_solar_month = Column(Integer)
+    death_solar_day = Column(Integer)
+    death_lunar_year = Column(Integer)
+    death_lunar_month = Column(Integer)
+    death_lunar_day = Column(Integer)
+    death_lunar_leap = Column(Boolean, default=False)
     alive = Column(Boolean)
     status = Column(String(16))  # pending/doing/drafted/verified
     notes = Column(JSON)
@@ -93,6 +107,16 @@ class Person(AuditMixin, Base):
     @property
     def death_label(self):
         return self._cal_label(self.death_year, self.death_calendar)
+
+    @property
+    def birth_date_label(self):
+        from person_dates import date_label
+        return date_label(self, 'birth')
+
+    @property
+    def death_date_label(self):
+        from person_dates import date_label
+        return date_label(self, 'death')
 
 
 class SourceFile(AuditMixin, Base):

@@ -169,3 +169,12 @@ body {font-size:var(--body-size);}
 .article-body li[data-list="ordered"] {list-style-type:decimal;}
 .article-body .ql-ui {display:none;}
 .engagement {color:var(--muted);}
+
+/* Independent calendars keep unknown date parts visible instead of inventing them. */
+.calendar-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));gap:1rem;}
+.calendar-date {min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1rem;}
+.calendar-date h3 {margin:0 0 .75rem;font-weight:700;}
+.date-parts {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,5rem),1fr));gap:.4rem;}
+.date-parts label {min-width:0;font-size:1rem;}
+.date-parts input,.date-parts select {width:100%;max-width:none;padding-inline:.4rem;}
+.calendar-date .check {margin-top:.75rem;}

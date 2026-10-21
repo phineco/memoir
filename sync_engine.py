@@ -71,12 +71,26 @@ def _apply_tree_upsert(s, family_id, payload, user_id, now):
             continue
         p = _resolve_person(s, family_id, skill_id=sp.get("id"), name=name)
         if p:
-            if sp.get("birthYear"):
-                p.birth_year = sp["birthYear"]
-            if sp.get("deathYear"):
-                p.death_year = sp["deathYear"]
+            from person_dates import sync_legacy_year
+            try:
+                if sp.get("birthYear") is not None:
+                    sync_legacy_year(p, "birth", sp["birthYear"])
+                if sp.get("deathYear") is not None:
+                    sync_legacy_year(p, "death", sp["deathYear"])
+            except ValueError as exc:
+                raise SyncError(str(exc)) from None
             if sp.get("alive") is not None:
-                p.alive = bool(sp["alive"])
+                if not isinstance(sp["alive"], bool):
+                    raise SyncError("alive 必须为 true 或 false")
+                if sp["alive"] and p.death_date_label:
+                    raise SyncError("健在与已有去世日期冲突，请在人物编辑页核实修改")
+                p.alive = sp["alive"]
+            if any(sp.get(field) is not None for field in ("birthYear", "deathYear", "alive")):
+                from person_dates import parse_form
+                try:
+                    parse_form({"alive": "1" if p.alive else ""}, p)
+                except ValueError as exc:
+                    raise SyncError(str(exc)) from None
             if sp.get("status"):
                 p.status = sp["status"]
             if sp.get("relation") and not p.relation:

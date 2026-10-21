@@ -12,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from backup import create_backup, restore_backup, verify_backup
 from migrate import _split_statements, run_migrations
 from models import Draft, Family, Interview, Photo, User
+from person_dates import DATE_FIELDS
 
 
 pytestmark = pytest.mark.skipif(
@@ -44,10 +45,17 @@ def test_mysql_schema_migration_and_native_backup_restore(tmp_path):
             for statement in _split_statements(schema):
                 conn.execute(text(statement))
         assert len(inspect(source).get_table_names()) == 28
+        with source.begin() as conn:
+            for field in DATE_FIELDS:
+                conn.execute(text(f"ALTER TABLE persons DROP COLUMN {field}"))
+            conn.execute(text("INSERT INTO persons (id,name,birth_year,death_year,birth_calendar,death_calendar) VALUES ('old-person','Ancestor',1940,2001,'lunar','solar')"))
         run_migrations(source_url, dry_run=True)
         assert not inspect(source).has_table("schema_migrations")
         run_migrations(source_url)
         run_migrations(source_url)
+        with source.connect() as conn:
+            row=conn.execute(text("SELECT birth_lunar_year,birth_solar_year,death_solar_year FROM persons WHERE id='old-person'")).one()
+            assert tuple(row)==(1940,None,2001)
         with sessionmaker(bind=source)() as session:
             session.add(User(id="u", nickname="history"))
             session.add(Family(id="f", name="Family history", owner_user_id="u"))
@@ -67,7 +75,7 @@ def test_mysql_schema_migration_and_native_backup_restore(tmp_path):
         engines.append(restored)
         with restored.connect() as conn:
             assert conn.execute(text("SELECT content FROM drafts ORDER BY version")).scalars().all() == ["first", "corrected"]
-            assert conn.execute(text("SELECT COUNT(*) FROM schema_migrations")).scalar_one() == 1
+            assert conn.execute(text("SELECT COUNT(*) FROM schema_migrations")).scalar_one() == 2
         assert (tmp_path / "restored-media/f/p.png").read_bytes() == b"old-photo"
         assert len(inspect(restored).get_table_names()) == 29
     finally:

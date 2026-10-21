@@ -1,0 +1,20 @@
+{% for event,title in [('birth','出生'),('death','去世')] %}
+<fieldset class="related-box life-date-group">
+  <legend>{{ title }}日期（选填）</legend>
+  <div class="calendar-grid">
+  {% for kind,calendar_title in [('solar','公历'),('lunar','农历')] %}
+  {% set prefix=event+'_'+kind %}
+  <section class="calendar-date" aria-label="{{ title }}{{ calendar_title }}日期">
+    <h3>{{ calendar_title }}</h3>
+    <div class="date-parts">
+      <label>年<input aria-label="{{ title }}{{ calendar_title }}年" type="number" inputmode="numeric" name="{{ prefix }}_year" min="1" max="9999" step="1" placeholder="年份未知可留空" value="{{ form.get(prefix+'_year','') if form else '' }}"></label>
+      <label>月<select name="{{ prefix }}_month" aria-label="{{ title }}{{ calendar_title }}月"><option value="">未知</option>{% for month in range(1,13) %}<option value="{{ month }}" {% if form and form.get(prefix+'_month')|string == month|string %}selected{% endif %}>{{ lunar_months[month-1] if kind=='lunar' else month }}</option>{% endfor %}</select></label>
+      <label>日<select name="{{ prefix }}_day" aria-label="{{ title }}{{ calendar_title }}日"><option value="">未知</option>{% for day in range(1,31 if kind=='lunar' else 32) %}<option value="{{ day }}" {% if form and form.get(prefix+'_day')|string == day|string %}selected{% endif %}>{{ lunar_days[day-1] if kind=='lunar' else day }}</option>{% endfor %}</select></label>
+    </div>
+    {% if kind=='lunar' %}<label class="check"><input type="checkbox" name="{{ event }}_lunar_leap" value="1" {% if form and form.get(event+'_lunar_leap') %}checked{% endif %}> {{ title }}农历为闰月</label>{% endif %}
+  </section>
+  {% endfor %}
+  </div>
+</fieldset>
+{% endfor %}
+<p class="hint">公历、农历可填一套或两套，也可只填已知的年、月。填日时需同时填月；年份不知道可留空。两套日期分别记录，不自动换算或核对是否对应，闰月由家人确认后勾选。</p>

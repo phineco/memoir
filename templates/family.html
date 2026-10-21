@@ -6,7 +6,7 @@
 <div class="stats"><span>{{ n_person }} 位家人</span><span>{{ n_story }} 篇故事</span><span>{{ n_pending }} 条待核实</span></div>
 {% if persons %}
 <div class="cards person-cards">
-{% for p in persons %}<a class="card person-card" href="{{ url_for('main.person_page', family_id=family.id, person_id=p.id) }}"><span class="avatar" aria-hidden="true">{{ p.name[:1] }}</span><div><div class="card-title">{{ p.name }}</div><div class="card-sub">{{ p.relation or '家人' }}{% if p.birth_year %} · {{ p.birth_label }} 年生{% endif %}</div></div><span aria-hidden="true">→</span></a>{% endfor %}
+{% for p in persons %}<a class="card person-card" href="{{ url_for('main.person_page', family_id=family.id, person_id=p.id) }}"><span class="avatar" aria-hidden="true">{{ p.name[:1] }}</span><div><div class="card-title">{{ p.name }}</div><div class="card-sub">{{ p.relation or '家人' }}{% if p.birth_date_label %} · 出生：{{ p.birth_date_label }}{% endif %}</div></div><span aria-hidden="true">→</span></a>{% endfor %}
 </div>
 <details id="family-tree" class="disclosure advanced-section"><summary>查看家族关系树</summary><p class="hint">点击节点查看人物。也可使用上方的家人列表。</p><div id="tree" class="tree-box" role="img" aria-label="家族关系树；上方家人列表提供可访问的文字入口"></div></details>
 {% else %}

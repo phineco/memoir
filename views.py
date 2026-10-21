@@ -1266,12 +1266,12 @@ def tree_add(family_id):
         notes = [n.strip() for n in request.form.get("notes", "").split("，")
                  if n.strip()] or None
         try:
-            birth_year = int(request.form.get("birth_year") or 0) or None
-            death_year = int(request.form.get("death_year") or 0) or None
+            from person_dates import parse_form
+            dates = parse_form(request.form)
             sort = int(request.form.get("sort") or 0)
-        except ValueError:
+        except ValueError as exc:
             return render_template("tree_form.html", family=fam, persons=persons,
-                                   me=me, error="年份/排序请填数字",
+                                   me=me, error="日期或排序有误：" + str(exc),
                                    form=request.form, mode="add")
         p = Person(
             id=_next_person_id(family_id), family_id=family_id,
@@ -1279,9 +1279,7 @@ def tree_add(family_id):
             parent_ids=(parent.parent_ids + parent.id + ",") if parent else "0,",
             name=name, aliases=aliases,
             relation=request.form.get("relation", "").strip() or None,
-            birth_year=birth_year, death_year=death_year,
-            birth_calendar=_cal(request.form.get("birth_calendar")),
-            death_calendar=_cal(request.form.get("death_calendar")),
+            **dates,
             alive=bool(request.form.get("alive")),
             status=request.form.get("status") or "pending",
             gender=request.form.get("gender") or None,
@@ -1318,6 +1316,14 @@ def tree_edit(family_id, person_id):
             return render_template("tree_form.html", family=fam, persons=persons,
                                    me=me, error="姓名不能为空", form=request.form,
                                    mode="edit", person=p, users=users)
+        try:
+            from person_dates import parse_form
+            dates = parse_form(request.form, p)
+            sort = int(request.form.get("sort") or 0)
+        except ValueError as exc:
+            return render_template("tree_form.html", family=fam, persons=persons,
+                                   me=me, error="日期或排序有误：" + str(exc),
+                                   form=request.form, mode="edit", person=p, users=users)
         new_parent_id = request.form.get("parent_id") or "0"
         if new_parent_id != p.parent_id:
             if new_parent_id == p.id:
@@ -1357,18 +1363,9 @@ def tree_edit(family_id, person_id):
                      if a.strip()] or None
         p.notes = [n.strip() for n in request.form.get("notes", "").split("，")
                    if n.strip()] or None
-        try:
-            p.birth_year = int(request.form.get("birth_year") or 0) or None
-            p.death_year = int(request.form.get("death_year") or 0) or None
-            p.birth_calendar = _cal(request.form.get("birth_calendar"))
-            p.death_calendar = _cal(request.form.get("death_calendar"))
-            p.sort = int(request.form.get("sort") or 0)
-        except ValueError:
-            s.rollback()
-            return render_template("tree_form.html", family=fam, persons=persons,
-                                   me=me, error="年份/排序请填数字",
-                                   form=request.form, mode="edit", person=p,
-                                   users=users)
+        for field,value in dates.items():
+            setattr(p,field,value)
+        p.sort = sort
         p.alive = bool(request.form.get("alive"))
         p.status = request.form.get("status") or p.status
         p.gender = request.form.get("gender") or None
@@ -1408,6 +1405,8 @@ def tree_edit(family_id, person_id):
         "parent_id": p.parent_id, "alive": p.alive, "link_user_id": p.user_id or "",
         "gender": p.gender or "", "spouse_id": p.spouse_id or "",
     }
+    from person_dates import form_values
+    form_data.update(form_values(p))
     return render_template("tree_form.html", family=fam, persons=persons, me=me,
                            form=form_data, mode="edit", person=p, users=users)
 

@@ -16,7 +16,7 @@ const fs = require('node:fs');
     });
     const page = await context.newPage();
     page.on('pageerror',error=>errors.push(error.message));
-    const paths = ['/?switch=1', '/f/ui', '/f/empty', '/f/ui/stories', '/f/ui/story/story', '/f/ui/person/grandma', '/f/ui/write', '/f/ui/ask', '/f/ui/more', '/account?family_id=ui', '/guide?family_id=ui', '/account/drafts?family_id=ui', '/f/ui/manage', '/display?family_id=ui', '/f/ui/plans', '/f/ui/shares', '/f/ui/sync'];
+    const paths = ['/?switch=1', '/f/ui', '/f/empty', '/f/ui/stories', '/f/ui/story/story', '/f/ui/person/grandma', '/f/ui/write', '/f/ui/ask', '/f/ui/more', '/account?family_id=ui', '/guide?family_id=ui', '/account/drafts?family_id=ui', '/f/ui/manage', '/f/ui/tree/add', '/f/ui/tree/grandma/edit', '/display?family_id=ui', '/f/ui/plans', '/f/ui/shares', '/f/ui/sync'];
     let checks = 0;
     for (const width of [320,375,390,430,768,1280,1440]) {
       await page.setViewportSize({width,height:900});
@@ -144,7 +144,7 @@ const fs = require('node:fs');
     await page.evaluate(()=>localStorage.setItem('memoir.last-family.v1.ui-user','not-authorized'));
     await page.goto(base+'/');
     assert.equal(await page.locator('a[data-family-choice]').count(),2);
-    for(const path of ['/f/ui/story/story','/f/ui/write','/f/ui/manage']) {
+    for(const path of ['/f/ui/story/story','/f/ui/write','/f/ui/manage','/f/ui/tree/add']) {
       await page.setViewportSize({width:390,height:844});
       await page.goto(base+path);
       await page.evaluate(()=>{
@@ -160,6 +160,35 @@ const fs = require('node:fs');
     assert(await page.locator('.skip-link').evaluate(n=>n===document.activeElement));
     await page.keyboard.press('Enter');
     assert.equal(await page.evaluate(()=>document.activeElement.id),'main-content');
+    await page.goto(base+'/f/ui');
+    await page.locator('.auth a[aria-label^="个人中心"]').click();
+    await page.waitForURL('**/account?family_id=ui');
+    assert(await page.locator('.menu-cards a[href^="/display"]').isVisible());
+    await page.getByRole('link',{name:'帮助',exact:true}).click();
+    await page.waitForURL('**/guide?family_id=ui');
+    assert.equal(await page.locator('.navlinks a').count(),4);
+    assert(await page.locator('.auth a[aria-label^="个人中心"]').isVisible());
+    await page.goto(base+'/f/ui/tree/add');
+    await page.locator('input[name=name]').fill('双历日期回归人物');
+    for(const [name,value] of Object.entries({birth_solar_year:'1940',birth_solar_month:'2',birth_solar_day:'29',birth_lunar_year:'1940',birth_lunar_month:'1',birth_lunar_day:'22',death_solar_year:'2001',death_solar_month:'3',death_solar_day:'1',death_lunar_year:'2001',death_lunar_month:'2',death_lunar_day:'7'})) {
+      const field=page.locator(`[name=${name}]`);
+      if(name.endsWith('_year'))await field.fill(value);else await field.selectOption(value);
+    }
+    await page.locator('input[name=birth_lunar_leap]').check();
+    await page.getByRole('button',{name:'添加',exact:true}).click();
+    await page.waitForURL('**/f/ui');
+    await page.getByRole('link').filter({hasText:'双历日期回归人物'}).click();
+    await page.waitForURL('**/person/*');
+    assert.match(await page.locator('.stats').innerText(),/公历 1940年2月29日 \/ 农历 1940年闰正月廿二/);
+    assert.match(await page.locator('.stats').innerText(),/去世：公历 2001年3月1日 \/ 农历 2001年二月初七/);
+    await page.getByRole('link',{name:'✏️ 编辑人物',exact:true}).click();
+    assert.equal(await page.locator('[name=birth_solar_day]').inputValue(),'29');
+    assert.equal(await page.locator('[name=death_lunar_day]').inputValue(),'7');
+    assert(await page.locator('[name=birth_lunar_leap]').isChecked());
+    await page.locator('[name=birth_solar_day]').selectOption('28');
+    await page.getByRole('button',{name:'保存修改',exact:true}).click();
+    await page.waitForURL('**/person/*');
+    assert.match(await page.locator('.stats').innerText(),/公历 1940年2月28日/);
     const unavailable=await browser.newContext();
     await unavailable.addInitScript(() => Object.defineProperty(window,'localStorage',{get(){throw Error('storage unavailable');}}));
     const settings=await unavailable.newPage();
@@ -170,12 +199,12 @@ const fs = require('node:fs');
     await unavailable.close();
     if(process.env.UI_SCREENSHOTS) {
       fs.mkdirSync(process.env.UI_SCREENSHOTS,{recursive:true});
-      for (const [name,path,width] of [['family-mobile','/f/ui',390],['story-mobile','/f/ui/story/story',390],['family-desktop','/f/ui',1280],['write-mobile','/f/ui/write',390]]) {
+      for (const [name,path,width] of [['family-mobile','/f/ui',390],['story-mobile','/f/ui/story/story',390],['family-desktop','/f/ui',1280],['write-mobile','/f/ui/write',390],['account-mobile','/account?family_id=ui',390],['dates-mobile','/f/ui/tree/add',390],['dates-desktop','/f/ui/tree/add',1280]]) {
         await page.setViewportSize({width,height:844}); await page.goto(base+path); await page.screenshot({path:`${process.env.UI_SCREENSHOTS}/${name}.png`,fullPage:true});
       }
     }
     assert.deepEqual(external,[], 'unexpected external runtime resources');
     assert.deepEqual(errors,[], 'browser JavaScript errors');
-    console.log(`UI layout: ${checks} pages/viewports passed; 14-level comments, self-hosted assets, preferences, draft/edit/publish and editor fallback passed.`);
+    console.log(`UI layout: ${checks} pages/viewports passed; comments, profile/help navigation, dual-calendar create/edit, display preferences and story workflows passed.`);
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

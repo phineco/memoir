@@ -9,6 +9,8 @@ def old_database(tmp_path):
     path = tmp_path / "old.db"
     with sqlite3.connect(path) as db:
         db.execute("CREATE TABLE users (id TEXT PRIMARY KEY, nickname TEXT)")
+        db.execute("CREATE TABLE persons (id TEXT PRIMARY KEY, name TEXT, birth_year INTEGER, death_year INTEGER, birth_calendar TEXT, death_calendar TEXT)")
+        db.execute("INSERT INTO persons VALUES ('old-person', 'Ancestor', 1940, 2001, 'lunar', 'solar')")
         db.execute("INSERT INTO users VALUES ('old', 'preserved')")
     return path
 
@@ -24,7 +26,7 @@ def test_migration_dry_run_is_read_only_and_repeat_is_safe(tmp_path):
     with sqlite3.connect(path) as db:
         assert "name" in {r[1] for r in db.execute("PRAGMA table_info(users)")}
         assert db.execute("SELECT nickname FROM users WHERE id='old'").fetchone()[0] == "preserved"
-        assert db.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 2
 
 
 def test_missing_database_does_not_get_created_by_dry_run(tmp_path):
