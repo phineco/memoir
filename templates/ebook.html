@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}生成电子书 · {{ family.name }}{% endblock %}
+{% block nav %}{% include "_family_nav.html" %}{% endblock %}
+{% block content %}
+<div class="page-heading"><p class="eyebrow">{{ family.name }} · 功能预告</p><h1>生成电子书</h1><p class="hint">选取文章，让 AI 整理成一本可珍藏的家庭电子书。</p></div>
+<section class="card" aria-labelledby="ebook-status-heading">
+  <h2 id="ebook-status-heading" class="card-title">付费功能 · 尚未开放</h2>
+  <p>电子书生成计划作为付费服务提供，具体价格与计费方式将在正式开放时公布。</p>
+  <p class="hint">当前仅展示功能规划，文章选择、AI 生成和支付将在后续开放。</p>
+</section>
+<h2>计划支持的功能</h2>
+<div class="cards">
+  <section class="card"><h3 class="card-title">1. 选取文章</h3><p class="card-sub">选择希望收录的家庭文章，确定电子书的内容范围。</p></section>
+  <section class="card"><h3 class="card-title">2. AI 整理成书</h3><p class="card-sub">由 AI 辅助梳理文章顺序、编排章节，形成电子书初稿。</p></section>
+  <section class="card"><h3 class="card-title">3. 预览与保存</h3><p class="card-sub">检查并确认书稿后，保存电子书，便于阅读与留存。</p></section>
+</div>
+<div class="form-actions"><a class="btn-secondary" href="{{ url_for('main.family_more',family_id=family.id) }}">返回更多</a></div>
+{% endblock %}

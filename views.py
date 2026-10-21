@@ -573,6 +573,13 @@ def family_more(family_id):
     return render_template("more.html", family=fam, is_admin=_is_admin(fam, _current_user()))
 
 
+@bp.route("/f/<family_id>/ebook")
+def ebook_preview(family_id):
+    """Feature preview only; no story selection, AI invocation, or payment."""
+    fam = _family_or_404(family_id)
+    return render_template("ebook.html", family=fam)
+
+
 @bp.route("/f/<family_id>/manage", defaults={"section": "members"})
 @bp.route("/f/<family_id>/manage/<section>")
 def family_manage(family_id, section):
