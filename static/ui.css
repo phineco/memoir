@@ -270,3 +270,9 @@ html {scroll-padding-top:calc(var(--site-header-height,5rem) + 1rem);}
  .navigation-ready .auth a {max-width:100%;white-space:normal;}
 }
 @media print {.topbar {display:none;}}
+
+.voice-fallback {padding:1rem;margin-block:.75rem;border:1px solid var(--line);border-radius:12px;background:var(--surface-soft);}
+.voice-fallback p {margin:0 0 .75rem;}
+#voice-status {min-height:1.5em;margin-block:.5rem;}
+#voice-status:empty {display:none;}
+#voice-btn[aria-pressed=true] {border:2px solid var(--accent);background:var(--surface-soft);color:var(--accent);}

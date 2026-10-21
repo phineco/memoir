@@ -11,9 +11,10 @@
 
   <div class="editor-toolbar-row">
     <span class="editor-label">正文</span>
-    <button type="button" id="voice-btn" class="voice-btn">🎤 语音输入</button>
-    <span id="voice-status" class="voice-status"></span>
+    <button type="button" id="voice-btn" class="voice-btn" aria-pressed="false" aria-describedby="voice-status">语音输入</button>
   </div>
+  <p id="voice-status" class="voice-status" role="status" aria-live="polite" aria-atomic="true"></p>
+  {% include "_voice_fallback.html" %}
   <div id="editor-toolbar" role="toolbar" aria-label="正文格式">
 <button type="button" class="ql-bold" aria-label="加粗" title="加粗"></button><button type="button" class="ql-italic" aria-label="斜体" title="斜体"></button><button type="button" class="ql-list" value="bullet" aria-label="项目列表" title="项目列表"></button><button type="button" class="ql-blockquote" aria-label="引用" title="引用"></button><button type="button" class="ql-clean" aria-label="清除格式" title="清除格式"></button></div>
 <div id="editor"></div><label id="editor-fallback-label" hidden>正文<textarea id="editor-fallback" class="full" rows="10"></textarea></label>
@@ -92,7 +93,9 @@
 </form>
 
 <script src="{{ asset_url('vendor/quill-2.0.3.js') }}"></script>
+<script src="{{ asset_url('voice-input.js') }}"></script>
 <script>
+let writerVoice = null;
 const initialContent = {{ ((form.get('content','') if form else '') if request.method == 'POST' else (existing_content or '')) | tojson }};
 const quill = typeof Quill === 'undefined' ? null : new Quill('#editor', {
   theme: 'snow', placeholder: '写下这段回忆……', modules: {toolbar: '#editor-toolbar'}
@@ -107,41 +110,24 @@ if (quill) {
   document.getElementById('editor-fallback').value = initialContent;
   document.getElementById('voice-status').textContent = '格式编辑器暂不可用，可在文本框继续编辑。';
 }
-document.getElementById('write-form').addEventListener('submit', function(){
+document.getElementById('write-form').addEventListener('submit', function(event){
+  if (writerVoice && writerVoice.active()) { event.preventDefault(); writerVoice.stop(); return; }
   document.getElementById('content-input').value = quill ? quill.root.innerHTML : document.getElementById('editor-fallback').value;
 });
 
-// ---- 语音转文字（浏览器 Web Speech API，Chrome/Edge/Safari 14.1+）----
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-const voiceBtn = document.getElementById('voice-btn');
-const voiceStatus = document.getElementById('voice-status');
-if (!SR || !quill) {
-  voiceBtn.disabled = true;
-  voiceStatus.textContent = quill ? '当前浏览器不支持语音输入' : '格式编辑器暂不可用，可使用文本框。';
-} else {
-  let rec = null, listening = false, baseIndex = 0;
-  voiceBtn.addEventListener('click', function(){
-    if (listening) { rec.stop(); return; }
-    rec = new SR();
-    rec.lang = 'zh-CN';
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.onstart = function(){ listening = true; baseIndex = quill.getLength() - 1; voiceBtn.textContent = '⏹ 停止'; voiceStatus.textContent = '正在听…'; };
-    rec.onend = function(){ listening = false; voiceBtn.textContent = '🎤 语音输入'; voiceStatus.textContent = ''; };
-    rec.onerror = function(e){ voiceStatus.textContent = '语音出错：' + e.error; };
-    rec.onresult = function(e){
-      let finalText = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
-      }
-      if (finalText) {
-        quill.insertText(baseIndex, finalText);
-        baseIndex += finalText.length;
-        quill.setSelection(baseIndex, 0);
-      }
-    };
-    rec.start();
-  });
-}
+// Keep browser speech and plain-text fallback usable without replacing existing content.
+writerVoice = initVoiceInput({
+  continuous: true,
+  beforeStart: function () { if ('speechSynthesis' in window) speechSynthesis.cancel(); },
+  onText: function (text) {
+    if (quill) quill.insertText(quill.getLength() - 1, text, 'user');
+    else document.getElementById('editor-fallback').value += text;
+  },
+  focus: function () {
+    if (quill) { quill.focus(); quill.setSelection(quill.getLength() - 1, 0); }
+    else document.getElementById('editor-fallback').focus();
+    (quill ? quill.root : document.getElementById('editor-fallback')).scrollIntoView({block:'center'});
+  }
+});
 </script>
 {% endblock %}

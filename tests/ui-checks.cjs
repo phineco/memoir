@@ -321,8 +321,9 @@ const fs = require('node:fs');
         await page.setViewportSize({width,height:844}); await page.goto(base+path); await page.screenshot({path:`${process.env.UI_SCREENSHOTS}/${name}.png`,fullPage:true});
       }
     }
+    const speechChecks=await require('./voice-checks.cjs').checkVoice(browser,context,base,process.env.UI_SCREENSHOTS);
     assert.deepEqual(external,[], 'unexpected external runtime resources');
     assert.deepEqual(errors,[], 'browser JavaScript errors');
-    console.log(`UI layout: ${checks} pages/viewports passed; comments, profile/help navigation, dual-calendar create/edit, invite QR download, legal consent registration and story workflows passed.`);
+    console.log(`UI layout: ${checks} pages/viewports passed; comments, profile/help navigation, dual-calendar create/edit, invite QR download, legal consent registration and story workflows passed; ${speechChecks} speech failure/stop workflows passed.`);
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

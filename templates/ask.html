@@ -35,11 +35,13 @@
   <button type="button" class="btn-small" id="stop-speak" style="display:none">⏹️ 停止播报</button>
 </div>
 <form class="chatform" id="chatform">
-  <button type="button" id="voice-btn" class="btn-small" title="语音输入" aria-label="语音输入">🎤 语音输入</button>
+  <button type="button" id="voice-btn" class="btn-small" title="语音输入" aria-label="语音输入" aria-pressed="false" aria-describedby="voice-status">语音输入</button>
   <label class="sr-only" for="msg-input">你的问题</label><input id="msg-input" class="full" placeholder="问点什么…（或点 🎤 语音输入）" maxlength="2000" autocomplete="off">
   <button type="submit" class="btn-primary" id="send-btn">发送</button>
 </form>
-<p class="hint" id="voice-status" style="display:none"></p>
+<p class="hint" id="voice-status" role="status" aria-live="polite" aria-atomic="true"></p>
+{% include "_voice_fallback.html" %}
+<script src="{{ asset_url('voice-input.js') }}"></script>
 <script>
 (function(){
   var chatlog = document.getElementById('chatlog');
@@ -47,6 +49,8 @@
   var input = document.getElementById('msg-input');
   var sendBtn = document.getElementById('send-btn');
   var streamUrl = {{ url_for('main.ai_ask_stream', family_id=family.id)|tojson }};
+
+  var voiceInput = null;
 
   function scrollBottom(){ chatlog.scrollTop = chatlog.scrollHeight; }
   scrollBottom();
@@ -93,10 +97,11 @@
   /* ---------- 流式发送 ---------- */
   form.onsubmit = function(e){
     e.preventDefault();
+    if (voiceInput && voiceInput.active()) { voiceInput.stop(); return; }
     var text = input.value.trim();
     if(!text || sendBtn.disabled) return;
     if(!('EventSource' in window) && !window.fetch){ alert('浏览器太旧，请升级后使用'); return; }
-    speechSynthesis && speechSynthesis.cancel();
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
     input.value = '';
     addMsg('user', text);
     var aiDiv = addMsg('assistant', '思考中…');
@@ -155,42 +160,12 @@
   }
 
   /* ---------- 语音输入 ---------- */
-  var voiceBtn = document.getElementById('voice-btn');
-  var voiceStatus = document.getElementById('voice-status');
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SR){
-    voiceBtn.style.display = 'none';
-  } else {
-    var rec = new SR();
-    rec.lang = 'zh-CN'; rec.interimResults = true; rec.maxAlternatives = 1;
-    var recording = false;
-    rec.onresult = function(e){
-      var final = '', interim = '';
-      for(var i = 0; i < e.results.length; i++){
-        if(e.results[i].isFinal) final += e.results[i][0].transcript;
-        else interim += e.results[i][0].transcript;
-      }
-      input.value = final || interim;
-    };
-    rec.onerror = function(e){
-      voiceStatus.textContent = '语音识别出错：' + e.error + '，请重试';
-      setTimeout(function(){ voiceStatus.style.display = 'none'; }, 3000);
-    };
-    rec.onend = function(){
-      recording = false; voiceBtn.textContent = '🎤 语音输入';
-      voiceStatus.style.display = 'none';
-    };
-    voiceBtn.onclick = function(){
-      if(recording){ rec.stop(); return; }
-      try {
-        rec.start(); recording = true;
-        voiceBtn.textContent = '⏹️ 停止';
-        voiceStatus.textContent = '正在聆听…说完点 ⏹️ 结束';
-        voiceStatus.style.display = '';
-        input.focus();
-      } catch(err){}
-    };
-  }
+  voiceInput = initVoiceInput({
+    continuous: false,
+    beforeStart: function () { if ('speechSynthesis' in window) speechSynthesis.cancel(); },
+    onText: function (text) { input.value += text; input.dispatchEvent(new Event('input', {bubbles:true})); },
+    focus: function () { input.focus(); input.scrollIntoView({block:'center'}); }
+  });
 })();
 </script>
 {% endif %}
