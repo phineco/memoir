@@ -1,5 +1,5 @@
 -- ============================================================
--- 「家音」回忆录网站 · MySQL 5.7 新库基线（28 张业务表）
+-- 「家音」回忆录网站 · MySQL 5.7 新库基线（29 张业务表）
 -- 日期：2026-10-20
 -- 规范：每表含统一审计字段（id/create_by/create_date/update_by/
 --       update_date/remarks/del_flag）；id 由应用生成（uuid/短id）；
@@ -567,3 +567,19 @@ CREATE TABLE `invites` (
   UNIQUE KEY `uk_code` (`code`),
   KEY `idx_family` (`family_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='家庭邀请码';
+
+-- 29. 自行注册的协议确认记录（UTC）
+CREATE TABLE `legal_acceptances` (
+  `id` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `terms_version` varchar(32) NOT NULL,
+  `privacy_version` varchar(32) NOT NULL,
+  `accepted_at` datetime NOT NULL,
+  `create_by` varchar(64) DEFAULT NULL,
+  `create_date` datetime DEFAULT NULL,
+  `update_by` varchar(64) DEFAULT NULL,
+  `update_date` datetime DEFAULT NULL,
+  `remarks` varchar(255) DEFAULT NULL,
+  `del_flag` int DEFAULT 0,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='自行注册协议确认';

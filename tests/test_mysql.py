@@ -44,7 +44,7 @@ def test_mysql_schema_migration_and_native_backup_restore(tmp_path):
         with source.begin() as conn:
             for statement in _split_statements(schema):
                 conn.execute(text(statement))
-        assert len(inspect(source).get_table_names()) == 28
+        assert len(inspect(source).get_table_names()) == 29
         with source.begin() as conn:
             for field in DATE_FIELDS:
                 conn.execute(text(f"ALTER TABLE persons DROP COLUMN {field}"))
@@ -75,9 +75,9 @@ def test_mysql_schema_migration_and_native_backup_restore(tmp_path):
         engines.append(restored)
         with restored.connect() as conn:
             assert conn.execute(text("SELECT content FROM drafts ORDER BY version")).scalars().all() == ["first", "corrected"]
-            assert conn.execute(text("SELECT COUNT(*) FROM schema_migrations")).scalar_one() == 2
+            assert conn.execute(text("SELECT COUNT(*) FROM schema_migrations")).scalar_one() == 3
         assert (tmp_path / "restored-media/f/p.png").read_bytes() == b"old-photo"
-        assert len(inspect(restored).get_table_names()) == 29
+        assert len(inspect(restored).get_table_names()) == 30
     finally:
         for engine in engines:
             engine.dispose()

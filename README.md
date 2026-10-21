@@ -42,6 +42,8 @@ python app.py
 
 ## 权限与隐私
 
+用户服务协议 `/terms` 和隐私政策 `/privacy` 可匿名查看；注册、登录、个人中心与页脚均提供入口。自行注册须明确勾选当前版本，在发送注册短信和创建账号前校验，并保存协议版本与 UTC 确认时间；不会自动补记已有用户或代开账号的同意。公开权利申请邮箱默认为 `info@scyllatech.cn`，可通过 `PRIVACY_CONTACT_EMAIL` 配置。已有库上线前执行迁移 003，具体见 [部署说明](DEPLOY.md#协议与隐私政策)。
+
 - 家庭页面和 API 均须登录且属于该家庭。角色为创建者 `owner`、管理员 `admin`、成员 `member`。
 - `public` 表示**家庭内可见**；`private` 仅作者；`specific` 为作者及指定成员；草稿仅作者。
 - 移除成员后撤销访问，管理员也不能跨家庭。添加已有成员使用精确账号或邀请码，不展示全站账号名单。
@@ -50,7 +52,7 @@ python app.py
 
 ## 技术与配置
 
-Flask + Jinja2、SQLAlchemy、Tailwind CSS 3；家族树 ECharts、编辑器 Quill。现有 **28 张业务表**，见[模型](models.py)和[建表 SQL](memoir-mysql-schema.sql)。`schema_migrations` 为迁移记录表，不计入业务表。
+Flask + Jinja2、SQLAlchemy、Tailwind CSS 3；家族树 ECharts、编辑器 Quill。现有 **29 张业务表**，见[模型](models.py)和[建表 SQL](memoir-mysql-schema.sql)。`schema_migrations` 为迁移记录表，不计入业务表。
 
 | 配置 | 含义 |
 |---|---|
@@ -105,7 +107,7 @@ python -m pytest -q
 
 人物的出生、去世分别支持公历与农历年/月/日，两套可独立选填；支持农历闰月及不完整日期，不自动换算。人物页、家人列表和 AI 参考资料会显示已录入的信息。旧年份按原历法迁入新增字段，未记载的月日保持为空。
 
-**已有数据库更新此版本前须执行 `002_person_dual_calendar_dates.sql` 增量迁移**，具体顺序见 [部署文档](DEPLOY.md) 的双历日期升级说明；不能仅替换代码后直接启动。
+**已有数据库更新前须备份并执行 `python migrate.py`，补齐 002 双历日期及 003 协议确认表等未执行迁移**，具体顺序见 [部署文档](DEPLOY.md)；不能仅替换代码后直接启动。
 
 ## 邀请链接与二维码
 

@@ -37,7 +37,10 @@ def create_app():
         uid = session.get("user_id")
         me = get_session().query(User).filter_by(id=uid, del_flag=0).first() if uid else None
         from storage import storage_url
-        return {"me": me, "storage_url": storage_url, "asset_url": asset_url}
+        from legal import TERMS_VERSION, PRIVACY_VERSION
+        return {"me": me, "storage_url": storage_url, "asset_url": asset_url,
+                "terms_version": TERMS_VERSION, "privacy_version": PRIVACY_VERSION,
+                "privacy_contact_email": app.config["PRIVACY_CONTACT_EMAIL"]}
 
     return app
 

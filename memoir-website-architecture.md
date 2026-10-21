@@ -10,11 +10,11 @@
 
 ## 二、数据模型
 
-28 张业务表，另有迁移工具维护的 `schema_migrations`。主键为应用生成的不透明字符串，保留审计与软删除字段。
+29 张业务表，另有迁移工具维护的 `schema_migrations`。主键为应用生成的不透明字符串，保留审计与软删除字段。
 
 | 分类 | 表 |
 |---|---|
-| 身份与家庭（5） | `users`、`families`、`family_members`、`invites`、`sms_codes` |
+| 身份与家庭（6） | `users`、`families`、`family_members`、`invites`、`sms_codes`、`legal_acceptances` |
 | 人物（2） | `persons`、`portraits` |
 | 原始资料（2） | `source_files`、`transcripts` |
 | 故事与关联（8） | `interviews`、`drafts`、`quotes`、`verification_items`、`person_links`、`new_persons`、`interview_persons`、`interview_viewers` |

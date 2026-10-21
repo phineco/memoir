@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block nav %}{% if family %}{% include "_family_nav.html" %}{% endif %}{% endblock %}
+{% block content %}
+<article class="legal-document">
+  <header class="page-heading"><p class="eyebrow">家音 · 服务与隐私</p><h1>{% block legal_title %}{% endblock %}</h1><p class="hint">版本 / 更新日期：{% block legal_version %}{% endblock %} · 自发布起生效</p></header>
+  <nav class="legal-document-nav" aria-label="协议切换"><a href="{{ url_for('main.terms',family_id=family.id if family else None) }}" {% if request.endpoint == 'main.terms' %}aria-current="page"{% endif %}>用户服务协议</a><a href="{{ url_for('main.privacy',family_id=family.id if family else None) }}" {% if request.endpoint == 'main.privacy' %}aria-current="page"{% endif %}>隐私政策</a><button type="button" class="btn-secondary" onclick="window.print()">打印 / 保存 PDF</button></nav>
+  <div class="card legal-body">{% block legal_body %}{% endblock %}</div>
+</article>
+{% endblock %}

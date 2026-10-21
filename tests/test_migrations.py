@@ -26,7 +26,7 @@ def test_migration_dry_run_is_read_only_and_repeat_is_safe(tmp_path):
     with sqlite3.connect(path) as db:
         assert "name" in {r[1] for r in db.execute("PRAGMA table_info(users)")}
         assert db.execute("SELECT nickname FROM users WHERE id='old'").fetchone()[0] == "preserved"
-        assert db.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 2
+        assert db.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 3
 
 
 def test_missing_database_does_not_get_created_by_dry_run(tmp_path):

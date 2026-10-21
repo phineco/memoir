@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 _workspace = tempfile.TemporaryDirectory(prefix="memoir-ui-data-")
 os.environ.update(DATABASE_URL="sqlite:///" + str(Path(_workspace.name) / "ui.db"),
                   SECRET_KEY="local-ui-test-only", DEEPSEEK_API_KEY="",
+                  ALIYUN_SMS_ACCESS_KEY_ID="", ALIYUN_SMS_SIGN_NAME="", ALIYUN_SMS_TEMPLATE_CODE="",
                   STORAGE_BACKEND="local", UPLOAD_DIR=str(Path(_workspace.name) / "uploads"))
 
 from app import app

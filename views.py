@@ -8,10 +8,11 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from access import family_role, story_visible
 from reporting import current_period, report_period
+from legal import TERMS_VERSION, PRIVACY_VERSION, accepted_current_documents
 
 from models import (Comment, Draft, Family, FamilyMember, Interview, InterviewPerson,
                     InterviewViewer, Invite, Like, NewPerson, Person, PersonLink, Photo, Portrait, Quote,
-                    ShareSnapshot, SyncLog, TimelineEvent, User, VerificationItem,
+                    ShareSnapshot, SyncLog, TimelineEvent, User, LegalAcceptance, VerificationItem,
                     WritingPlan, get_session)
 
 bp = Blueprint("main", __name__)
@@ -52,6 +53,10 @@ def register():
     invite_code = request.args.get("invite") or request.form.get("invite_code") or ""
     inv = _valid_invite(invite_code) if invite_code else None
     if request.method == "POST":
+        if not accepted_current_documents(request.form):
+            return render_template("register.html", error="请阅读并同意当前版本的用户服务协议和隐私政策",
+                                   invite_code=invite_code, invite=inv, form=request.form,
+                                   sms_enabled=sms_mod.sms_enabled()), 400
         phone = request.form.get("phone", "").strip()
         nickname = request.form.get("nickname", "").strip() or phone
         password = request.form.get("password", "")
@@ -60,20 +65,20 @@ def register():
         if not phone or not password:
             return render_template("register.html", error="手机号和密码不能为空",
                                    invite_code=invite_code, invite=inv,
-                                   sms_enabled=sms_mod.sms_enabled())
+                                   sms_enabled=sms_mod.sms_enabled(), form=request.form)
         import re as _re
         if not _re.fullmatch(r"\d{11}", phone):
             return render_template("register.html", error="手机号应为 11 位数字",
                                    invite_code=invite_code, invite=inv,
-                                   sms_enabled=sms_mod.sms_enabled())
+                                   sms_enabled=sms_mod.sms_enabled(), form=request.form)
         if len(password) < 6:
             return render_template("register.html", error="密码至少 6 位",
                                    invite_code=invite_code, invite=inv,
-                                   sms_enabled=sms_mod.sms_enabled())
+                                   sms_enabled=sms_mod.sms_enabled(), form=request.form)
         if s.query(User).filter_by(phone=phone, del_flag=0).first():
             return render_template("register.html", error="该手机号已注册",
                                    invite_code=invite_code, invite=inv,
-                                   sms_enabled=sms_mod.sms_enabled())
+                                   sms_enabled=sms_mod.sms_enabled(), form=request.form)
         try:
             sms_mod.verify_code(phone, code, "register")
         except sms_mod.SMSError as e:
@@ -85,6 +90,10 @@ def register():
         u = User(id=new_id(), phone=phone, nickname=nickname,
                  password_hash=generate_password_hash(password))
         s.add(u)
+        s.add(LegalAcceptance(user_id=u.id, terms_version=TERMS_VERSION,
+                              privacy_version=PRIVACY_VERSION,
+                              accepted_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                              create_by=u.id))
         s.flush()
         if inv:
             _join_family(s, inv.family_id, u.id, u.id)
@@ -98,7 +107,7 @@ def register():
                                     family_id=inv.family_id))
         return redirect(request.args.get("next") or url_for("main.index"))
     return render_template("register.html", invite_code=invite_code, invite=inv,
-                           sms_enabled=sms_mod.sms_enabled())
+                           sms_enabled=sms_mod.sms_enabled(), form=request.form)
 
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -1838,6 +1847,20 @@ def guide():
     return render_template("guide.html", family=fam)
 
 
+@bp.route("/terms")
+def terms():
+    family_id = request.args.get("family_id")
+    fam = _family_or_404(family_id) if family_id else None
+    return render_template("terms.html", family=fam)
+
+
+@bp.route("/privacy")
+def privacy():
+    family_id = request.args.get("family_id")
+    fam = _family_or_404(family_id) if family_id else None
+    return render_template("privacy.html", family=fam)
+
+
 # ---------------- sync-json 同步入库（管理员） ----------------
 
 @bp.route("/f/<family_id>/sync", methods=["GET", "POST"])
@@ -2362,8 +2385,12 @@ def api_sms_code():
     """发送短信验证码：{phone, purpose=register|reset}。"""
     import sms as sms_mod
     data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "请求体必须是 JSON 对象"}), 400
     phone = (data.get("phone") or "").strip()
     purpose = data.get("purpose") or "register"
+    if purpose == "register" and not accepted_current_documents(data):
+        return jsonify({"ok": False, "error": "请先阅读并同意用户服务协议和隐私政策"}), 400
     s = _s()
     if purpose == "register":
         if s.query(User).filter_by(phone=phone, del_flag=0).first():

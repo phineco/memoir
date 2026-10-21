@@ -21,6 +21,13 @@ value="{{ form.get('phone','') if form else ''}}" aria-label="手机号（11 位
 <input type="password" name="password" id="reg-pw" placeholder="密码（至少 6 位）" required style="flex:1" aria-label="密码（至少 6 位）">
 <button type="button" class="btn-small" onclick="var i=document.getElementById('reg-pw');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁️':'🙈';" title="显示/隐藏密码">👁️</button>
 </div>
+<input type="hidden" name="terms_version" value="{{ terms_version }}">
+<input type="hidden" name="privacy_version" value="{{ privacy_version }}">
+<div class="legal-consent">
+  <input type="checkbox" name="legal_accepted" id="legal-accepted" value="yes" required>
+  <div><label for="legal-accepted">我已阅读并同意以下文件</label>
+  <a href="{{ url_for('main.terms') }}" target="_blank" rel="noopener">《用户服务协议》</a>和<a href="{{ url_for('main.privacy') }}" target="_blank" rel="noopener">《隐私政策》</a><span class="hint">（新窗口打开）</span></div>
+</div>
 <button type="submit">注册并登录</button>
 </form>
 {% if error %}<p class="error">{{ error}}</p>{% endif %}
@@ -32,13 +39,16 @@ value="{{ form.get('phone','') if form else ''}}" aria-label="手机号（11 位
 var btn = document.getElementById('sendCode');
 var phoneInput = document.getElementById('phone');
 btn.addEventListener('click', function() {
+if (!document.getElementById('legal-accepted').checked) {
+  alert('请先阅读并同意用户服务协议和隐私政策'); return;
+}
 var phone = phoneInput.value.trim();
 if (!/^\d{11}$/.test(phone)) { alert('请先填写 11 位手机号'); return;}
 btn.disabled = true;
 fetch('/api/sms-code', {
 method: 'POST',
 headers: {'Content-Type': 'application/json'},
-body: JSON.stringify({phone: phone, purpose: 'register'})
+body: JSON.stringify({phone: phone, purpose: 'register', legal_accepted: 'yes', terms_version: {{ terms_version|tojson }}, privacy_version: {{ privacy_version|tojson }}})
 }).then(function(r) { return r.json();}).then(function(d) {
 if (!d.ok) { alert(d.error || '发送失败'); btn.disabled = false; return;}
 if (d.dev_mode) { alert('验证码：' + d.dev_code);}

@@ -8,4 +8,5 @@
 <a class="card" href="{{ url_for('main.account_drafts',family_id=family.id if family else None) }}"><h2 class="card-title">我的草稿</h2><p class="card-sub">查看你在已加入家庭中的草稿，继续编辑或发布</p></a>
 <a class="card" href="{{ url_for('main.index',switch=1) }}"><h2 class="card-title">我的家庭</h2><p class="card-sub">选择或切换家庭</p></a>
 </div>
+<section class="card legal-account-links" aria-labelledby="legal-heading"><h2 id="legal-heading" class="card-title">协议与隐私</h2><p class="hint">查看服务规则、数据用途与个人信息权利。</p><div class="form-actions"><a class="btn-secondary" href="{{ url_for('main.terms',family_id=family.id if family else None) }}">用户服务协议</a><a class="btn-secondary" href="{{ url_for('main.privacy',family_id=family.id if family else None) }}">隐私政策</a></div></section>
 {% endblock %}

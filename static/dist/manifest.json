@@ -1,6 +1,6 @@
 {
   "files": {
-    "app.css": "app.6b3750ef42557cdf.css",
+    "app.css": "app.313c2b58aa573fd6.css",
     "family-context.js": "family-context.8debcaf0224ca923.js",
     "preferences.js": "preferences.16016e74e4ceaf8b.js",
     "read-aloud.js": "read-aloud.ca0c7d0555db6cb2.js",
@@ -9,7 +9,7 @@
     "vendor/quill-2.0.3.snow.css": "quill-2.0.3.snow.1c7948cd13aa92fa.css"
   },
   "sha256": {
-    "app.6b3750ef42557cdf.css": "6b3750ef42557cdf368c93811f42cde2dc014aa69ef8134c9362b2a554a96d7b",
+    "app.313c2b58aa573fd6.css": "313c2b58aa573fd608dfc990e3de705f38fd368243b4803a9f0c3845332a2714",
     "echarts-5.5.0.min.42f8329d989b6f65.js": "42f8329d989b6f6539dd2b15bbdf0d82025762ac112fbb60dc57b27d7bcf3946",
     "family-context.8debcaf0224ca923.js": "8debcaf0224ca92384dad4ec3af11850e8cf3dadcd594e0e69105bf7cd5f403a",
     "preferences.16016e74e4ceaf8b.js": "16016e74e4ceaf8b552fb1f2170311809131ebff1a534b37b2142bca10b7b6b0",

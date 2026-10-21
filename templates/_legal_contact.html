@@ -1,0 +1,1 @@
+{% if privacy_contact_email %}<p>隐私咨询、资料更正或删除、撤回同意、账号注销及投诉，请发送邮件至 <a href="mailto:{{ privacy_contact_email }}">{{ privacy_contact_email }}</a>。请说明诉求和可供核验的账号信息，勿发送登录密码或短信验证码。我们会在核验身份后处理，并在 15 个工作日内答复或说明处理进度；法律另有规定的从其规定。</p>{% else %}<p class="error" role="note">运营方尚未配置隐私联系邮箱。本页联系信息待补充，请暂勿提交新的个人信息。</p>{% endif %}

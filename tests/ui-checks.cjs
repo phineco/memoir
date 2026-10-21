@@ -16,7 +16,7 @@ const fs = require('node:fs');
     });
     const page = await context.newPage();
     page.on('pageerror',error=>errors.push(error.message));
-    const paths = ['/?switch=1', '/f/ui', '/f/empty', '/f/ui/stories', '/f/ui/story/story', '/f/ui/person/grandma', '/f/ui/write', '/f/ui/ask', '/f/ui/more', '/account?family_id=ui', '/guide?family_id=ui', '/account/drafts?family_id=ui', '/f/ui/manage', '/f/ui/manage/accounts', '/f/ui/manage/invites', '/f/ui/manage/tools', '/f/ui/tree/add', '/f/ui/tree/grandma/edit', '/display?family_id=ui', '/f/ui/plans', '/f/ui/shares', '/f/ui/sync'];
+    const paths = ['/?switch=1', '/terms', '/privacy', '/register', '/f/ui', '/f/empty', '/f/ui/stories', '/f/ui/story/story', '/f/ui/person/grandma', '/f/ui/write', '/f/ui/ask', '/f/ui/more', '/account?family_id=ui', '/guide?family_id=ui', '/account/drafts?family_id=ui', '/f/ui/manage', '/f/ui/manage/accounts', '/f/ui/manage/invites', '/f/ui/manage/tools', '/f/ui/tree/add', '/f/ui/tree/grandma/edit', '/display?family_id=ui', '/f/ui/plans', '/f/ui/shares', '/f/ui/sync'];
     let checks = 0;
     for (const width of [320,375,390,430,768,1280,1440]) {
       await page.setViewportSize({width,height:900});
@@ -239,6 +239,40 @@ const fs = require('node:fs');
       checks++;
     }
     await page.goto(base+'/display?family_id=ui');await page.locator('#display-reset').click();
+    // Printing remains readable even when the browser uses high contrast.
+    await page.goto(base+'/privacy');
+    await page.locator('html').evaluate(n=>n.dataset.theme='contrast');
+    await page.emulateMedia({media:'print'});
+    assert.equal(await page.locator('.legal-body').evaluate(n=>getComputedStyle(n).color),'rgb(0, 0, 0)');
+    assert.equal(await page.locator('.legal-body a').first().evaluate(n=>getComputedStyle(n).color),'rgb(0, 0, 0)');
+    assert(!(await page.locator('.topbar').isVisible()));
+    await page.emulateMedia({media:'screen'});
+    // Policies are public, preserve the family menu, and never preselect consent.
+    await page.goto(base+'/f/ui/manage');
+    await page.getByRole('navigation',{name:'服务条款'}).getByRole('link',{name:'隐私政策',exact:true}).click();
+    assert.equal(await page.getByRole('navigation',{name:'家庭导航'}).getByRole('link').count(),4);
+    const publicContext=await browser.newContext();
+    const publicPage=await publicContext.newPage();
+    await publicPage.goto(base+'/register?invite=ui-invite-only');
+    const agreement=publicPage.locator('#legal-accepted');
+    assert(!(await agreement.isChecked()));
+    await publicPage.locator('#phone').fill('13800009999');
+    let attempted=0;publicPage.on('request',r=>{if(r.url().endsWith('/api/sms-code'))attempted++;});
+    const dismissed=publicPage.waitForEvent('dialog').then(d=>d.dismiss());
+    await publicPage.getByRole('button',{name:'获取验证码',exact:true}).click();await dismissed;
+    assert.equal(attempted,0,'unconfirmed registration must not send SMS');
+    await agreement.check();
+    const sent=publicPage.waitForEvent('dialog').then(d=>d.dismiss());
+    const smsResponse=publicPage.waitForResponse(r=>r.url().endsWith('/api/sms-code'));
+    await publicPage.getByRole('button',{name:'获取验证码',exact:true}).click();
+    const smsData=await(await smsResponse).json();await sent;
+    assert(smsData.ok && smsData.dev_code,'isolated server should use fake SMS');
+    await publicPage.locator('[name=code]').fill(smsData.dev_code);
+    await publicPage.locator('[name=nickname]').fill('注册协议回归');
+    await publicPage.locator('#reg-pw').fill('ui-legal-test-password');
+    await publicPage.getByRole('button',{name:'注册并登录',exact:true}).click();
+    await publicPage.waitForURL('**/f/ui');
+    await publicContext.close();
     const unavailable=await browser.newContext();
     await unavailable.addInitScript(() => Object.defineProperty(window,'localStorage',{get(){throw Error('storage unavailable');}}));
     const settings=await unavailable.newPage();
@@ -249,12 +283,12 @@ const fs = require('node:fs');
     await unavailable.close();
     if(process.env.UI_SCREENSHOTS) {
       fs.mkdirSync(process.env.UI_SCREENSHOTS,{recursive:true});
-      for (const [name,path,width] of [['family-mobile','/f/ui',390],['story-mobile','/f/ui/story/story',390],['family-desktop','/f/ui',1280],['write-mobile','/f/ui/write',390],['account-mobile','/account?family_id=ui',390],['dates-mobile','/f/ui/tree/add',390],['dates-desktop','/f/ui/tree/add',1280],['invite-mobile','/f/ui/manage/invites',390],['members-mobile','/f/ui/manage',390],['members-desktop','/f/ui/manage',1280],['create-account-desktop','/f/ui/manage/accounts',1280],['tools-desktop','/f/ui/manage/tools',1280]]) {
+      for (const [name,path,width] of [['family-mobile','/f/ui',390],['story-mobile','/f/ui/story/story',390],['family-desktop','/f/ui',1280],['write-mobile','/f/ui/write',390],['account-mobile','/account?family_id=ui',390],['dates-mobile','/f/ui/tree/add',390],['dates-desktop','/f/ui/tree/add',1280],['invite-mobile','/f/ui/manage/invites',390],['privacy-mobile','/privacy',390],['terms-desktop','/terms',1280],['register-mobile','/register',390],['members-mobile','/f/ui/manage',390],['members-desktop','/f/ui/manage',1280],['create-account-desktop','/f/ui/manage/accounts',1280],['tools-desktop','/f/ui/manage/tools',1280]]) {
         await page.setViewportSize({width,height:844}); await page.goto(base+path); await page.screenshot({path:`${process.env.UI_SCREENSHOTS}/${name}.png`,fullPage:true});
       }
     }
     assert.deepEqual(external,[], 'unexpected external runtime resources');
     assert.deepEqual(errors,[], 'browser JavaScript errors');
-    console.log(`UI layout: ${checks} pages/viewports passed; comments, profile/help navigation, dual-calendar create/edit, invite QR download and story workflows passed.`);
+    console.log(`UI layout: ${checks} pages/viewports passed; comments, profile/help navigation, dual-calendar create/edit, invite QR download, legal consent registration and story workflows passed.`);
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

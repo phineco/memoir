@@ -1,4 +1,4 @@
-"""SQLAlchemy 模型：与 memoir-mysql-schema.sql 28 张业务表对应。
+"""SQLAlchemy 模型：与 memoir-mysql-schema.sql 29 张业务表对应。
 
 约定：
 - id 由应用生成（uuid4 hex），与 SQL 中 varchar(64) 主键一致；
@@ -381,3 +381,12 @@ class Invite(AuditMixin, Base):
     max_uses = Column(Integer, default=0)  # 0=不限次数
     used_count = Column(Integer, default=0)
     expire_at = Column(DateTime)
+
+
+class LegalAcceptance(AuditMixin, Base):
+    """Self-registration acknowledgement; never inferred for existing or provisioned users."""
+    __tablename__ = "legal_acceptances"
+    user_id = Column(String(64), nullable=False)
+    terms_version = Column(String(32), nullable=False)
+    privacy_version = Column(String(32), nullable=False)
+    accepted_at = Column(DateTime, nullable=False)  # UTC

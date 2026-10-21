@@ -26,6 +26,7 @@
 </form>
 {% if error %}<p class="error">{{ error}}</p>{% endif %}
 <p class="hint">没有账号？<a href="{{ url_for('main.register', next=request.args.get('next'))}}">去注册</a> · <a href="{{ url_for('main.forgot_password')}}">忘记密码</a></p>
+<p class="hint">可随时查阅<a href="{{ url_for('main.terms') }}">用户服务协议</a>和<a href="{{ url_for('main.privacy') }}">隐私政策</a>。</p>
 <script>
 function switchMode(m){
 document.getElementById('form-pw').style.display = m==='password'?'':'none';
