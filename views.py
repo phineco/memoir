@@ -491,20 +491,47 @@ def _build_tree(family_id, viewer_id=None):
     return root or {"name": "（空）", "children": []}
 
 
-@bp.route("/")
-def index():
-    me = _current_user()
-    if not me:
-        return render_template("welcome.html")
+def _families_for_user(me):
     s = _s()
     from sqlalchemy import and_, or_
     member_ids = s.query(FamilyMember.family_id).filter_by(
         user_id=me.id, del_flag=0).filter(FamilyMember.role.in_(("owner", "admin", "member")))
     recorded_ids = s.query(FamilyMember.family_id).filter_by(user_id=me.id)
-    families = s.query(Family).filter(Family.del_flag == 0, or_(
+    return s.query(Family).filter(Family.del_flag == 0, or_(
         Family.id.in_(member_ids), and_(Family.owner_user_id == me.id,
                                       ~Family.id.in_(recorded_ids)))).all()
-    return render_template("index.html", families=families)
+
+
+@bp.route("/")
+def index():
+    me = _current_user()
+    if not me:
+        return render_template("welcome.html")
+    return render_template("index.html", families=_families_for_user(me))
+
+
+@bp.route("/account")
+def account():
+    me = _current_user()
+    if not me:
+        return redirect(url_for("main.login", next=request.full_path.rstrip("?")))
+    family_id = request.args.get("family_id")
+    fam = _family_or_404(family_id) if family_id else None
+    return render_template("account.html", family=fam)
+
+
+@bp.route("/account/drafts")
+def account_drafts():
+    me = _current_user()
+    if not me:
+        return redirect(url_for("main.login", next=request.full_path.rstrip("?")))
+    family_id = request.args.get("family_id")
+    fam = _family_or_404(family_id) if family_id else None
+    families = {f.id:f.name for f in _families_for_user(me)}
+    rows = _s().query(Interview).filter(
+        Interview.family_id.in_(families), Interview.author_id == me.id,
+        Interview.publish_status == "draft", Interview.del_flag == 0)        .order_by(Interview.create_date.desc()).all()
+    return render_template("drafts.html", family=fam, rows=rows, draft_families=families)
 
 
 @bp.route("/f/<family_id>")

@@ -15,10 +15,9 @@
   <div class="topright">
     {% block nav %}{% endblock %}
     <span class="auth">
-    <a href="{{ url_for('main.display_preferences', family_id=family.id if family else None) }}">显示设置</a>
     <a href="{{ url_for('main.guide') }}">📖 指南</a>
     {% if me %}
-      👤 {{ me.nickname }} <a href="{{ url_for('main.logout') }}">退出</a>
+      <a href="{{ url_for('main.account', family_id=family.id if family else None) }}" aria-label="个人中心：{{ me.nickname }}">👤 {{ me.nickname }}</a> <a href="{{ url_for('main.logout') }}">退出</a>
     {% else %}
       <a href="{{ url_for('main.login') }}">登录</a> <a href="{{ url_for('main.register') }}">注册</a>
     {% endif %}

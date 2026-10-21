@@ -2,6 +2,7 @@
 {% block title %}显示设置 · 家音{% endblock %}
 {% block nav %}{% if family %}{% include "_family_nav.html" %}{% endif %}{% endblock %}
 {% block content %}
+<div class="nav"><a href="{{ url_for('main.account',family_id=family.id if family else None) }}">← 个人中心</a></div>
 <div class="page-heading"><p class="eyebrow">按照你的习惯阅读</p><h1>显示设置</h1><p class="hint">选择后立即生效，仅保存在当前浏览器。其他家人的显示不会改变。</p></div>
 <noscript><p class="error">请启用 JavaScript 后使用显示设置；当前仍可用默认样式阅读。</p></noscript>
 <form id="display-settings">
