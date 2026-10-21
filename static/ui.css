@@ -256,3 +256,17 @@ body {font-size:var(--body-size);}
  .legal-body p,.legal-body li {orphans:3;widows:3;}
  body {background:#fff;color:#000;}
 }
+
+/* Sticky navigation reserves anchor/focus space using the measured header height. */
+html {scroll-padding-top:calc(var(--site-header-height,5rem) + 1rem);}
+.topbar {position:sticky;top:0;z-index:40;}
+#site-menu-toggle {flex:0 0 auto;}
+@media(max-width:768px) {
+ .navigation-ready .topbar-inner {flex-direction:row;flex-wrap:nowrap;align-items:center;gap:.75rem;padding:.25rem 1rem;padding-top:max(.25rem,env(safe-area-inset-top));}
+ .navigation-ready .brand {min-height:44px;white-space:nowrap;}
+ .navigation-ready .topright {position:absolute;top:100%;left:0;right:0;width:100%;flex-direction:column;align-items:stretch;gap:.75rem;padding:1rem;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 8px 16px #0002;max-height:calc(100vh - var(--site-header-height,4rem));max-height:calc(100dvh - var(--site-header-height,4rem));overflow-y:auto;}
+ .navigation-ready .navlinks {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .navigation-ready .auth {justify-content:flex-start;gap:.75rem;}
+ .navigation-ready .auth a {max-width:100%;white-space:normal;}
+}
+@media print {.topbar {display:none;}}

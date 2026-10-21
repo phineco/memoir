@@ -14,6 +14,10 @@ const fs = require('node:fs');
       if(new URL(route.request().url()).origin === new URL(base).origin) return route.continue();
       external.push(route.request().url());return route.abort();
     });
+    async function openMenu(target) {
+      const toggle=target.locator('#site-menu-toggle');
+      if(await toggle.isVisible() && await toggle.getAttribute('aria-expanded')!=='true')await toggle.click();
+    }
     const page = await context.newPage();
     page.on('pageerror',error=>errors.push(error.message));
     const paths = ['/?switch=1', '/terms', '/privacy', '/register', '/f/ui', '/f/empty', '/f/ui/stories', '/f/ui/story/story', '/f/ui/person/grandma', '/f/ui/write', '/f/ui/ask', '/f/ui/more', '/account?family_id=ui', '/guide?family_id=ui', '/account/drafts?family_id=ui', '/f/ui/manage', '/f/ui/manage/accounts', '/f/ui/manage/invites', '/f/ui/manage/tools', '/f/ui/tree/add', '/f/ui/tree/grandma/edit', '/display?family_id=ui', '/f/ui/plans', '/f/ui/shares', '/f/ui/sync'];
@@ -39,6 +43,32 @@ const fs = require('node:fs');
         checks++;
       }
     }
+    // Mobile navigation is one compact row, remains visible while reading, and is keyboard usable.
+    await page.setViewportSize({width:390,height:844});
+    await page.goto(base+'/f/ui/story/story');
+    const menuToggle=page.locator('#site-menu-toggle');
+    assert(await menuToggle.isVisible());
+    assert(!(await page.locator('#site-menu').isVisible()));
+    assert(await page.locator('.topbar').evaluate(n=>n.getBoundingClientRect().height<80));
+    await page.evaluate(()=>window.scrollTo(0,700));
+    assert(Math.abs(await page.locator('.topbar').evaluate(n=>n.getBoundingClientRect().top))<1);
+    await menuToggle.click();
+    assert.equal(await page.getByRole('navigation',{name:'家庭导航'}).getByRole('link').count(),4);
+    await page.keyboard.press('Escape');
+    assert.equal(await menuToggle.getAttribute('aria-expanded'),'false');
+    assert(await menuToggle.evaluate(n=>n===document.activeElement));
+    await menuToggle.click();
+    await page.locator('#articleBody').click();
+    assert.equal(await menuToggle.getAttribute('aria-expanded'),'false');
+    await page.setViewportSize({width:1280,height:844});
+    await page.locator('#site-menu').waitFor({state:'visible'});
+    assert(await page.locator('#site-menu').isVisible());
+    assert(!(await menuToggle.isVisible()));
+    const plainContext=await browser.newContext({javaScriptEnabled:false,viewport:{width:390,height:844}});
+    await plainContext.addCookies(await context.cookies());
+    const plainPage=await plainContext.newPage();await plainPage.goto(base+'/f/ui');
+    assert.equal(await plainPage.getByRole('navigation',{name:'家庭导航'}).getByRole('link').count(),4);
+    await plainContext.close();
     await page.goto(base+'/f/ui/story/story');
     assert.equal(await page.locator('.comment').count(),14);
     const widths=await page.locator('.comment').evaluateAll(ns=>ns.map(n=>n.getBoundingClientRect().width));
@@ -161,12 +191,15 @@ const fs = require('node:fs');
     await page.keyboard.press('Enter');
     assert.equal(await page.evaluate(()=>document.activeElement.id),'main-content');
     await page.goto(base+'/f/ui');
+    await openMenu(page);
     await page.locator('.auth a[aria-label^="个人中心"]').click();
     await page.waitForURL('**/account?family_id=ui');
     assert(await page.locator('.menu-cards a[href^="/display"]').isVisible());
+    await openMenu(page);
     await page.getByRole('link',{name:'帮助',exact:true}).click();
     await page.waitForURL('**/guide?family_id=ui');
     assert.equal(await page.locator('.navlinks a').count(),4);
+    await openMenu(page);
     assert(await page.locator('.auth a[aria-label^="个人中心"]').isVisible());
     await page.goto(base+'/f/ui/tree/add');
     await page.locator('input[name=name]').fill('双历日期回归人物');
@@ -250,6 +283,7 @@ const fs = require('node:fs');
     // Policies are public, preserve the family menu, and never preselect consent.
     await page.goto(base+'/f/ui/manage');
     await page.getByRole('navigation',{name:'服务条款'}).getByRole('link',{name:'隐私政策',exact:true}).click();
+    await openMenu(page);
     assert.equal(await page.getByRole('navigation',{name:'家庭导航'}).getByRole('link').count(),4);
     const publicContext=await browser.newContext();
     const publicPage=await publicContext.newPage();
