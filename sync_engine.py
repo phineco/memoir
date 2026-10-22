@@ -162,7 +162,7 @@ def _apply_interview_upsert(s, family_id, payload, user_id, now):
     iv = Interview(
         id=new_id(), family_id=family_id, author_id=user_id,
         person_id=subject.id if subject else None, topic=topic, status="done",
-        publish_status="published",
+        publish_status="published", published_at=now,
         narrator_person_id=narrator.id if narrator else None,
         period_start=_d(payload.get("period_start")),
         period_end=_d(payload.get("period_end")),

@@ -168,9 +168,18 @@ class Interview(AuditMixin, Base):
     period_end = Column(Date)  # 故事时间段止
     period_precision = Column(String(8))  # year/month/day，精度不足时起止取当年1月1日/当年12月31日
     author_id = Column(String(64))  # 作者用户 id（用户手写文章；AI整理的可空）
+    published_at = Column(DateTime, index=True)  # first publication only; NULL means legacy estimate
     publish_status = Column(String(16), default="draft")  # draft=草稿 published=已发布；NULL 视为已发布（兼容旧数据）
     visibility = Column(String(16), default="public")  # public=家庭可见 private=仅作者 specific=指定人；NULL 视为 public
     narrator_person_id = Column(String(64), index=True)  # 讲述者（树上人物 id；skill"讲述者确认"规则对应，对应不上时空）
+
+    @property
+    def publication_time(self):
+        return self.published_at or self.create_date
+
+    @property
+    def publication_time_inferred(self):
+        return self.published_at is None
 
 
 class Draft(AuditMixin, Base):

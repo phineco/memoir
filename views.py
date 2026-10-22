@@ -770,8 +770,10 @@ def _weekly_data(family_id, week, viewer_id=None, year=None):
     """周报数据。viewer_id 传入时只含该用户可见的故事；不传则只含公开故事。"""
     year, week, start, end = _report_period(week, year)
     s = _s()
+    from sqlalchemy import func
+    published_time = func.coalesce(Interview.published_at, Interview.create_date)
     interviews = s.query(Interview).filter_by(family_id=family_id, del_flag=0).filter(
-        Interview.create_date >= start, Interview.create_date < end).all()
+        published_time >= start, published_time < end).all()
     if viewer_id:
         visible_ids = {v.interview_id for v in s.query(InterviewViewer).filter_by(
             user_id=viewer_id, del_flag=0).all()}
@@ -801,8 +803,15 @@ def _weekly_data(family_id, week, viewer_id=None, year=None):
                    or np.interview_id in visible_sources]
     persons = {p.id: p for p in
                s.query(Person).filter_by(family_id=family_id, del_flag=0).all()}
+    revised = s.query(Draft, Interview).join(Interview, Draft.interview_id == Interview.id).filter(
+        Interview.family_id == family_id, Interview.del_flag == 0, Draft.del_flag == 0,
+        Draft.version > 1, Draft.create_date >= start, Draft.create_date < end).order_by(Draft.create_date.desc()).all()
+    revisions=[];seen=set()
+    for revision, story in revised:
+        if _ok(story) and story.id not in seen:
+            revisions.append({"story":story,"at":revision.create_date});seen.add(story.id)
     return {"interviews": interviews, "verifs": verifs, "quotes": quotes,
-            "new_persons": new_persons, "persons": persons}
+            "new_persons": new_persons, "persons": persons, "revisions":revisions}
 
 
 @bp.route("/f/<family_id>/weekly")
@@ -840,7 +849,10 @@ def _weekly_report_json(family_id, week, viewer_id=None, year=None):
                      "period": {"start": iv.period_start.isoformat() if iv.period_start else None,
                                 "end": iv.period_end.isoformat() if iv.period_end else None,
                                 "precision": iv.period_precision},
-                     "status": iv.status} for iv in data["interviews"]],
+                     "status": iv.status,
+                     "published_at":iv.publication_time.isoformat() if iv.publication_time else None,
+                     "publication_time_inferred":iv.publication_time_inferred} for iv in data["interviews"]],
+        "revisions":[{"id":row["story"].id,"topic":row["story"].topic,"revised_at":row["at"].isoformat()} for row in data["revisions"]],
         "quotes": [q.text for q in data["quotes"]],
         "verification_items": [
             {"id": v.id, "text": v.text, "reason": v.reason, "status": v.status,
@@ -1076,6 +1088,7 @@ def write_article(family_id):
         iv = Interview(
             id=new_id(), family_id=family_id, author_id=me.id,
             person_id=subject_id, topic=topic, status="done",
+            published_at=datetime.datetime.now() if action == "publish" else None,
             publish_status="published" if action == "publish" else "draft",
             narrator_person_id=narrator_person_id or narrator_default_id or None,
             period_start=datetime.date.fromisoformat(p_start) if p_start else None,
@@ -1133,6 +1146,8 @@ def publish_article(family_id, interview_id):
                                       del_flag=0).first()
     if not iv or iv.author_id != me.id:
         abort(404)
+    if iv.publish_status == "draft":
+        iv.published_at = datetime.datetime.now()
     iv.publish_status = "published"
     iv.update_date = datetime.datetime.now()
     s.commit()
@@ -1221,6 +1236,8 @@ def edit_article(family_id, interview_id):
         iv.update_date = datetime.datetime.now()
         _save_visibility(s, iv, request.form, family_id, me)
         if action == "publish":
+            if not was_published:
+                iv.published_at = now
             iv.publish_status = "published"
         # 旧版本保留，写新版本
         if cur_draft:

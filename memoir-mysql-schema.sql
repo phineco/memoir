@@ -153,6 +153,7 @@ CREATE TABLE `interviews` (
   `period_end` date DEFAULT NULL COMMENT '故事时间段止',
   `period_precision` varchar(8) DEFAULT NULL COMMENT '时间精度 year/month/day',
   `author_id` varchar(64) DEFAULT NULL COMMENT '作者用户 id（手写文章）',
+  `published_at` datetime DEFAULT NULL,
   `publish_status` varchar(16) DEFAULT NULL COMMENT 'draft草稿/published已发布',
   `visibility` varchar(16) DEFAULT 'public' COMMENT '可见性 public家庭可见/private仅作者/specific指定人',
   `narrator_person_id` varchar(64) DEFAULT NULL COMMENT '讲述者人物 id',

@@ -11,7 +11,7 @@
 <p><span class="badge-draft">👥 仅指定人可见</span></p>
 {% endif %}
 {% if can_edit %}<div class="form-actions"><a class="btn-secondary" href="{{ url_for('main.edit_article',family_id=family.id,interview_id=iv.id) }}">编辑故事</a><a class="btn-secondary" href="{{ url_for('main.story_history',family_id=family.id,interview_id=iv.id) }}">历次版本</a></div>{% endif %}
-<p class="hint">🎙️ 讲述者：{% if narrator %}<a href="{{ url_for('main.person_page', family_id=family.id, person_id=narrator.id) }}">{{ narrator.name }}</a>{% else %}—{% endif %} · 讲述对象：{% if person %}<a href="{{ url_for('main.person_page', family_id=family.id, person_id=person.id) }}">{{ person.name }}</a>{% else %}—{% endif %} · {{ iv.create_date.strftime('%Y-%m-%d') if iv.create_date else '' }}</p>
+<p class="hint">🎙️ 讲述者：{% if narrator %}<a href="{{ url_for('main.person_page', family_id=family.id, person_id=narrator.id) }}">{{ narrator.name }}</a>{% else %}—{% endif %} · 讲述对象：{% if person %}<a href="{{ url_for('main.person_page', family_id=family.id, person_id=person.id) }}">{{ person.name }}</a>{% else %}—{% endif %} · {{ iv.publication_time.strftime('%Y-%m-%d') if iv.publication_time else '' }}{% if iv.publication_time_inferred %}（录入时间，发布时点待核实）{% endif %}</p>
 <div class="engagement">
   <span>👁️ <span id="viewCount">{{ iv.view_count or 0 }}</span> 观看</span>
   <button class="likebtn {{ 'liked' if ('interview', iv.id) in liked_ids else '' }}" data-type="interview" data-id="{{ iv.id }}">❤️ <span class="cnt">{{ iv.like_count or 0 }}</span> 点赞</button>

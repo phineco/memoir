@@ -23,14 +23,15 @@
 {% else %}
 <p class="hint">暂无 AI 导读，请管理员生成。</p>
 {% endif %}
-<h2>本周新增故事（{{ interviews|length }}）</h2>
+<h2>本周发布故事（{{ interviews|length }}）</h2>
 <ul>
 {% for iv in interviews %}
   <li><a href="{{ url_for('main.story_detail', family_id=family.id, interview_id=iv.id) }}">《{{ iv.topic or '未命名' }}》</a>
-      · {{ persons[iv.person_id].name if iv.person_id in persons else '—' }}</li>
+      · {{ persons[iv.person_id].name if iv.person_id in persons else '—' }}{% if iv.publication_time_inferred %}（历史资料，按录入时间推定）{% endif %}</li>
 {% else %}<li class="hint">本周暂无新增。</li>{% endfor %}
 </ul>
 
+<h2>本周修订动态</h2><ul>{% for row in revisions %}<li><a href="{{ url_for('main.story_detail',family_id=family.id,interview_id=row.story.id) }}">《{{ row.story.topic }}》</a> · {{ row.at.strftime('%m-%d') }} 已修订</li>{% else %}<li class="hint">本周暂无修订。</li>{% endfor %}</ul>
 <h2>本周金句</h2>
 <ul class="quotes">{% for q in quotes %}<li>"{{ q.text }}"</li>{% else %}<li class="hint">暂无。</li>{% endfor %}</ul>
 
