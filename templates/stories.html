@@ -7,7 +7,7 @@
 {% for iv, person in rows %}
   <a class="card" href="{{ url_for('main.story_detail', family_id=family.id, interview_id=iv.id) }}">
     <div class="card-title">《{{ iv.topic or '未命名' }}》{% if iv.publish_status == 'draft' %} <span class="badge-draft">草稿</span>{% endif %}</div>
-    <div class="card-sub">{{ person.name if person else '—' }} · {{ iv.create_date.strftime('%Y-%m-%d') if iv.create_date else '' }} </div>
+    <div class="card-sub">{{ person.name if person else '—' }} · {{ iv.publication_time.strftime('%Y-%m-%d') if iv.publication_time else '' }}{% if iv.publish_status == 'draft' %} · 草稿创建{% elif iv.publication_time_inferred %} · 录入时间推定{% else %} · 首次发布{% endif %} </div>
     {% if iv.period_start or iv.period_end %}<div class="card-sub">📅 {{ iv.period_start.strftime('%Y') if iv.period_start else '?' }} → {{ iv.period_end.strftime('%Y') if iv.period_end else '?' }}</div>{% endif %}
   </a>
 {% else %}

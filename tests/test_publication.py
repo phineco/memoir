@@ -33,3 +33,10 @@ def test_publication_clock_follows_configured_timezone(monkeypatch):
     value=reporting.local_now()
     after=datetime.datetime.now(ZoneInfo('America/Los_Angeles')).replace(tzinfo=None)
     assert before<=value<=after and value.tzinfo is None
+
+
+def test_newly_published_old_draft_appears_first_in_story_list(client,login):
+    login();s=get_session();s.query(Interview).filter_by(id='draft-a').one().create_date=datetime.datetime.now()-datetime.timedelta(days=40);s.commit()
+    client.post('/f/a/story/draft-a/publish')
+    html=client.get('/f/a/stories').get_data(as_text=True)
+    assert html.index('/story/draft-a')<html.index('/story/public-a')

@@ -710,7 +710,8 @@ def stories(family_id):
         Person, Interview.person_id == Person.id
     ).filter(Interview.family_id == family_id, Interview.del_flag == 0)
     q = _visible_filter(q, s, me)
-    rows = q.order_by(Interview.create_date.desc()).all()
+    from sqlalchemy import func
+    rows = q.order_by(func.coalesce(Interview.published_at,Interview.create_date).desc(),Interview.id).all()
     return render_template("stories.html", family=fam, rows=rows, me=me)
 
 
