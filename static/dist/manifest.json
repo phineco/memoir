@@ -11,7 +11,7 @@
     "vendor/quill-2.0.3.js": "quill-2.0.3.f6157c72ac9b3f51.js",
     "vendor/quill-2.0.3.snow.css": "quill-2.0.3.snow.1c7948cd13aa92fa.css",
     "voice-input.js": "voice-input.f323cdfedfb0b122.js",
-    "write-recovery.js": "write-recovery.be10284dd442f4ad.js"
+    "write-recovery.js": "write-recovery.6131c11c41c0fa88.js"
   },
   "sha256": {
     "ai-chat.c765be6c85a34eae.js": "c765be6c85a34eae69e57eb321b2a2f0ddadef28386f81de32030b121701c462",
@@ -25,7 +25,7 @@
     "read-aloud.ca0c7d0555db6cb2.js": "ca0c7d0555db6cb2b89f54a15c04b4c952edb21b3a6604d9c143c26f7ac22fea",
     "share-links.80dc9f6d8be18cdc.js": "80dc9f6d8be18cdc98da06912287911cce64e54076fcc5c91a79a62e9f3f00f0",
     "voice-input.f323cdfedfb0b122.js": "f323cdfedfb0b122a9651c57b07d4bdc3ccc93e3da8d84111a13d6cf2faaedaf",
-    "write-recovery.be10284dd442f4ad.js": "be10284dd442f4ad4f27a0f5e186dd33068dbded15ae71a6a1834fa539d502bd"
+    "write-recovery.6131c11c41c0fa88.js": "6131c11c41c0fa880700dbb937269442c65cbd68f653499c53694d8ec57009e6"
   },
   "version": 1
 }

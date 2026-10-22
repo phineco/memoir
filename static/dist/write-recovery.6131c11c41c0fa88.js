@@ -20,11 +20,11 @@
     function fields() {
       var data = {};
       new FormData(form).forEach(function (value, name) {
-        if (['content', 'recovery_ids', 'action'].indexOf(name) !== -1) return;
+        if (['content', 'recovery_ids', 'action', 'base_version', 'correction_id'].indexOf(name) !== -1) return;
         if (!data[name]) data[name] = [];
         data[name].push(value);
       });
-      return {fields:data, content:options.read(), at:Date.now()};
+      return {fields:data, content:options.read(), at:Date.now(), baseVersion:form.elements.base_version ? form.elements.base_version.value : null};
     }
     function save() {
       if (!dirty) return;
@@ -49,10 +49,12 @@
           var button = document.createElement('button'); button.type = 'button'; button.className = 'btn-small btn-secondary';
           button.textContent = '恢复：' + ((row.value.fields.topic || [])[0] || '未命名回忆') + '（' + new Date(row.value.at).toLocaleString() + '）';
           button.onclick = function () {
+            var savedVersion=row.value.baseVersion || (row.value.fields.base_version || [])[0];
+            if (savedVersion && form.elements.base_version && savedVersion !== form.elements.base_version.value && !window.confirm('原文已有新版本。恢复只替换编辑区，请核对新旧内容后再保存。继续吗？')) return;
             if (dirty && !window.confirm('恢复会替换当前编辑区；当前内容已另存一份。继续恢复吗？')) return;
             if (dirty) { try { localStorage.setItem(scope + freshId(), JSON.stringify(fields())); } catch (_) { status.textContent = '无法另存当前内容，请先保存草稿。'; return; } }
             Array.from(form.elements).forEach(function (el) {
-              var name = el.name; if (!name || ['recovery_ids','action','content'].indexOf(name) !== -1) return;
+              var name = el.name; if (!name || ['recovery_ids','action','content','base_version','correction_id'].indexOf(name) !== -1) return;
               var values = row.value.fields[name] || [];
               if (el.type === 'checkbox' || el.type === 'radio') el.checked = values.indexOf(el.value) !== -1;
               else if (el.type !== 'submit' && el.type !== 'button') el.value = values[0] || '';
@@ -79,6 +81,7 @@
       if (dirty && !leaving) { event.preventDefault(); event.returnValue = ''; }
     });
     window.addEventListener('pagehide', save);
+    window.addEventListener('pageshow', function () { leaving=false; });
     document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
     window.addEventListener('storage', function (event) { if (event.key && event.key.indexOf(scope) === 0) show(); });
     clear.onclick = function () {

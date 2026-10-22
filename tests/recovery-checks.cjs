@@ -20,12 +20,22 @@ module.exports = async function(browser, signedIn, base) {
   await second.goto(base+'/f/empty/write'); assert.equal(await second.locator('#recovery-list button').count(),0);
   await second.goto(base+'/f/ui/write');await second.locator('#recovery-clear').click();
   assert.equal(await second.locator('#recovery-list button').count(),0);
+  await page.goto(base+'/f/ui/story/story/edit');
+  const original=await page.locator('[name=base_version]').inputValue();
+  await page.locator('.ql-editor').fill('旧副本恢复后，需要以当前版本继续核对。');
+  await page.waitForFunction(()=>document.getElementById('recovery-status').textContent.includes('已自动保留'));
+  assert.equal((await context.request.post(base+'/f/ui/story/story/edit',{form:{topic:'新版故事',content:'<p>另一个窗口保存的新版本。</p>',revision_reason:'并行修订',base_version:original}})).status(),200);
+  await page.reload();await page.locator('#recovery-list button').first().click();
+  assert.equal(await page.locator('[name=base_version]').inputValue(),String(Number(original)+1));
+  assert.match(await page.locator('.ql-editor').innerText(),/旧副本恢复/);
+  await page.locator('[name=revision_reason]').fill('核对当前版本后恢复内容');
+  await page.getByRole('button',{name:'保存修订',exact:true}).click();await page.waitForURL('**/story/story');
   const disabled=await browser.newContext();await disabled.addCookies(await signedIn.cookies());
   await disabled.addInitScript(()=>{Storage.prototype.setItem=function(){throw new Error('disabled');};});
   const p=await disabled.newPage();await p.goto(base+'/f/ui/write');await p.locator('.ql-editor').fill('禁止存储时仍须保留编辑区');
   await p.waitForFunction(()=>document.getElementById('recovery-status').textContent.includes('自动保留失败'));
   assert.match(await p.locator('.ql-editor').innerText(),/仍须保留/);await disabled.close();
-  console.log('Recovery: refresh, independent windows, save cleanup, family isolation, explicit clear and storage failure passed.');
-  return 6;
+  console.log('Recovery: refresh, independent windows, save cleanup, family isolation, explicit clear, current-version recovery and storage failure passed.');
+  return 7;
  } finally {await context.close();}
 };
