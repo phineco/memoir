@@ -431,3 +431,17 @@ class StoryCorrection(AuditMixin, Base):
     decision = Column(String(255))
     reviewed_by = Column(String(64))
     reviewed_at = Column(DateTime)
+
+
+class AiTurn(AuditMixin, Base):
+    """An idempotent, user-owned AI attempt; failures retain the original question."""
+    __tablename__ = 'ai_turns'
+    family_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64), nullable=False, index=True)
+    question = Column(Text, nullable=False)
+    answer = Column(Text)
+    status = Column(String(16), nullable=False)
+    error = Column(String(255))
+    sources = Column(JSON)
+    context_stamp = Column(String(64), nullable=False)
+    lease_until = Column(DateTime)

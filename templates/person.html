@@ -26,7 +26,7 @@
 </div>
 
 <h2>📝 人物小传</h2>
-{% if is_admin %}<p><a href="{{ url_for('main.portrait_edit', family_id=family.id, person_id=person.id) }}" class="btn-small btn-secondary">✏️ 编辑小传</a> <span class="muted">AI 自动提炼，管理员可修订（保留历史版本）</span></p>{% endif %}
+{% if is_admin %}<p><a href="{{ url_for('main.portrait_edit', family_id=family.id, person_id=person.id) }}" class="btn-small btn-secondary">✏️ 编辑小传</a> <span class="muted">管理员录入或导入外部整理结果，修订保留历史版本</span></p>{% endif %}
 {% if portrait %}
 {% set ra_prefix = 'portrait' %}{% set ra_label = '朗读小传' %}{% set ra_target = 'portraitBody' %}
 {% include '_read_aloud.html' %}

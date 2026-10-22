@@ -13,7 +13,7 @@ from legal import TERMS_VERSION, PRIVACY_VERSION, accepted_current_documents
 from models import (Comment, Draft, Family, FamilyMember, Interview, InterviewPerson,
                     InterviewViewer, Invite, Like, NewPerson, Person, PersonLink, Photo, Portrait, Quote,
                     ShareSnapshot, SyncLog, TimelineEvent, User, LegalAcceptance, VerificationItem,
-                    StoryCorrection, WritingPlan, get_session)
+                    AiTurn, StoryCorrection, WritingPlan, get_session)
 
 bp = Blueprint("main", __name__)
 
@@ -2209,6 +2209,8 @@ def ai_ask(family_id):
         ai_mod.AiMessage.create_date.desc()).limit(30).all()
     return render_template("ask.html", family=fam, me=me,
                            msgs=list(reversed(msgs)),
+                           turns=list(reversed(s.query(AiTurn).filter_by(family_id=family_id,user_id=me.id,del_flag=0,context_stamp=ai_mod.context_stamp(family_id)).order_by(AiTurn.create_date.desc()).limit(20).all())),
+                           turn_result=__import__('ai_turns').public_result,
                            ai_enabled=ai_mod.ai_enabled(),
                            error=request.args.get("error"))
 
@@ -2223,32 +2225,52 @@ def ai_ask_stream(family_id):
     import ai as ai_mod
     if not ai_mod.ai_enabled():
         return jsonify({"error": "AI 未启用"}), 400
-    data = request.get_json(silent=True) or {}
-    msg = (data.get("message") or "").strip()[:2000]
-    if not msg:
-        return jsonify({"error": "请输入问题"}), 400
+    data = request.get_json(silent=True)
+    if not isinstance(data,dict) or not isinstance(data.get('message'),str):
+        return jsonify(error='请输入文字问题'),400
+    msg=data['message'].strip()
+    if not msg or len(msg)>2000:
+        return jsonify(error='问题须为1到2000字'),400
 
-    import json as _json
+    import secrets
+    import ai_turns
+    nonce=data.get('request_id') or secrets.token_urlsafe(24)
+    try:
+        turn,created=ai_turns.begin(family_id,me.id,nonce,msg)
+    except (ValueError,ai_turns.TurnConflict):
+        return jsonify(error="请求编号无效或已使用"),409
+    if not created:
+        result=ai_turns.public_result(turn)
+        if result['status']=='running':return jsonify(result),409
+        if result['status']!='succeeded':return jsonify(result),400
+        def replay():
+            yield 'data: '+json.dumps({'sources':result['sources']},ensure_ascii=False)+'\n\n'
+            yield 'data: '+json.dumps({'chunk':result['answer']},ensure_ascii=False)+'\n\n'
+            yield 'data: [DONE]\n\n'
+        gen=replay
+    else:
+        def gen():
+            for payload in ai_turns.generate(turn,fam.name):
+                yield 'data: '+json.dumps(payload,ensure_ascii=False)+'\n\n'
+            yield 'data: [DONE]\n\n'
+            if turn.status == 'succeeded':ai_mod._update_memory(family_id,me.id)
+    return Response(stream_with_context(gen()),mimetype='text/event-stream',
+                    headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no'})
 
-    def gen():
-        try:
-            for piece in ai_mod.chat_stream(family_id, me.id, msg,
-                                           family_name=fam.name):
-                yield "data: " + _json.dumps({"chunk": piece},
-                                             ensure_ascii=False) + "\n\n"
-        except ai_mod.AIError as e:
-            yield "data: " + _json.dumps({"error": str(e)},
-                                         ensure_ascii=False) + "\n\n"
-            return
-        except Exception as e:
-            yield "data: " + _json.dumps({"error": "AI 出错：%s" % e},
-                                         ensure_ascii=False) + "\n\n"
-            return
-        yield "data: [DONE]\n\n"
 
-    return Response(stream_with_context(gen()), mimetype="text/event-stream",
-                    headers={"Cache-Control": "no-cache",
-                             "X-Accel-Buffering": "no"})
+@bp.route('/f/<family_id>/ask/turn/<nonce>',methods=['GET','POST'])
+def ai_turn_status(family_id,nonce):
+    _family_or_404(family_id);me=_current_user()
+    import ai_turns
+    try:turn=ai_turns.lookup(family_id,me.id,nonce)
+    except ValueError:abort(404)
+    if not turn:abort(404)
+    if request.method=='POST':
+        s=_s();s.query(AiTurn).filter_by(id=turn.id,status='running').update({AiTurn.status:'cancelled',AiTurn.error:'生成已取消，问题已保留。'})
+        s.commit();s.refresh(turn)
+    response=jsonify(ai_turns.public_result(turn))
+    response.headers['Cache-Control']='private, no-store'
+    return response
 
 
 @bp.route("/f/<family_id>/weekly/<int:week>/ai-summary", methods=["POST"])

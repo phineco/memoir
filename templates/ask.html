@@ -4,10 +4,10 @@
 {% block content %}
 <h1>🤖 问 AI</h1>
 <p class="hint">我会参考{{ family.name }}中全家人可见的回忆摘录，内容可能不完整。
-可以问我家里的事（我会注明出处）、让我找缺失的内容、或帮你规划下周采访谁。不知道的事我会直说，绝不编。</p>
+可以问我家里的事（我会注明出处）、让我找缺失的内容、或帮你规划下周采访谁。回答仅供参考；未找到时会说明本次检索范围，请结合原文核实。</p>
 <p class="hint">仅自己或指定人可见的文章不用于 AI。旧对话及偏好不会在故事范围或版本变化后自动复用，以免继续引用已收回的资料。</p>
 {% if not ai_enabled %}
-<p class="error">AI 未启用：请管理员配置 DEEPSEEK_API_KEY 后使用。</p>
+<p class="error">AI 暂未启用，请联系家庭管理员。</p>
 {% endif %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 {% if ai_enabled %}
@@ -20,15 +20,17 @@
 </div>
 {% endif %}
 <div class="chatlog" id="chatlog">
-{% for m in msgs %}
-  <div class="chat-msg {{ m.role }}">
-    <div class="chat-role">{{ '你' if m.role == 'user' else '🤖 家音' }}</div>
-    <div class="chat-body">{{ m.content }}</div>
-    {% if m.role == 'assistant' %}<div><button type="button" class="btn-small speak-btn" data-text="{{ m.content|e }}">🔊 朗读</button></div>{% endif %}
-  </div>
-{% else %}
-  <p class="hint" id="empty-hint">还没有对话，试试："三叔哪年进的供销社？"、"家里还有谁没采访？"、"下周建议先采访谁？"</p>
+{% if turns %}
+{% for turn in turns %}{% set result=turn_result(turn) %}
+<div class="chat-msg user"><div class="chat-role">你</div><div class="chat-body">{{ turn.question }}</div></div>
+<div class="chat-msg assistant"><div class="chat-role">家音 · {{ {'running':'正在生成','succeeded':'已完成','failed':'未完成','cancelled':'已取消','outdated':'资料已更新'}.get(result.status,result.status) }}</div><div class="chat-body">{{ result.answer }}</div>
+{% if result.error %}<p class="error">{{ result.error }}</p>{% endif %}
+{% if result.status != 'succeeded' %}<button type="button" class="btn-small resume-ai" data-question="{{ turn.question }}" data-request="{{ turn.remarks }}">恢复这个问题</button>{% endif %}
+{% if result.sources %}<details class="disclosure"><summary>本次检索依据（请核对原文）</summary>{% for source in result.sources %}<p><a href="{{ source.url }}">[{{ source.index }}] {{ source.title }}</a></p><blockquote>{{ source.excerpt }}</blockquote>{% endfor %}</details>{% endif %}</div>
 {% endfor %}
+{% else %}
+{% for m in msgs %}<div class="chat-msg {{ m.role }}"><div class="chat-role">{{ '你' if m.role == 'user' else '家音' }}</div><div class="chat-body">{{ m.content }}</div>{% if m.role=='assistant' %}<button type="button" class="btn-small speak-btn" data-text="{{ m.content|e }}">朗读</button>{% endif %}</div>{% else %}<p class="hint" id="empty-hint">还没有对话，可以问家人的故事，或先安排下一次采访。</p>{% endfor %}
+{% endif %}
 </div>
 {% if ai_enabled %}
 <div class="chat-toolbar">
@@ -40,134 +42,13 @@
   <label class="sr-only" for="msg-input">你的问题</label><input id="msg-input" class="full" placeholder="问点什么…（或点 🎤 语音输入）" maxlength="2000" autocomplete="off">
   <button type="submit" class="btn-primary" id="send-btn">发送</button>
 </form>
+<div class="form-actions"><button id="retry-ai" type="button" class="btn-secondary" hidden>重试这个问题</button><button id="cancel-ai" type="button" class="btn-secondary" hidden>取消生成</button></div>
+<p class="hint" id="ai-state" role="status" aria-live="polite"></p>
+<details class="disclosure"><summary>本机未完成的问题</summary><p class="hint">按账号和家庭保留在当前浏览器，共用设备请及时清除。</p><div id="ai-recoveries" class="form-actions"></div><button id="ai-clear-pending" type="button" class="btn-small btn-secondary">清除本机未完成问题</button></details>
 <p class="hint" id="voice-status" role="status" aria-live="polite" aria-atomic="true"></p>
 {% include "_voice_fallback.html" %}
 <script src="{{ asset_url('voice-input.js') }}"></script>
-<script>
-(function(){
-  var chatlog = document.getElementById('chatlog');
-  var form = document.getElementById('chatform');
-  var input = document.getElementById('msg-input');
-  var sendBtn = document.getElementById('send-btn');
-  var streamUrl = {{ url_for('main.ai_ask_stream', family_id=family.id)|tojson }};
-
-  var voiceInput = null;
-
-  function scrollBottom(){ chatlog.scrollTop = chatlog.scrollHeight; }
-  scrollBottom();
-
-  function esc(s){ var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-  function addMsg(role, text){
-    var hint = document.getElementById('empty-hint');
-    if(hint) hint.remove();
-    var div = document.createElement('div');
-    div.className = 'chat-msg ' + role;
-    div.innerHTML = '<div class="chat-role">' + (role === 'user' ? '你' : '🤖 家音') + '</div>' +
-                    '<div class="chat-body">' + esc(text) + '</div>';
-    chatlog.appendChild(div); scrollBottom();
-    return div;
-  }
-
-  function addSpeakBtn(div, text){
-    var wrap = document.createElement('div');
-    var btn = document.createElement('button');
-    btn.type = 'button'; btn.className = 'btn-small speak-btn';
-    btn.textContent = '🔊 朗读';
-    btn.onclick = function(){ speak(text); };
-    wrap.appendChild(btn); div.appendChild(wrap);
-  }
-
-  /* ---------- 语音播报 ---------- */
-  var stopBtn = document.getElementById('stop-speak');
-  function speak(text){
-    if(!('speechSynthesis' in window)){ alert('当前浏览器不支持语音播报'); return; }
-    speechSynthesis.cancel();
-    var u = new SpeechSynthesisUtterance(text);
-    u.lang = 'zh-CN'; u.rate = 1;
-    u.onend = u.onerror = function(){ stopBtn.style.display = 'none'; };
-    stopBtn.style.display = '';
-    speechSynthesis.speak(u);
-  }
-  stopBtn.onclick = function(){ speechSynthesis.cancel(); stopBtn.style.display = 'none'; };
-  chatlog.addEventListener('click', function(e){
-    var b = e.target.closest('.speak-btn');
-    if(b && b.dataset.text) speak(b.dataset.text);
-  });
-
-  /* ---------- 流式发送 ---------- */
-  form.onsubmit = function(e){
-    e.preventDefault();
-    if (voiceInput && voiceInput.active()) { voiceInput.stop(); return; }
-    var text = input.value.trim();
-    if(!text || sendBtn.disabled) return;
-    if(!('EventSource' in window) && !window.fetch){ alert('浏览器太旧，请升级后使用'); return; }
-    if ('speechSynthesis' in window) speechSynthesis.cancel();
-    input.value = '';
-    addMsg('user', text);
-    var aiDiv = addMsg('assistant', '思考中…');
-    var body = aiDiv.querySelector('.chat-body');
-    sendBtn.disabled = true; sendBtn.textContent = '发送中…';
-
-    fetch(streamUrl, {method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({message: text})})
-    .then(function(resp){
-      if(!resp.ok || !resp.body) throw new Error('http ' + resp.status);
-      var reader = resp.body.getReader();
-      var decoder = new TextDecoder();
-      var buf = '', full = '', started = false;
-      function pump(){
-        return reader.read().then(function(r){
-          if(r.done){ finish(); return; }
-          buf += decoder.decode(r.value, {stream: true});
-          var idx;
-          while((idx = buf.indexOf('\n\n')) >= 0){
-            var line = buf.slice(0, idx); buf = buf.slice(idx + 2);
-            if(line.indexOf('data:') !== 0) continue;
-            var payload = line.slice(5).trim();
-            if(payload === '[DONE]'){ finish(); return; }
-            try {
-              var d = JSON.parse(payload);
-              if(d.error){ body.textContent = d.error; finish(); return; }
-              if(d.chunk){
-                if(!started){ body.textContent = ''; started = true; }
-                full += d.chunk; body.textContent = full; scrollBottom();
-              }
-            } catch(err){}
-          }
-          return pump();
-        });
-      }
-      function finish(){
-        sendBtn.disabled = false; sendBtn.textContent = '发送';
-        if(full){
-          addSpeakBtn(aiDiv, full);
-          if(document.getElementById('auto-speak').checked) speak(full);
-        }
-      }
-      return pump();
-    })
-    .catch(function(){ body.textContent = '网络出错，请重试'; sendBtn.disabled = false; sendBtn.textContent = '发送'; });
-  };
-
-  /* ---------- 常用问题 ---------- */
-  var suggBtns = document.querySelectorAll('.suggest-q');
-  for(var si = 0; si < suggBtns.length; si++){
-    suggBtns[si].onclick = function(){
-      input.value = this.textContent.trim();
-      input.focus();
-    };
-  }
-
-  /* ---------- 语音输入 ---------- */
-  voiceInput = initVoiceInput({
-    continuous: false,
-    beforeStart: function () { if ('speechSynthesis' in window) speechSynthesis.cancel(); },
-    onText: function (text) { input.value += text; input.dispatchEvent(new Event('input', {bubbles:true})); },
-    focus: function () { input.focus(); input.scrollIntoView({block:'center'}); }
-  });
-})();
-</script>
+<script src="{{ asset_url('ai-chat.js') }}"></script>
+<script>initAiChat({user:{{ me.id|tojson }},family:{{ family.id|tojson }},stream:{{ url_for('main.ai_ask_stream',family_id=family.id)|tojson }},turnPrefix:{{ (url_for('main.ai_ask',family_id=family.id)+'/turn/')|tojson }},storyPrefix:{{ ('/f/'+family.id+'/story/')|tojson }}});</script>
 {% endif %}
 {% endblock %}

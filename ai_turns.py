@@ -1,0 +1,94 @@
+"""Synchronous AI attempts with durable status, cancellation and idempotency."""
+import datetime
+import hashlib
+import re
+
+from flask import url_for
+from sqlalchemy.exc import IntegrityError
+
+from access import family_role
+from models import AiMessage,AiTurn,get_session
+import ai
+
+
+class TurnConflict(Exception):pass
+
+
+def turn_id(family_id,user_id,nonce):
+    if not isinstance(nonce,str) or not re.fullmatch(r'[a-zA-Z0-9_-]{8,80}',nonce):
+        raise ValueError('无效请求编号')
+    return hashlib.sha256((family_id+':'+user_id+':'+nonce).encode()).hexdigest()
+
+
+def lookup(family_id,user_id,nonce):
+    return get_session().query(AiTurn).filter_by(id=turn_id(family_id,user_id,nonce),family_id=family_id,user_id=user_id,del_flag=0).first()
+
+
+def public_result(turn):
+    current=ai.context_stamp(turn.family_id)
+    if turn.context_stamp!=current:
+        return {'status':'outdated','question':turn.question,'answer':'','sources':[], 'error':'资料范围已变化，请核对后重新提问。'}
+    if turn.status=='running' and turn.lease_until and turn.lease_until<datetime.datetime.now():
+        s=get_session();s.query(AiTurn).filter_by(id=turn.id,status='running').update({AiTurn.status:'failed',AiTurn.error:'连接已中断，问题已保留，请手动重试。'});s.commit();s.refresh(turn)
+    sources=[]
+    for row in turn.sources or []:
+        sources.append(dict(row,url=url_for('main.story_detail',family_id=turn.family_id,interview_id=row['story_id'])+'#articleBody'))
+    return {'status':turn.status,'question':turn.question,'answer':turn.answer or '', 'error':turn.error or '', 'sources':sources}
+
+
+def begin(family_id,user_id,nonce,message):
+    s=get_session();prior=lookup(family_id,user_id,nonce)
+    if prior:
+        if prior.question!=message:raise TurnConflict('请求编号已用于另一个问题')
+        return prior,False
+    from retrieval import retrieve
+    turn=AiTurn(id=turn_id(family_id,user_id,nonce),family_id=family_id,user_id=user_id,question=message,
+                status='running',answer='',remarks=nonce,context_stamp=ai.context_stamp(family_id),sources=retrieve(family_id,user_id,message),
+                lease_until=datetime.datetime.now()+datetime.timedelta(minutes=5),create_by=user_id)
+    s.add(turn)
+    try:s.commit()
+    except IntegrityError:
+        s.rollback();return lookup(family_id,user_id,nonce),False
+    return turn,True
+
+
+def cancelled_or_changed(turn):
+    s=get_session();s.commit();s.expire_all();s.refresh(turn)
+    return (turn.status!='running' or not family_role(s,turn.family_id,turn.user_id)
+            or ai.context_stamp(turn.family_id)!=turn.context_stamp)
+
+
+def generate(turn,family_name):
+    s=get_session();parts=[];complete=False
+    source=None
+    try:
+        if cancelled_or_changed(turn):raise ai.AIError("请求已停止")
+        source=ai.chat_stream(turn.family_id,turn.user_id,turn.question,family_name=family_name,persist=False)
+        yield {'sources':public_result(turn)['sources']}
+        for piece in source:
+            if cancelled_or_changed(turn):
+                raise ai.AIError('已停止生成或资料范围发生变化，问题已保留。')
+            parts.append(piece);yield {'chunk':piece}
+        if not parts:raise ai.AIError('未收到完整回复，请稍后重试。')
+        if cancelled_or_changed(turn):raise ai.AIError('已停止生成或资料范围发生变化。')
+        now=datetime.datetime.now();answer=''.join(parts)
+        claimed=s.query(AiTurn).filter_by(id=turn.id,status='running').update({
+            AiTurn.status:'succeeded',AiTurn.answer:answer, AiTurn.update_date:now},synchronize_session=False)
+        if not claimed:s.rollback();raise ai.AIError('生成已取消')
+        for role,content in [('user',turn.question),('assistant',answer)]:
+            s.add(AiMessage(id=hashlib.sha256((turn.id+role).encode()).hexdigest(),family_id=turn.family_id,user_id=turn.user_id,
+                            role=role,content=content[:12000],remarks=turn.context_stamp,create_by=turn.user_id,create_date=now))
+        s.commit();complete=True
+        yield {'complete':True}
+    except GeneratorExit:
+        raise
+    except Exception:
+        s.rollback();s.expire_all()
+        s.query(AiTurn).filter_by(id=turn.id,status='running').update({AiTurn.status:'failed',AiTurn.answer:''.join(parts),AiTurn.error:'生成未完成，问题已保留，可核对后重试。'})
+        s.commit();yield {'error':'生成未完成，问题已保留，可核对后重试。'}
+    finally:
+        if hasattr(source,'close'):source.close()
+        if not complete:
+            s.rollback()
+            s.query(AiTurn).filter_by(id=turn.id,status='running').update({AiTurn.status:'cancelled',AiTurn.answer:''.join(parts),AiTurn.error:'生成已取消，问题已保留。'})
+            s.commit()
