@@ -171,6 +171,8 @@ def parse_life_state(form, dates, person=None):
             state = 'alive'
         elif has_death:
             state = 'deceased'
+        elif person is not None:
+            state = person.life_state
         else:
             state = 'unknown'
     if state not in ('unknown', 'alive', 'deceased'):

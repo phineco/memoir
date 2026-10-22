@@ -23,3 +23,9 @@ def test_ambiguous_legacy_false_is_not_deceased(app):
     s=get_session();p=s.query(Person).filter_by(id='pa').one();p.alive=False;s.commit()
     assert p.life_state=='unknown'
     p.death_year=2000;s.commit();assert p.life_state=='deceased'
+
+
+def test_partial_profile_update_keeps_confirmed_life_state(client,login):
+    login();s=get_session();p=s.query(Person).filter_by(id='pa').one();p.life_status='alive';p.alive=True;s.commit()
+    assert client.post('/f/a/tree/pa/edit',data={'name':'Alpha Person','birth_solar_year':'1940'}).status_code==302
+    assert get_session().query(Person).filter_by(id='pa').one().life_state=='alive'

@@ -86,6 +86,9 @@ def _apply_tree_upsert(s, family_id, payload, user_id, now):
                     raise SyncError("健在与已有去世日期冲突，请在人物编辑页核实修改")
                 p.alive = sp["alive"]
                 p.life_status = "alive" if sp["alive"] else "deceased"
+            if sp.get("deathYear") is not None and p.life_status == "unknown" and p.death_date_label:
+                p.life_status = "deceased"
+                p.alive = False
             if any(sp.get(field) is not None for field in ("birthYear", "deathYear", "alive")):
                 from person_dates import parse_form
                 try:
