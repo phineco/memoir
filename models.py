@@ -13,6 +13,7 @@ from sqlalchemy import (
     String, Text, UniqueConstraint, create_engine,
 )
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
+from sqlalchemy.engine import make_url
 
 Base = declarative_base()
 
@@ -282,13 +283,19 @@ _engine = None
 _Session = None
 
 
-def init_db(database_url: str):
+def init_db(database_url: str, *, pool_recycle_seconds: int = 1800):
     global _engine, _Session
+    if pool_recycle_seconds < 1:
+        raise ValueError("DB_POOL_RECYCLE_SECONDS 必须为正整数")
+    engine_options = {"pool_pre_ping": True}
+    # MySQL drops idle connections. Never age-recycle an in-memory SQLite DB.
+    if make_url(database_url).get_backend_name() == "mysql":
+        engine_options["pool_recycle"] = pool_recycle_seconds
     if _Session is not None:
         _Session.remove()
     if _engine is not None:
         _engine.dispose()
-    _engine = create_engine(database_url)
+    _engine = create_engine(database_url, **engine_options)
     Base.metadata.create_all(_engine)
     _Session = scoped_session(sessionmaker(bind=_engine))
 

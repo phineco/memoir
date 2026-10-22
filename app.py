@@ -13,7 +13,7 @@ def create_app():
     from invite_links import public_base_url
     app.config["PUBLIC_BASE_URL"] = public_base_url(app.config["PUBLIC_BASE_URL"])
     app.secret_key = Config.SECRET_KEY
-    init_db(Config.DATABASE_URL)
+    init_db(Config.DATABASE_URL, pool_recycle_seconds=Config.DB_POOL_RECYCLE_SECONDS)
     app.register_blueprint(bp)
     from person_dates import LUNAR_MONTHS, LUNAR_DAYS
     app.jinja_env.globals.update(lunar_months=LUNAR_MONTHS, lunar_days=LUNAR_DAYS)

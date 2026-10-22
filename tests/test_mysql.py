@@ -85,3 +85,65 @@ def test_mysql_schema_migration_and_native_backup_restore(tmp_path):
             for name in created:
                 conn.execute(text(f"DROP DATABASE `{name}`"))
         admin.dispose()
+
+
+def test_mysql_help_recovers_from_killed_idle_connection_and_recycles(monkeypatch):
+    """Use a random disposable DB; kill only a connection owned by this test."""
+    import time
+    from types import SimpleNamespace
+    from sqlalchemy.pool import base as pool_base
+
+    import models
+    from app import create_app
+    from config import Config
+
+    admin_url = make_url(os.environ['MEMOIR_TEST_MYSQL_ADMIN_URL'])
+    assert admin_url.get_backend_name() == 'mysql'
+    admin = create_engine(admin_url, isolation_level='AUTOCOMMIT')
+    name = 'memoir_pool_test_' + uuid.uuid4().hex[:12]
+    created = False
+    try:
+        with admin.connect() as conn:
+            conn.execute(text(f'CREATE DATABASE `{name}` CHARACTER SET utf8mb4'))
+            created = True
+        monkeypatch.setattr(Config, 'DATABASE_URL', admin_url.set(database=name).render_as_string(hide_password=False))
+        monkeypatch.setattr(Config, 'DB_POOL_RECYCLE_SECONDS', 2)
+        app = create_app()
+        app.config.update(TESTING=True, SECRET_KEY='mysql-pool-test-only')
+        s = models.get_session()
+        s.add_all([
+            models.User(id='owner', nickname='Pool Owner'),
+            models.Family(id='family', name='Preserved Family', owner_user_id='owner'),
+            models.FamilyMember(id='member', family_id='family', user_id='owner', role='owner'),
+        ])
+        s.commit()
+        models.remove_session()
+        client = app.test_client()
+        with client.session_transaction() as session:
+            session['user_id'] = 'owner'
+        assert client.get('/guide?family_id=family').status_code == 200
+        with models._engine.connect() as conn:
+            stale_id = conn.execute(text('SELECT CONNECTION_ID()')).scalar_one()
+        with admin.connect() as conn:
+            conn.execute(text(f'KILL CONNECTION {int(stale_id)}'))
+        # The first real request after disconnect must succeed, rather than fail once.
+        assert client.get('/guide?family_id=family').status_code == 200
+        assert not models._Session.registry.has()
+        with models._engine.connect() as conn:
+            live_id = conn.execute(text('SELECT CONNECTION_ID()')).scalar_one()
+        assert live_id != stale_id
+        now = time.time()
+        with monkeypatch.context() as clock_patch:
+            clock_patch.setattr(pool_base, 'time', SimpleNamespace(time=lambda: now + 3))
+            assert client.get('/guide?family_id=family').status_code == 200
+            with models._engine.connect() as conn:
+                recycled_id = conn.execute(text('SELECT CONNECTION_ID()')).scalar_one()
+                assert conn.execute(text('SELECT name FROM families')).scalar_one() == 'Preserved Family'
+            assert recycled_id != live_id
+    finally:
+        models.remove_session()
+        models._engine.dispose()
+        if created:
+            with admin.connect() as conn:
+                conn.execute(text(f'DROP DATABASE `{name}`'))
+        admin.dispose()

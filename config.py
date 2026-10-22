@@ -19,6 +19,7 @@ load_dotenv(os.path.join(_BASE_DIR, ".env"))
 
 class Config:
     DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///memoir.db")
+    DB_POOL_RECYCLE_SECONDS = int(os.environ.get("DB_POOL_RECYCLE_SECONDS", "1800"))
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
     PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://family.scyllatech.cn")
     PRIVACY_CONTACT_EMAIL = os.environ.get("PRIVACY_CONTACT_EMAIL", "info@scyllatech.cn").strip()

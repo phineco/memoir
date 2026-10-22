@@ -57,6 +57,7 @@ Flask + Jinja2、SQLAlchemy、Tailwind CSS 3；家族树 ECharts、编辑器 Qui
 | 配置 | 含义 |
 |---|---|
 | `DATABASE_URL` | 默认 `sqlite:///memoir.db`；云端须显式配置 MySQL |
+| `DB_POOL_RECYCLE_SECONDS` | MySQL 连接最长复用秒数，默认 1800；取用连接前始终校验存活，详见部署说明 |
 | `APP_ENV` | `local` / `cloud`；影响默认存储后端，不会自动配置 MySQL |
 | `STORAGE_BACKEND` | `local` / `oss`，可覆盖环境默认值 |
 | `SECRET_KEY` | 会话签名密钥，生产必须设置随机长值 |
