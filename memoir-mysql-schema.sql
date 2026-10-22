@@ -77,6 +77,7 @@ CREATE TABLE `persons` (
   `death_lunar_day` int(11) DEFAULT NULL COMMENT '去世农历日',
   `death_lunar_leap` tinyint(1) DEFAULT '0' COMMENT '去世农历是否闰月',
   `alive` tinyint(1) DEFAULT NULL COMMENT '是否健在（1 是/0 否）',
+  `life_status` varchar(16) DEFAULT NULL,
   `status` varchar(16) DEFAULT NULL COMMENT 'pending待采访/doing整理中/drafted初稿完成/verified已核实',
   `notes` json DEFAULT NULL COMMENT '备注线索数组，如["县城供销社上班"]',
   `sort` decimal(10,0) NOT NULL DEFAULT 0 COMMENT '排序（同级内）',

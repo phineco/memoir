@@ -487,7 +487,7 @@ def _build_tree(family_id, viewer_id=None):
             lines.append(f"（{p.relation}）")
         nodes[p.id] = {
             "name": "\n".join(lines), "person_id": p.id,
-            "itemStyle": {"color": "#b7d7a8" if p.alive else "#d9d9d9"},
+            "itemStyle": {"color": "#b7d7a8" if p.life_state == "alive" else "#d9d9d9" if p.life_state == "deceased" else "#d8e5ef"},
             "children": [],
         }
     root = None
@@ -1307,8 +1307,9 @@ def tree_add(family_id):
         notes = [n.strip() for n in request.form.get("notes", "").split("，")
                  if n.strip()] or None
         try:
-            from person_dates import parse_form
+            from person_dates import parse_form, parse_life_state
             dates = parse_form(request.form)
+            life_state = parse_life_state(request.form, dates)
             sort = int(request.form.get("sort") or 0)
         except ValueError as exc:
             return render_template("tree_form.html", family=fam, persons=persons,
@@ -1321,7 +1322,7 @@ def tree_add(family_id):
             name=name, aliases=aliases,
             relation=request.form.get("relation", "").strip() or None,
             **dates,
-            alive=bool(request.form.get("alive")),
+            life_status=life_state, alive={"alive":True,"deceased":False,"unknown":None}[life_state],
             status=request.form.get("status") or "pending",
             gender=request.form.get("gender") or None,
             notes=notes, sort=sort,
@@ -1358,8 +1359,9 @@ def tree_edit(family_id, person_id):
                                    me=me, error="姓名不能为空", form=request.form,
                                    mode="edit", person=p, users=users)
         try:
-            from person_dates import parse_form
+            from person_dates import parse_form, parse_life_state
             dates = parse_form(request.form, p)
+            life_state = parse_life_state(request.form, dates, p)
             sort = int(request.form.get("sort") or 0)
         except ValueError as exc:
             return render_template("tree_form.html", family=fam, persons=persons,
@@ -1407,7 +1409,8 @@ def tree_edit(family_id, person_id):
         for field,value in dates.items():
             setattr(p,field,value)
         p.sort = sort
-        p.alive = bool(request.form.get("alive"))
+        p.life_status = life_state
+        p.alive = {"alive":True,"deceased":False,"unknown":None}[life_state]
         p.status = request.form.get("status") or p.status
         p.gender = request.form.get("gender") or None
         err = _set_spouse(s, family_id, p, request.form.get("spouse_id") or None)
@@ -1443,7 +1446,7 @@ def tree_edit(family_id, person_id):
         "birth_calendar": p.birth_calendar or "solar",
         "death_calendar": p.death_calendar or "solar",
         "sort": p.sort or 0, "status": p.status or "pending",
-        "parent_id": p.parent_id, "alive": p.alive, "link_user_id": p.user_id or "",
+        "parent_id": p.parent_id, "alive": p.alive, "life_status": p.life_state, "link_user_id": p.user_id or "",
         "gender": p.gender or "", "spouse_id": p.spouse_id or "",
     }
     from person_dates import form_values

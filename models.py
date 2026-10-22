@@ -87,12 +87,23 @@ class Person(AuditMixin, Base):
     death_lunar_day = Column(Integer)
     death_lunar_leap = Column(Boolean, default=False)
     alive = Column(Boolean)
+    life_status = Column(String(16))  # unknown/alive/deceased; NULL preserves legacy uncertainty
     status = Column(String(16))  # pending/doing/drafted/verified
     notes = Column(JSON)
     sort = Column(Numeric(10, 0), nullable=False, default=0)
     user_id = Column(String(64), index=True)  # 关联的登录用户 id（"这是我"认领）；一个用户在一个家庭只关联一个人物
     gender = Column(String(8))  # M=男 F=女 空=未知；用于按登录者自动计算称谓
     spouse_id = Column(String(64))  # 配偶的人物 id（双向）；称谓计算时夫妻视为同一辈分单元
+
+    @property
+    def life_state(self):
+        if self.life_status in ("unknown", "alive", "deceased"):
+            return self.life_status
+        if self.alive is True:
+            return "alive"
+        if self.death_date_label:
+            return "deceased"
+        return "unknown"
 
     @staticmethod
     def _cal_label(year, calendar):

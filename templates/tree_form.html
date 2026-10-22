@@ -23,7 +23,14 @@
     <label>排序 <input name="sort" type="number" value="{{ form.get('sort', 0) if form else 0 }}"></label>
   </div>
   {% include "_life_dates.html" %}
-  <label class="check"><input type="checkbox" name="alive" value="1" {% if form and form.get('alive') %}checked{% endif %}> 健在（填写去世日期时请取消）</label>
+  <label>生存状态
+    <select name="life_status">
+      {% for value, label in [('unknown','未知／待核实'),('alive','健在'),('deceased','已故')] %}
+      <option value="{{ value }}" {% if (form.get('life_status','unknown') if form else 'unknown') == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <p class="hint">不确定时保留未知。填写去世日期表示已故；健在不能同时填写去世日期。旧记录没有可靠状态时，请核实后再选择。</p>
   <div class="form-row">
     <label>性别
       <select name="gender">

@@ -22,7 +22,7 @@
   <span>{{ status_label.get(person.status, person.status or '—') }}</span>
   {% if person.birth_date_label %}<span>出生：{{ person.birth_date_label }}</span>{% endif %}
   {% if person.death_date_label %}<span>去世：{{ person.death_date_label }}</span>{% endif %}
-  {% if person.alive %}<span>💚 健在</span>{% endif %}
+  {% if person.life_state == "alive" %}<span>💚 健在</span>{% elif person.life_state == "deceased" %}<span>已故</span>{% else %}<span>生存状态待核实</span>{% endif %}
 </div>
 
 <h2>📝 人物小传</h2>

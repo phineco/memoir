@@ -119,7 +119,7 @@ def parse_form(form, person=None):
             parts = {part: result[f'{event}_{kind}_{part}'] for part in PARTS}
             leap = result[event + '_lunar_leap'] if kind == 'lunar' else False
             _validate(parts, kind, leap, title + calendar_title)
-    if form.get('alive') and any(result[field] for field in DATE_FIELDS if field.startswith('death_')):
+    if (form.get('life_status') == 'alive' or form.get('alive') in ('1', 'on', 'true', True)) and any(result[field] for field in DATE_FIELDS if field.startswith('death_')):
         raise ValueError('健在与去世日期不能同时填写，请核对后再保存')
     for kind in CALENDARS:
         _check_chronology(result, kind)
@@ -161,3 +161,22 @@ def sync_legacy_year(person, event, raw):
     setattr(person, f'{event}_{kind}_year', year)
     setattr(person, event + '_year', year)
     setattr(person, event + '_calendar', kind)
+
+
+def parse_life_state(form, dates, person=None):
+    state = form.get('life_status')
+    has_death = any(dates.get(field) for field in DATE_FIELDS if field.startswith('death_'))
+    if state is None:
+        if form.get('alive') in ('1', 'on', 'true', True):
+            state = 'alive'
+        elif has_death:
+            state = 'deceased'
+        else:
+            state = 'unknown'
+    if state not in ('unknown', 'alive', 'deceased'):
+        raise ValueError('请选择有效的生存状态')
+    if state == 'alive' and has_death:
+        raise ValueError('健在与去世日期不能同时填写')
+    if state == 'unknown' and has_death:
+        state = 'deceased'
+    return state

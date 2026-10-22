@@ -93,7 +93,7 @@ def family_knowledge(family_id, viewer_id=None, limit=6000):
         lines = []
         for p in persons:
             life = "出生：%s；%s" % (p.birth_date_label or "不详",
-                                     "健在" if p.alive else "去世：" + (p.death_date_label or "不详"))
+                                     "健在" if p.life_state == "alive" else ("去世：" + (p.death_date_label or "日期不详") if p.life_state == "deceased" else "生存状态未知，待核实"))
             st = _STATUS_LABEL.get(p.status or "", "")
             lines.append("- %s（%s，%s%s）" % (
                 p.name, p.relation or "关系未知", life,
