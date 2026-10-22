@@ -36,6 +36,7 @@
 <script src="{{ asset_url('navigation.js') }}"></script>
 <script src="{{ asset_url('read-aloud.js') }}"></script>
 <script src="{{ asset_url('family-context.js') }}"></script>
+{% if saved_write_recovery %}<script src="{{ asset_url('write-recovery.js') }}"></script><script>clearWriteRecoveries({{ saved_write_recovery|tojson }});</script>{% endif %}
 {% block script %}{% endblock %}
 </body>
 </html>

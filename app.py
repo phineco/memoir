@@ -40,7 +40,8 @@ def create_app():
         from legal import TERMS_VERSION, PRIVACY_VERSION
         return {"me": me, "storage_url": storage_url, "asset_url": asset_url,
                 "terms_version": TERMS_VERSION, "privacy_version": PRIVACY_VERSION,
-                "privacy_contact_email": app.config["PRIVACY_CONTACT_EMAIL"]}
+                "privacy_contact_email": app.config["PRIVACY_CONTACT_EMAIL"],
+                "saved_write_recovery": session.pop("saved_write_recovery", None)}
 
     return app
 

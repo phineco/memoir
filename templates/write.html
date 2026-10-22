@@ -7,6 +7,12 @@
 <h2>{% if edit_iv %}✏️ 编辑草稿{% else %}✍️ 写文章{% endif %}</h2>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="post" id="write-form" action="{% if edit_iv %}{{ url_for('main.edit_article', family_id=family.id, interview_id=edit_iv.id) }}{% endif %}">
+  <section class="disclosure" aria-label="正文自动保留">
+    <p id="recovery-status" class="hint" role="status">输入后自动保留在当前浏览器；共用设备请在完成后清除。</p>
+    <div id="recovery-list" class="form-actions"></div>
+    <button id="recovery-clear" class="btn-small btn-secondary" type="button" hidden>清除本页本机恢复记录</button>
+    <input id="recovery-ids" name="recovery_ids" type="hidden">
+  </section>
   <label>标题<br><input name="topic" class="full" value="{{ form.get('topic','') if form else '' }}" required></label>
 
   <div class="editor-toolbar-row">
@@ -94,6 +100,7 @@
 
 <script src="{{ asset_url('vendor/quill-2.0.3.js') }}"></script>
 <script src="{{ asset_url('voice-input.js') }}"></script>
+<script src="{{ asset_url('write-recovery.js') }}"></script>
 <script>
 let writerVoice = null;
 const initialContent = {{ ((form.get('content','') if form else '') if request.method == 'POST' else (existing_content or '')) | tojson }};
@@ -128,6 +135,12 @@ writerVoice = initVoiceInput({
     else document.getElementById('editor-fallback').focus();
     (quill ? quill.root : document.getElementById('editor-fallback')).scrollIntoView({block:'center'});
   }
+});
+initWriteRecovery({
+  user: {{ me.id|tojson }}, family: {{ family.id|tojson }}, story: {{ (edit_iv.id if edit_iv else 'new')|tojson }},
+  read: function () { return quill ? quill.root.innerHTML : document.getElementById('editor-fallback').value; },
+  write: function (value) { if (quill) quill.clipboard.dangerouslyPasteHTML(value); else document.getElementById('editor-fallback').value = value; },
+  subscribe: function (callback) { if (quill) quill.on('text-change', callback); }
 });
 </script>
 {% endblock %}

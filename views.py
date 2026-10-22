@@ -1007,6 +1007,14 @@ def share_delete(family_id, snap_id):
 
 
 
+def _saved_write_recovery(me, family_id, story_id="new"):
+    ids = [value for value in request.form.get("recovery_ids", "").split(",")
+           if re.fullmatch(r"[a-zA-Z0-9-]{8,80}", value)][:20]
+    if ids:
+        session["saved_write_recovery"] = {"user": me.id, "family": family_id,
+                                           "story": story_id, "ids": ids}
+
+
 # ---------------- 写文章（登录用户） ----------------
 
 @bp.route("/f/<family_id>/write", methods=["GET", "POST"])
@@ -1073,6 +1081,7 @@ def write_article(family_id):
                 s.add(InterviewPerson(id=new_id(), interview_id=iv.id,
                                       person_id=pid, role="related"))
         s.commit()
+        _saved_write_recovery(me, family_id, "new")
         if action == "publish":
             return redirect(url_for("main.story_detail", family_id=family_id,
                                     interview_id=iv.id))
@@ -1193,6 +1202,7 @@ def edit_article(family_id, interview_id):
                 s.add(InterviewPerson(id=new_id(), interview_id=iv.id,
                                       person_id=pid, role="related"))
         s.commit()
+        _saved_write_recovery(me, family_id, iv.id)
         if action == "publish":
             return redirect(url_for("main.story_detail", family_id=family_id,
                                     interview_id=iv.id))

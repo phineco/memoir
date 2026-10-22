@@ -321,6 +321,7 @@ const fs = require('node:fs');
         await page.setViewportSize({width,height:844}); await page.goto(base+path); await page.screenshot({path:`${process.env.UI_SCREENSHOTS}/${name}.png`,fullPage:true});
       }
     }
+    const recoveryChecks = await require('./recovery-checks.cjs')(browser, context, base);
     const speechChecks=await require('./voice-checks.cjs').checkVoice(browser,context,base,process.env.UI_SCREENSHOTS);
     assert.deepEqual(external,[], 'unexpected external runtime resources');
     assert.deepEqual(errors,[], 'browser JavaScript errors');
