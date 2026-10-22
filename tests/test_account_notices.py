@@ -35,3 +35,14 @@ def test_legacy_plaintext_results_dropped_on_any_request(client,login):
     with client.session_transaction() as sess:sess['reset_notice']={'password':'legacy-only'}
     client.get('/f/a/stories')
     with client.session_transaction() as sess:assert 'reset_notice' not in sess
+
+
+def test_expired_claim_from_interrupted_reader_is_cleaned(app,tmp_path):
+    import os
+    app.config['ACCOUNT_NOTICE_DIR']=str(tmp_path/'notices')
+    with app.app_context():
+        token=account_notices.store('owner-a','a','reset_notice',{'password':'temporary-only'})
+        path=account_notices._path(token)
+        claimed=path.with_name(path.name+'.'+'a'*16+'.claimed');path.rename(claimed)
+        os.utime(claimed,(1,1));account_notices.cleanup()
+        assert not claimed.exists()

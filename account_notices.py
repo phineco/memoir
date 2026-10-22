@@ -30,9 +30,14 @@ def _path(token):
 
 def cleanup():
     now=time.time()
-    for path in _directory().glob('*.json'):
-        if path.is_file() and path.stat().st_mtime < now-TTL_SECONDS:
-            path.unlink(missing_ok=True)
+    for path in _directory().iterdir():
+        if not re.fullmatch(r'[A-Za-z0-9_-]{43}\.json(?:\.[a-f0-9]{16}\.claimed)?',path.name):
+            continue
+        try:
+            if path.is_file() and path.stat().st_mtime < now-TTL_SECONDS:
+                path.unlink(missing_ok=True)
+        except FileNotFoundError:
+            continue
 
 
 def store(user_id, family_id, kind, data):
