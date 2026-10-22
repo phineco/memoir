@@ -81,6 +81,7 @@
       {% endfor %}
     </div>
     <p class="hint">仅自己/指定人可见的文章不会出现在周报、分享页和 AI 问答知识库中。</p>
+    {% if edit_iv %}<p class="hint">已发布的摘要快照不会随此设置撤回；如需停止旧链接，请由家庭管理员在分享管理中下线。</p>{% endif %}
   </fieldset>
   <script>
     document.querySelectorAll('input[name="visibility"]').forEach(function(r) {

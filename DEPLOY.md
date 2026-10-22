@@ -63,7 +63,7 @@ mysql -h 127.0.0.1 -u memoir -p memoir < memoir-mysql-schema.sql
 .venv/bin/python create_admin.py --phone 13800000000 --nickname 主持人 --family-name 我的家
 ```
 
-业务表共 29 张，`schema_migrations` 由迁移程序维护。已有库不能重新导入建表 SQL。`create_admin.py` 交互输入密码，不清空已有记录；**生产不得执行 `seed.py`**。`install.sh` 只建立项目虚拟环境、安装依赖和缺省配置，不再自动执行 seed 或修改数据库。
+业务表共 31 张，`schema_migrations` 由迁移程序维护。已有库不能重新导入建表 SQL。`create_admin.py` 交互输入密码，不清空已有记录；**生产不得执行 `seed.py`**。`install.sh` 只建立项目虚拟环境、安装依赖和缺省配置，不再自动执行 seed 或修改数据库。
 
 ## 四、服务与 HTTPS
 

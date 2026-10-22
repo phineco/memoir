@@ -1,4 +1,4 @@
-"""SQLAlchemy 模型：与 memoir-mysql-schema.sql 29 张业务表对应。
+"""SQLAlchemy 模型：与 memoir-mysql-schema.sql 业务表对应。
 
 约定：
 - id 由应用生成（uuid4 hex），与 SQL 中 varchar(64) 主键一致；
