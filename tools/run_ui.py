@@ -24,7 +24,7 @@ with tempfile.TemporaryFile(mode='w+') as log:
                 with urllib.request.urlopen(env['UI_TEST_URL']+'/login',timeout=1): break
             except OSError: time.sleep(.25)
         else: raise RuntimeError('Local UI server did not become ready')
-        result = subprocess.run(['node','tests/ui-checks.cjs'],cwd=root,env=env)
+        result = subprocess.run(['node',env.get('UI_CHECK_SCRIPT','tests/ui-checks.cjs')],cwd=root,env=env)
         if result.returncode:
             log.seek(0); print(log.read(),file=sys.stderr)
         sys.exit(result.returncode)

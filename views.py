@@ -13,7 +13,7 @@ from legal import TERMS_VERSION, PRIVACY_VERSION, accepted_current_documents
 from models import (Comment, Draft, Family, FamilyMember, Interview, InterviewPerson,
                     InterviewViewer, Invite, Like, NewPerson, Person, PersonLink, Photo, Portrait, Quote,
                     ShareSnapshot, SyncLog, TimelineEvent, User, LegalAcceptance, VerificationItem,
-                    WritingPlan, get_session)
+                    StoryCorrection, WritingPlan, get_session)
 
 bp = Blueprint("main", __name__)
 
@@ -714,6 +714,11 @@ def stories(family_id):
     return render_template("stories.html", family=fam, rows=rows, me=me)
 
 
+def _can_edit_story(iv, me, fam):
+    return bool(me and _can_view(iv, me) and (iv.author_id == me.id or (
+        not iv.author_id and (iv.visibility or "public") == "public" and _is_admin(fam, me))))
+
+
 @bp.route("/f/<family_id>/story/<interview_id>")
 def story_detail(family_id, interview_id):
     fam = _family_or_404(family_id)
@@ -754,7 +759,11 @@ def story_detail(family_id, interview_id):
                            quotes=quotes, verifs=verifs, links=links,
                            comment_roots=comment_roots, comment_users=comment_users,
                            me=me, liked_ids=liked_ids, rel_rows=rel_rows,
-                           narrator=narrator, is_admin=_is_admin(fam, me))
+                           narrator=narrator, is_admin=_is_admin(fam, me),
+                           can_edit=_can_edit_story(iv, me, fam),
+                           corrections=s.query(StoryCorrection).filter_by(interview_id=iv.id, del_flag=0).order_by(StoryCorrection.create_date.desc()).all(),
+                           correction_names={u.id:u.nickname or u.username or '家人' for u in s.query(User).filter(User.id.in_(
+                               s.query(StoryCorrection.user_id).filter_by(interview_id=iv.id, del_flag=0))).all()})
 
 
 def _weekly_data(family_id, week, viewer_id=None, year=None):
@@ -1131,7 +1140,7 @@ def publish_article(family_id, interview_id):
                             interview_id=interview_id))
 
 
-# ---------------- 编辑草稿（仅作者，仅草稿可改） ----------------
+# ---------------- 故事修订：权限、版本冲突与人工核实 ----------------
 
 @bp.route("/f/<family_id>/story/<interview_id>/edit", methods=["GET", "POST"])
 def edit_article(family_id, interview_id):
@@ -1141,9 +1150,9 @@ def edit_article(family_id, interview_id):
         return redirect(url_for("main.login", next=request.path))
     fam = _family_or_404(family_id)
     s = _s()
-    iv = s.query(Interview).filter_by(id=interview_id, family_id=family_id,
-                                      del_flag=0).first()
-    if not iv or iv.author_id != me.id or (iv.publish_status or "published") != "draft":
+    story_query = s.query(Interview).filter_by(id=interview_id, family_id=family_id, del_flag=0)
+    iv = (story_query.with_for_update() if request.method == "POST" else story_query).first()
+    if not iv or not _can_edit_story(iv, me, fam):
         abort(404)
     persons = s.query(Person).filter_by(family_id=family_id, del_flag=0)\
         .order_by(Person.sort).all()
@@ -1151,8 +1160,21 @@ def edit_article(family_id, interview_id):
                                          del_flag=0).first()
     cur_links = s.query(InterviewPerson).filter_by(interview_id=iv.id,
                                                    del_flag=0).all()
+    was_published = (iv.publish_status or "published") == "published"
     if request.method == "POST":
         from models import new_id
+        base_version = request.form.get("base_version")
+        if (was_published and base_version is None) or (base_version is not None and base_version != str(cur_draft.version if cur_draft else 0)):
+            abort(409, "故事已更新，请重新打开编辑页；本机恢复副本仍保留。")
+        reason = request.form.get("revision_reason", "").strip()
+        if was_published and not reason:
+            abort(400, "请填写本次修订原因；本机恢复副本仍保留。")
+        correction = None
+        correction_id = request.form.get("correction_id")
+        if correction_id:
+            correction = s.query(StoryCorrection).filter_by(id=correction_id, interview_id=iv.id, status="pending", del_flag=0).first()
+            if not correction:
+                abort(409, "该建议已处理，请刷新后核对")
         topic = request.form.get("topic", "").strip()
         content = request.form.get("content", "").strip()
         if content in ("", "<p><br></p>", "<p></p>"):
@@ -1171,17 +1193,25 @@ def edit_article(family_id, interview_id):
         p_start = request.form.get("period_start") or None
         p_end = request.form.get("period_end") or None
         precision = request.form.get("period_precision", "day")
-        action = request.form.get("action", "draft")
+        action = "publish" if was_published else request.form.get("action", "draft")
         if not topic or not content:
             return render_template("write.html", family=fam, persons=persons, me=me,
                                    error="标题和正文不能为空", form=request.form,
-                                   edit_iv=iv,
+                                   edit_iv=iv, base_version=request.form.get("base_version", "0"),
                                    members=_family_member_users(s, family_id),
                                    cur_visibility=iv.visibility or "public",
                                    cur_viewer_ids={v.user_id for v in s.query(InterviewViewer).filter_by(interview_id=iv.id, del_flag=0).all()},
                                    existing_content=cur_draft.content if cur_draft else "",
                                    related_ids={l.person_id for l in cur_links
                                                 if l.role == "related"})
+        # Claim the story before changing metadata; stale tabs cannot overwrite a newer revision.
+        now = datetime.datetime.now()
+        changed = s.query(Interview).filter(Interview.id == iv.id, Interview.update_date == iv.update_date).update(
+            {Interview.update_date:now}, synchronize_session=False)
+        if changed != 1:
+            s.rollback()
+            abort(409, "故事刚刚被其他窗口修改，请刷新后恢复本机副本。")
+        iv.update_date = now
         iv.topic = topic
         iv.person_id = subject_id
         iv.narrator_person_id = narrator_person_id
@@ -1194,10 +1224,14 @@ def edit_article(family_id, interview_id):
             iv.publish_status = "published"
         # 旧版本保留，写新版本
         if cur_draft:
+            claimed = s.query(Draft).filter_by(id=cur_draft.id, is_current=True).update(
+                {Draft.is_current:False}, synchronize_session=False)
+            if claimed != 1:
+                s.rollback(); abort(409, "已有较新版本，请刷新后恢复本机副本。")
             cur_draft.is_current = False
         max_v = s.query(func.max(Draft.version)).filter_by(interview_id=iv.id).scalar() or 0
         s.add(Draft(id=new_id(), interview_id=iv.id, version=max_v + 1,
-                    is_current=True, content=content, create_by=me.id,
+                    is_current=True, content=content, create_by=me.id, remarks=reason[:255],
                     create_date=datetime.datetime.now()))
         for l in cur_links:
             l.del_flag = 1
@@ -1208,12 +1242,27 @@ def edit_article(family_id, interview_id):
             if pid != subject_id:
                 s.add(InterviewPerson(id=new_id(), interview_id=iv.id,
                                       person_id=pid, role="related"))
+        if correction:
+            changed = s.query(StoryCorrection).filter_by(id=correction.id, status="pending").update({
+                StoryCorrection.status:"accepted", StoryCorrection.decision:reason[:255],
+                StoryCorrection.reviewed_by:me.id, StoryCorrection.reviewed_at:now}, synchronize_session=False)
+            if changed != 1:
+                s.rollback(); abort(409, "该建议已被处理，请刷新核对")
+            if correction.verification_id:
+                item = s.query(VerificationItem).filter_by(id=correction.verification_id, interview_id=iv.id, del_flag=0).first()
+                if item:
+                    item.status="resolved"; item.correction=correction.proposal[:512]
+                    item.update_by=me.id; item.update_date=now
         s.commit()
         _saved_write_recovery(me, family_id, iv.id)
         if action == "publish":
             return redirect(url_for("main.story_detail", family_id=family_id,
                                     interview_id=iv.id))
         return redirect(url_for("main.my_drafts", family_id=family_id))
+    selected_correction = None
+    if request.args.get("correction"):
+        selected_correction = s.query(StoryCorrection).filter_by(id=request.args["correction"], interview_id=iv.id, status="pending", del_flag=0).first()
+        if not selected_correction: abort(404)
     form_data = {
         "topic": iv.topic or "",
         "subject_id": iv.person_id or "",
@@ -1225,7 +1274,8 @@ def edit_article(family_id, interview_id):
     narrator_default = s.query(Person).filter_by(
         family_id=family_id, user_id=me.id, del_flag=0).first()
     return render_template("write.html", family=fam, persons=persons, me=me,
-                           form=form_data, edit_iv=iv,
+                           form=form_data, edit_iv=iv, selected_correction=selected_correction,
+                           base_version=cur_draft.version if cur_draft else 0,
                            members=_family_member_users(s, family_id),
                            cur_visibility=iv.visibility or "public",
                            cur_viewer_ids={v.user_id for v in s.query(InterviewViewer).filter_by(interview_id=iv.id, del_flag=0).all()},
@@ -1233,6 +1283,51 @@ def edit_article(family_id, interview_id):
                            related_ids={l.person_id for l in cur_links
                                         if l.role == "related"},
                            narrator_default_id=narrator_default.id if narrator_default else "")
+
+
+@bp.route("/f/<family_id>/story/<interview_id>/history")
+def story_history(family_id, interview_id):
+    fam=_family_or_404(family_id);me=_current_user();s=_s()
+    iv=s.query(Interview).filter_by(id=interview_id,family_id=family_id,del_flag=0).first()
+    if not iv or not _can_edit_story(iv,me,fam):abort(404)
+    from sanitize import sanitize_html
+    versions=s.query(Draft).filter_by(interview_id=iv.id,del_flag=0).order_by(Draft.version.desc()).all()
+    return render_template("story_history.html",family=fam,iv=iv,versions=versions,sanitize_html=sanitize_html,
+                           users={u.id:u.nickname or u.username or "家人" for u in s.query(User).filter(User.id.in_([d.create_by for d in versions])).all()})
+
+
+@bp.route("/f/<family_id>/story/<interview_id>/corrections",methods=["POST"])
+def propose_correction(family_id,interview_id):
+    _family_or_404(family_id);s=_s();me=_current_user()
+    iv=s.query(Interview).filter_by(id=interview_id,family_id=family_id,del_flag=0).first()
+    if not iv or not _can_view(iv,me):abort(404)
+    proposal=request.form.get("proposal", "").strip();evidence=request.form.get("evidence", "").strip()
+    if not proposal or len(proposal)>4000 or len(evidence)>2000:abort(400,"请填写修正建议，建议最多4000字，依据最多2000字")
+    vid=request.form.get("verification_id") or None
+    if vid and not s.query(VerificationItem).filter_by(id=vid,interview_id=iv.id,del_flag=0).first():abort(400)
+    s.add(StoryCorrection(interview_id=iv.id,user_id=me.id,proposal=proposal,evidence=evidence,
+                          verification_id=vid,status="pending",create_by=me.id))
+    s.commit()
+    return redirect(url_for("main.story_detail",family_id=family_id,interview_id=iv.id)+"#corrections")
+
+
+@bp.route("/f/<family_id>/story/<interview_id>/corrections/<correction_id>/review",methods=["POST"])
+def review_correction(family_id,interview_id,correction_id):
+    fam=_family_or_404(family_id);s=_s();me=_current_user()
+    iv=s.query(Interview).filter_by(id=interview_id,family_id=family_id,del_flag=0).first()
+    if not iv or not _can_edit_story(iv,me,fam):abort(404)
+    item=s.query(StoryCorrection).filter_by(id=correction_id,interview_id=iv.id,status="pending",del_flag=0).first()
+    if not item:abort(409,"该建议已处理")
+    if request.form.get("action")=="accept":
+        return redirect(url_for("main.edit_article",family_id=family_id,interview_id=iv.id,correction=item.id))
+    reason=request.form.get("decision", "").strip()
+    if request.form.get("action")!="reject" or not reason:abort(400,"请说明不采纳的原因")
+    changed=s.query(StoryCorrection).filter_by(id=item.id,status="pending").update({
+        StoryCorrection.status:"rejected",StoryCorrection.decision:reason[:255],
+        StoryCorrection.reviewed_by:me.id,StoryCorrection.reviewed_at:datetime.datetime.now()})
+    if changed!=1:s.rollback();abort(409)
+    s.commit()
+    return redirect(url_for("main.story_detail",family_id=family_id,interview_id=iv.id)+"#corrections")
 
 
 # ---------------- 家族树管理（仅家庭管理员 = 创建者） ----------------

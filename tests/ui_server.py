@@ -14,7 +14,7 @@ os.environ.update(DATABASE_URL="sqlite:///" + str(Path(_workspace.name) / "ui.db
 from app import app
 import ai
 from models import (AiMessage, Comment, Draft, Family, FamilyMember, Interview,
-                    Person, Portrait, TimelineEvent, User, Invite, get_session)
+                    Person, Portrait, TimelineEvent, User, Invite, VerificationItem, get_session)
 from werkzeug.security import generate_password_hash
 
 s = get_session()
@@ -30,6 +30,7 @@ s.add(Person(id="daughter", family_id="ui", name="林妈妈", parent_id="grandma
 s.add(Interview(id="story", family_id="ui", topic="奶奶的老院子与那个很长很长的夏天", author_id="ui-user", person_id="grandma", narrator_person_id="grandma", publish_status="published", visibility="public"))
 s.add(Draft(id="draft", interview_id="story", version=1, is_current=True,
             content="<p>夏天的傍晚，奶奶坐在院子里，给我们讲她小时候的故事。</p><p>这些平凡的日子，是一家人最珍贵的记忆。</p>"))
+s.add(VerificationItem(id="verify-ui", interview_id="story", text="老院子在哪一年搬入",status="pending"))
 s.add(Portrait(id="portrait", person_id="grandma", version=1, profile_text="她用一双勤劳的手，把一家人的日子过得温暖。"))
 s.add(TimelineEvent(id="event", family_id="ui", person_id="grandma", title="搬进老院子", date_precision="year"))
 for depth in range(14):

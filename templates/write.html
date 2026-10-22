@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
-{% block title %}{% if edit_iv %}编辑草稿{% else %}写文章{% endif %} - {{ family.name }}{% endblock %}
+{% block title %}{% if edit_iv %}编辑故事{% else %}写文章{% endif %} - {{ family.name }}{% endblock %}
 {% block content %}
 <link href="{{ asset_url('vendor/quill-2.0.3.snow.css') }}" rel="stylesheet">
 <div class="nav"><a href="{% if edit_iv %}{{ url_for('main.story_detail', family_id=family.id, interview_id=edit_iv.id) }}{% else %}{{ url_for('main.stories', family_id=family.id) }}{% endif %}">← 返回</a></div>
-<h2>{% if edit_iv %}✏️ 编辑草稿{% else %}✍️ 写文章{% endif %}</h2>
+<h2>{% if edit_iv %}✏️ 编辑故事{% else %}✍️ 写文章{% endif %}</h2>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="post" id="write-form" action="{% if edit_iv %}{{ url_for('main.edit_article', family_id=family.id, interview_id=edit_iv.id) }}{% endif %}">
   <section class="disclosure" aria-label="正文自动保留">
@@ -91,9 +91,18 @@
     });
   </script>
 
+  {% if edit_iv %}
+  <input type="hidden" name="base_version" value="{{ base_version }}">
+  <label>修订原因<input name="revision_reason" class="full" maxlength="255" value="{{ form.get('revision_reason','') if form else '' }}" {% if (edit_iv.publish_status or 'published') == 'published' %}required{% endif %}></label>
+  {% if selected_correction %}<aside class="disclosure"><strong>正在处理家人建议</strong><p>{{ selected_correction.proposal }}</p><p class="hint">依据：{{ selected_correction.evidence or '未补充' }}</p><p>请修改正文并说明原因；保存成功才会标记采纳。</p></aside><input name="correction_id" type="hidden" value="{{ selected_correction.id }}">{% elif form and form.get('correction_id') %}<input name="correction_id" type="hidden" value="{{ form.get('correction_id') }}">{% endif %}
+  {% endif %}
   <div class="form-actions">
+    {% if edit_iv and (edit_iv.publish_status or 'published') == 'published' %}
+    <button type="submit" name="action" value="publish" class="btn-primary">保存修订</button>
+    {% else %}
     <button type="submit" name="action" value="draft" class="btn-secondary">保存草稿</button>
     <button type="submit" name="action" value="publish" class="btn-primary">发布故事</button>
+    {% endif %}
   </div>
   <p class="hint">草稿只有你自己能看到；发布后按上面的"谁可以看"设置展示。{% if edit_iv %}每次保存会保留历史版本。{% endif %}</p>
 </form>

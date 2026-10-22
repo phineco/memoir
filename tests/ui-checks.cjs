@@ -20,7 +20,7 @@ const fs = require('node:fs');
     }
     const page = await context.newPage();
     page.on('pageerror',error=>errors.push(error.message));
-    const paths = ['/?switch=1', '/terms', '/privacy', '/register', '/f/ui', '/f/empty', '/f/ui/stories', '/f/ui/story/story', '/f/ui/person/grandma', '/f/ui/write', '/f/ui/ask', '/f/ui/more', '/account?family_id=ui', '/guide?family_id=ui', '/account/drafts?family_id=ui', '/f/ui/manage', '/f/ui/manage/accounts', '/f/ui/manage/invites', '/f/ui/manage/tools', '/f/ui/tree/add', '/f/ui/tree/grandma/edit', '/display?family_id=ui', '/f/ui/plans', '/f/ui/shares', '/f/ui/sync'];
+    const paths = ['/?switch=1', '/terms', '/privacy', '/register', '/f/ui', '/f/empty', '/f/ui/stories', '/f/ui/story/story', '/f/ui/story/story/history', '/f/ui/person/grandma', '/f/ui/write', '/f/ui/ask', '/f/ui/more', '/account?family_id=ui', '/guide?family_id=ui', '/account/drafts?family_id=ui', '/f/ui/manage', '/f/ui/manage/accounts', '/f/ui/manage/invites', '/f/ui/manage/tools', '/f/ui/tree/add', '/f/ui/tree/grandma/edit', '/display?family_id=ui', '/f/ui/plans', '/f/ui/shares', '/f/ui/sync'];
     let checks = 0;
     for (const width of [320,375,390,430,768,1280,1440]) {
       await page.setViewportSize({width,height:900});
@@ -321,6 +321,7 @@ const fs = require('node:fs');
         await page.setViewportSize({width,height:844}); await page.goto(base+path); await page.screenshot({path:`${process.env.UI_SCREENSHOTS}/${name}.png`,fullPage:true});
       }
     }
+    await require('./revision-checks.cjs')(browser, context, base);
     const recoveryChecks = await require('./recovery-checks.cjs')(browser, context, base);
     const speechChecks=await require('./voice-checks.cjs').checkVoice(browser,context,base,process.env.UI_SCREENSHOTS);
     assert.deepEqual(external,[], 'unexpected external runtime resources');

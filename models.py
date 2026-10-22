@@ -408,3 +408,17 @@ class LegalAcceptance(AuditMixin, Base):
     terms_version = Column(String(32), nullable=False)
     privacy_version = Column(String(32), nullable=False)
     accepted_at = Column(DateTime, nullable=False)  # UTC
+
+
+class StoryCorrection(AuditMixin, Base):
+    """A reader's suggestion is applied only alongside a reviewed new story version."""
+    __tablename__ = 'story_corrections'
+    interview_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64), nullable=False)
+    verification_id = Column(String(64))
+    proposal = Column(Text, nullable=False)
+    evidence = Column(Text)
+    status = Column(String(16), default='pending')
+    decision = Column(String(255))
+    reviewed_by = Column(String(64))
+    reviewed_at = Column(DateTime)

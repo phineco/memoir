@@ -10,6 +10,7 @@
 {% elif (iv.visibility or 'public') == 'specific' %}
 <p><span class="badge-draft">👥 仅指定人可见</span></p>
 {% endif %}
+{% if can_edit %}<div class="form-actions"><a class="btn-secondary" href="{{ url_for('main.edit_article',family_id=family.id,interview_id=iv.id) }}">编辑故事</a><a class="btn-secondary" href="{{ url_for('main.story_history',family_id=family.id,interview_id=iv.id) }}">历次版本</a></div>{% endif %}
 <p class="hint">🎙️ 讲述者：{% if narrator %}<a href="{{ url_for('main.person_page', family_id=family.id, person_id=narrator.id) }}">{{ narrator.name }}</a>{% else %}—{% endif %} · 讲述对象：{% if person %}<a href="{{ url_for('main.person_page', family_id=family.id, person_id=person.id) }}">{{ person.name }}</a>{% else %}—{% endif %} · {{ iv.create_date.strftime('%Y-%m-%d') if iv.create_date else '' }}</p>
 <div class="engagement">
   <span>👁️ <span id="viewCount">{{ iv.view_count or 0 }}</span> 观看</span>
@@ -41,6 +42,23 @@
       {% if v.correction %}<br><span class="correction">修正：{{ v.correction }}</span>{% endif %}</li>
 {% else %}<li class="hint">暂无。</li>{% endfor %}
 </ul>
+
+<section id="corrections"><h2>家人核实与修正</h2>
+<p class="hint">建议与依据按本故事的可见范围展示；采纳须由作者或有权限的整理人确认并保存修订。</p>
+<details class="disclosure"><summary>提出修正或补充</summary>
+<form method="post" action="{{ url_for('main.propose_correction',family_id=family.id,interview_id=iv.id) }}">
+<label>关联待核实事项（选填）<select name="verification_id"><option value="">一般修正或补充</option>{% for v in verifs %}<option value="{{ v.id }}">{{ v.text }}</option>{% endfor %}</select></label>
+<label>建议如何修正<textarea name="proposal" rows="3" maxlength="4000" required></textarea></label>
+<label>依据或说明（选填）<textarea name="evidence" rows="2" maxlength="2000"></textarea></label>
+<button type="submit">提交建议</button></form></details>
+{% for c in corrections %}<article class="card">
+<p><strong>{{ correction_names.get(c.user_id,'家人') }}</strong> · {{ {'pending':'待处理','accepted':'已采纳并保存修订','rejected':'未采纳'}.get(c.status,c.status) }}</p>
+<p>{{ c.proposal }}</p>{% if c.evidence %}<p class="hint">依据：{{ c.evidence }}</p>{% endif %}
+{% if c.decision %}<p>处理说明：{{ c.decision }}</p>{% endif %}
+{% if can_edit and c.status == 'pending' %}
+<form method="post" action="{{ url_for('main.review_correction',family_id=family.id,interview_id=iv.id,correction_id=c.id) }}"><button type="submit" name="action" value="accept">采纳并修订正文</button></form>
+<details class="disclosure"><summary>说明不采纳原因</summary><form method="post" action="{{ url_for('main.review_correction',family_id=family.id,interview_id=iv.id,correction_id=c.id) }}"><label>原因<input name="decision" maxlength="255" required></label><button type="submit" name="action" value="reject" class="btn-secondary">确认不采纳</button></form></details>
+{% endif %}</article>{% else %}<p class="hint">还没有修正建议。</p>{% endfor %}</section>
 
 <h2>👥 故事人物对应</h2>
 <ul>
