@@ -8,6 +8,7 @@
 未配置 DEEPSEEK_API_KEY 时 AI_ENABLED=False，所有入口优雅降级（按钮隐藏/提示配置）。
 """
 import datetime
+import hashlib
 import json
 import re
 
@@ -100,9 +101,8 @@ def family_knowledge(family_id, viewer_id=None, limit=6000):
         parts.append("人物（家族树）：\n" + "\n".join(lines))
     interviews = [iv for iv in s.query(Interview).filter_by(
         family_id=family_id, del_flag=0).all()
-        if (story_visible(s, iv, viewer_id, include_drafts=False) if viewer_id else
-            (iv.publish_status or "published") == "published"
-            and (iv.visibility or "public") == "public")]
+        if (iv.publish_status or "published") == "published"
+        and (iv.visibility or "public") == "public"]
     visible_ids = {iv.id for iv in interviews}
     if interviews:
         lines = []
@@ -139,10 +139,23 @@ def family_knowledge(family_id, viewer_id=None, limit=6000):
     return text[:limit]
 
 
+def context_stamp(family_id):
+    """Only re-use AI history derived from the current family-public story versions."""
+    s = _s()
+    rows = s.query(Interview).filter_by(family_id=family_id, del_flag=0).all()
+    parts = []
+    for iv in sorted(rows, key=lambda row: row.id):
+        if (iv.publish_status or "published") != "published" or (iv.visibility or "public") != "public":
+            continue
+        drafts = s.query(Draft).filter_by(interview_id=iv.id, is_current=True, del_flag=0).all()
+        parts.append([iv.id, str(iv.update_date), [[d.id, d.version, d.content] for d in drafts]])
+    return "pub1:" + hashlib.sha256(json.dumps(parts, ensure_ascii=False).encode()).hexdigest()[:20]
+
+
 def _user_memory(family_id, user_id):
     s = _s()
     m = s.query(AiMemory).filter_by(
-        family_id=family_id, user_id=user_id, memory_key="profile",
+        family_id=family_id, user_id=user_id, memory_key=context_stamp(family_id),
         del_flag=0).first()
     return m.content if m and m.content else "（暂无，第一次交流）"
 
@@ -241,10 +254,11 @@ def chat_stream(family_id, user_id, message, family_name=""):
     if not message:
         raise AIError("消息不能为空")
     s = _s()
+    stamp = context_stamp(family_id)
     knowledge = family_knowledge(family_id, viewer_id=user_id)
     memory = _user_memory(family_id, user_id)
     history = s.query(AiMessage).filter_by(
-        family_id=family_id, user_id=user_id, del_flag=0).order_by(
+        family_id=family_id, user_id=user_id, del_flag=0, remarks=context_stamp(family_id)).order_by(
         AiMessage.create_date.desc()).limit(10).all()
     history = list(reversed(history))
     messages = [{"role": "system",
@@ -261,10 +275,10 @@ def chat_stream(family_id, user_id, message, family_name=""):
     reply = "".join(parts)
     now = datetime.datetime.now()
     s.add(AiMessage(id=new_id(), family_id=family_id, user_id=user_id,
-                    role="user", content=message[:4000],
+                    role="user", content=message[:4000], remarks=stamp,
                     create_by=user_id, create_date=now))
     s.add(AiMessage(id=new_id(), family_id=family_id, user_id=user_id,
-                    role="assistant", content=reply[:4000],
+                    role="assistant", content=reply[:4000], remarks=stamp,
                     create_by=user_id, create_date=now))
     s.commit()
     _update_memory(family_id, user_id)
@@ -276,10 +290,11 @@ def chat(family_id, user_id, message, family_name=""):
     if not message:
         raise AIError("消息不能为空")
     s = _s()
+    stamp = context_stamp(family_id)
     knowledge = family_knowledge(family_id, viewer_id=user_id)
     memory = _user_memory(family_id, user_id)
     history = s.query(AiMessage).filter_by(
-        family_id=family_id, user_id=user_id, del_flag=0).order_by(
+        family_id=family_id, user_id=user_id, del_flag=0, remarks=context_stamp(family_id)).order_by(
         AiMessage.create_date.desc()).limit(10).all()
     history = list(reversed(history))
     messages = [{"role": "system",
@@ -292,10 +307,10 @@ def chat(family_id, user_id, message, family_name=""):
     reply = _chat_complete(messages, user_id=user_id)
     now = datetime.datetime.now()
     s.add(AiMessage(id=new_id(), family_id=family_id, user_id=user_id,
-                    role="user", content=message[:4000],
+                    role="user", content=message[:4000], remarks=stamp,
                     create_by=user_id, create_date=now))
     s.add(AiMessage(id=new_id(), family_id=family_id, user_id=user_id,
-                    role="assistant", content=reply[:4000],
+                    role="assistant", content=reply[:4000], remarks=stamp,
                     create_by=user_id, create_date=now))
     s.commit()
     _update_memory(family_id, user_id)
@@ -306,9 +321,10 @@ def _update_memory(family_id, user_id):
     """从最近对话提炼用户记忆（失败不影响主流程）。"""
     try:
         s = _s()
+        stamp = context_stamp(family_id)
         old = _user_memory(family_id, user_id)
         recent = s.query(AiMessage).filter_by(
-            family_id=family_id, user_id=user_id, del_flag=0).order_by(
+            family_id=family_id, user_id=user_id, del_flag=0, remarks=context_stamp(family_id)).order_by(
             AiMessage.create_date.desc()).limit(6).all()
         if not recent:
             return
@@ -321,18 +337,18 @@ def _update_memory(family_id, user_id):
             temperature=0.3, max_tokens=300, json_mode=True, timeout=30,
             user_id=user_id)
         new_mem = (json.loads(out).get("memory") or "").strip()
-        if not new_mem:
+        if not new_mem or context_stamp(family_id) != stamp:
             return
         now = datetime.datetime.now()
         m = s.query(AiMemory).filter_by(
-            family_id=family_id, user_id=user_id, memory_key="profile",
+            family_id=family_id, user_id=user_id, memory_key=stamp,
             del_flag=0).first()
         if m:
             m.content = new_mem[:2000]
             m.update_date = now
         else:
             s.add(AiMemory(id=new_id(), family_id=family_id, user_id=user_id,
-                           memory_key="profile", content=new_mem[:2000],
+                           memory_key=stamp, content=new_mem[:2000],
                            create_by=user_id, create_date=now))
         s.commit()
     except Exception:
@@ -344,7 +360,7 @@ def get_weekly_summary(family_id, week, year=None):
     year, week, _, _ = report_period(week, year)
     s = _s()
     c = s.query(AiCache).filter_by(
-        family_id=family_id, cache_key=weekly_cache_key(family_id, year, week), del_flag=0).first()
+        family_id=family_id, cache_key=weekly_cache_key(family_id, year, week), del_flag=0, remarks=context_stamp(family_id)).first()
     if not c or not c.content:
         return None
     try:
@@ -382,10 +398,11 @@ def summarize_weekly(family_id, week, weekly_json, force=False, user_id=None, ye
     blob = json.dumps(data, ensure_ascii=False)
     if c:
         c.content = blob
+        c.remarks = context_stamp(family_id)
         c.update_date = now
     else:
         s.add(AiCache(id=new_id(), family_id=family_id, cache_key=key,
-                      content=blob, create_date=now))
+                      content=blob, create_date=now, remarks=context_stamp(family_id)))
     s.commit()
     return data
 

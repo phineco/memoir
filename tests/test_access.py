@@ -113,10 +113,10 @@ def test_local_photos_check_membership_and_deleted_records(client, login):
 def test_ai_knowledge_respects_story_visibility(app):
     member_text = family_knowledge("a", "member-a")
     assert "quote-public-a" in member_text
-    assert "quote-specific-a" in member_text
+    assert "quote-specific-a" not in member_text
     for secret in ("private-a", "draft-a", "public-b"):
         assert secret not in member_text
-    assert "quote-private-a" in family_knowledge("a", "owner-a")
+    assert "quote-private-a" not in family_knowledge("a", "owner-a")
     public_text = family_knowledge("a")
     assert "specific-a" not in public_text
     assert "private-a" not in public_text

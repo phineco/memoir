@@ -3,8 +3,9 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <h1>🤖 问 AI</h1>
-<p class="hint">我会参考{{ family.name }}中你有权查看的回忆摘录，内容可能不完整。
+<p class="hint">我会参考{{ family.name }}中全家人可见的回忆摘录，内容可能不完整。
 可以问我家里的事（我会注明出处）、让我找缺失的内容、或帮你规划下周采访谁。不知道的事我会直说，绝不编。</p>
+<p class="hint">仅自己或指定人可见的文章不用于 AI。旧对话及偏好不会在故事范围或版本变化后自动复用，以免继续引用已收回的资料。</p>
 {% if not ai_enabled %}
 <p class="error">AI 未启用：请管理员配置 DEEPSEEK_API_KEY 后使用。</p>
 {% endif %}

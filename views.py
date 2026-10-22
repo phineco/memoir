@@ -757,14 +757,8 @@ def _weekly_data(family_id, week, viewer_id=None, year=None):
         visible_ids = set()
 
     def _ok(iv):
-        if (iv.publish_status or "published") != "published":
-            return False
-        vis = iv.visibility or "public"
-        if vis == "public":
-            return True
-        if not viewer_id or iv.author_id == viewer_id:
-            return bool(viewer_id and iv.author_id == viewer_id)
-        return vis == "specific" and iv.id in visible_ids
+        return ((iv.publish_status or "published") == "published"
+                and (iv.visibility or "public") == "public")
 
     interviews = [iv for iv in interviews if _ok(iv)]
     iv_ids = [iv.id for iv in interviews]
@@ -2079,7 +2073,7 @@ def ai_ask(family_id):
                                 error=error) if error else
                         url_for("main.ai_ask", family_id=family_id))
     msgs = s.query(ai_mod.AiMessage).filter_by(
-        family_id=family_id, user_id=me.id, del_flag=0).order_by(
+        family_id=family_id, user_id=me.id, del_flag=0, remarks=ai_mod.context_stamp(family_id)).order_by(
         ai_mod.AiMessage.create_date.desc()).limit(30).all()
     return render_template("ask.html", family=fam, me=me,
                            msgs=list(reversed(msgs)),
