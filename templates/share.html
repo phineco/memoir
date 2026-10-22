@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ snap.title or '分享' }} · 家音{% endblock %}
+{% block nav %}{% if family %}{% include '_family_nav.html' %}{% endif %}{% endblock %}
 {% block content %}
 {% if need_password %}
   <h1>🔒 {{ snap.title or '分享内容' }}</h1>
@@ -12,7 +13,8 @@
 {% else %}
   <h1>{{ content.title or snap.title }}</h1>
   {% if content.new_badge %}<p><span class="badge">NEW</span> {{ content.new_badge }}</p>{% endif %}
-  <h2>本周新增</h2>
+  <p class="hint">本周故事摘要 · 每篇最多 120 字，非完整文章或电子书。</p>
+  <h2>本周发布</h2>
   <ul>
   {% for st in content.stories or [] %}
     <li><strong>《{{ st.title }}》</strong> · {{ st.person }}<br>{{ st.summary }}</li>
@@ -21,6 +23,6 @@
   <h2>金句</h2>
   <ul class="quotes">{% for q in content.quotes or [] %}<li>"{{ q }}"</li>{% endfor %}</ul>
   <p class="hint">{{ content.tree_note or '' }}</p>
-  <p class="hint">🔒 快照内容 · token + 密码访问 · 与业务库隔离</p>
+  <p class="hint">此页为确认发布时的摘要快照，原文修改不会自动更新；发布者可下线旧链接。</p>
 {% endif %}
 {% endblock %}

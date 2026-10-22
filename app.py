@@ -10,7 +10,7 @@ from views import bp
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
-    from invite_links import public_base_url
+    from invite_links import public_base_url, public_url
     app.config["PUBLIC_BASE_URL"] = public_base_url(app.config["PUBLIC_BASE_URL"])
     app.secret_key = Config.SECRET_KEY
     init_db(Config.DATABASE_URL, pool_recycle_seconds=Config.DB_POOL_RECYCLE_SECONDS)
@@ -38,7 +38,7 @@ def create_app():
         me = get_session().query(User).filter_by(id=uid, del_flag=0).first() if uid else None
         from storage import storage_url
         from legal import TERMS_VERSION, PRIVACY_VERSION
-        return {"me": me, "storage_url": storage_url, "asset_url": asset_url,
+        return {"me": me, "storage_url": storage_url, "asset_url": asset_url, "public_url":public_url,
                 "terms_version": TERMS_VERSION, "privacy_version": PRIVACY_VERSION,
                 "privacy_contact_email": app.config["PRIVACY_CONTACT_EMAIL"],
                 "saved_write_recovery": session.pop("saved_write_recovery", None)}

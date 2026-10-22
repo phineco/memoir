@@ -940,7 +940,7 @@ def share_new(family_id):
             summary = text.strip()[:120]
         stories.append({"title": st["topic"], "person": st["person"] or "",
                         "narrator": st["narrator"] or "", "summary": summary})
-    title = f"{fam.name} · 回忆录（{year}年第{week}周）"
+    title = f"{fam.name} · 本周故事摘要（{year}年第{week}周）"
     from models import new_id
     snap = ShareSnapshot(
         id=new_id(), family_id=family_id, title=title, status="draft",
@@ -2655,8 +2655,8 @@ def invite_create(family_id):
 
 
 def _invite_url(code):
-    path = url_for("main.join_by_invite", code=code, _external=False)
-    return current_app.config["PUBLIC_BASE_URL"] + path
+    from invite_links import public_url
+    return public_url("main.join_by_invite",code=code)
 
 
 def _invite_active(inv):

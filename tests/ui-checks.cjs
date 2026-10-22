@@ -323,6 +323,7 @@ const fs = require('node:fs');
     }
     await require('./revision-checks.cjs')(browser, context, base);
     await require('./ai-chat-checks.cjs')(browser,context,base);
+    await require('./share-checks.cjs')(browser,context,base);
     const recoveryChecks = await require('./recovery-checks.cjs')(browser, context, base);
     const speechChecks=await require('./voice-checks.cjs').checkVoice(browser,context,base,process.env.UI_SCREENSHOTS);
     assert.deepEqual(external,[], 'unexpected external runtime resources');

@@ -8,6 +8,7 @@ const assert=require('node:assert/strict');
   await context.route('**/*',r=>new URL(r.request().url()).origin===base?r.continue():r.abort());
   await require('./revision-checks.cjs')(browser,context,base);
     await require('./ai-chat-checks.cjs')(browser,context,base);
+    await require('./share-checks.cjs')(browser,context,base);
   await require('./recovery-checks.cjs')(browser,context,base);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

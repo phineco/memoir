@@ -24,3 +24,10 @@ def qr_png(url):
     segno.make_qr(url, error='m').save(output, kind='png', scale=8, border=4,
                                      dark='black', light='white')
     return output.getvalue()
+
+
+def public_url(endpoint, **values):
+    """Every link intended for forwarding uses the configured public origin."""
+    from flask import current_app, url_for
+    values.pop('_external', None)
+    return current_app.config['PUBLIC_BASE_URL'] + url_for(endpoint, _external=False, **values)

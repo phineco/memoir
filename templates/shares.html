@@ -3,8 +3,10 @@
 {% block title %}分享管理 · {{ family.name }}{% endblock %}
 {% block content %}
 <div class="nav"><a href="{{ url_for('main.family_home', family_id=family.id) }}">← 返回家族树</a></div>
-<h2>🔗 分享管理</h2>
-<p class="hint">流程：从周报生成快照 → 预览检查 → 人工确认发布。未确认的快照不会对外开放。</p>
+<h2>🔗 本周故事摘要分享</h2>
+<p class="hint">范围：本周首次发布且全家人可见的故事，每篇最多 120 字摘要及本周金句。私密、指定人文章和草稿不参与。</p>
+<p class="hint">流程：生成摘要 → 预览核对 → 确认发布。快照不会随原文修订自动更新；需要新摘要时重新生成并核对，旧链接可下线。未确认的快照不能对外访问。</p>
+<p id="share-copy-status" class="hint" role="status" aria-live="polite"></p>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="post" action="{{ url_for('main.share_new', family_id=family.id) }}">
   <button type="submit" class="btn-primary">📰 从本周周报生成快照</button>
@@ -18,7 +20,10 @@
   </div>
   <div class="muted">{{ snap.create_date.strftime('%Y-%m-%d %H:%M') if snap.create_date else '' }}</div>
   {% if snap.status == 'published' and snap.token %}
-  <div>链接：<a href="{{ url_for('main.share_page', token=snap.token) }}">{{ url_for('main.share_page', token=snap.token, _external=True) }}</a></div>
+  {% set share_link=public_url('main.share_page',token=snap.token) %}
+  <div><a href="{{ share_link }}">打开已发布摘要</a></div>
+  <label>分享链接<input id="share-link-{{ snap.id }}" class="full" value="{{ share_link }}" readonly></label>
+  <button type="button" class="btn-small btn-secondary" data-copy-target="share-link-{{ snap.id }}">复制分享链接</button>
   {% endif %}
   <div class="share-actions">
     <a href="{{ url_for('main.share_preview', family_id=family.id, snap_id=snap.id) }}" class="btn-small btn-secondary">预览</a>
@@ -41,3 +46,5 @@
 <p class="hint">暂无分享快照，点上面按钮从本周周报生成。</p>
 {% endfor %}
 {% endblock %}
+
+{% block script %}<script src="{{ asset_url('share-links.js') }}"></script>{% endblock %}
