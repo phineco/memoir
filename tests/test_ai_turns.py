@@ -95,3 +95,17 @@ def test_cancelled_attempt_never_starts_provider(app,fake_ai):
 def test_invalid_question_rejected_without_request(client,login,fake_ai,data):
     login();assert client.post('/f/a/ask/stream',json=data).status_code==400
     assert get_session().query(AiTurn).count()==0 and not fake_ai
+
+
+def test_client_cancel_closes_provider_stream(app,fake_ai,monkeypatch):
+    closed=[]
+    def stream(*args,**kwargs):
+        try:
+            yield 'partial'
+            yield 'more'
+        finally:
+            closed.append(True)
+    monkeypatch.setattr(ai,'_chat_complete_stream',stream)
+    response=ai.chat_stream('a','owner-a','question',persist=False)
+    assert next(response)=='partial';response.close()
+    assert closed==[True]

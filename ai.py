@@ -278,9 +278,14 @@ def chat_stream(family_id, user_id, message, family_name="", persist=True):
     messages.append({"role": "user", "content": message})
 
     parts = []
-    for piece in _chat_complete_stream(messages, user_id=user_id):
-        parts.append(piece)
-        yield piece
+    provider_stream = _chat_complete_stream(messages, user_id=user_id)
+    try:
+        for piece in provider_stream:
+            parts.append(piece)
+            yield piece
+    finally:
+        if hasattr(provider_stream, 'close'):
+            provider_stream.close()
     if not persist:
         return
     reply = "".join(parts)
