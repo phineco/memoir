@@ -23,6 +23,7 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
     PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://family.scyllatech.cn")
     PRIVACY_CONTACT_EMAIL = os.environ.get("PRIVACY_CONTACT_EMAIL", "info@scyllatech.cn").strip()
+    ACCOUNT_NOTICE_DIR = os.environ.get("ACCOUNT_NOTICE_DIR")  # private server-local temporary storage
     APP_TIMEZONE = os.environ.get("APP_TIMEZONE", "Asia/Shanghai")
 
     # ---- 环境开关 ----

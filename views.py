@@ -37,6 +37,10 @@ def _current_user():
 @bp.before_request
 def _family_login_gate():
     """所有家庭路由集中检查成员资格；API 在各自入口验证登录。"""
+    # Drop legacy client-side password results as soon as an old session returns.
+    for key in ("created_account", "reset_notice"):
+        if isinstance(session.get(key), dict):
+            session.pop(key, None)
     if request.path.startswith("/f/"):
         if not _current_user():
             return redirect(url_for("main.login", next=request.url))
@@ -145,6 +149,9 @@ def login():
 
 @bp.route("/logout")
 def logout():
+    from account_notices import revoke
+    for key in ("created_account", "reset_notice"):
+        revoke(session.pop(key, None), session.get("user_id"))
     session.pop("user_id", None)
     return redirect(url_for("main.index"))
 
@@ -613,6 +620,12 @@ def family_manage(family_id, section):
         if section != target:
             return None
         value = session.get(key)
+        if key in ("created_account", "reset_notice"):
+            from account_notices import take
+            result = take(value, me.id, family_id, key)
+            if result is not None:
+                session.pop(key, None)
+            return result
         if isinstance(value, dict) and value.get("family_id", family_id) != family_id:
             return None
         return session.pop(key, None)
@@ -2007,10 +2020,12 @@ def member_create_account(family_id):
                        role="member", create_by=me.id,
                        create_date=datetime.datetime.now()))
     s.commit()
-    # 密码只存 hash，这里一次性展示给管理员转告家人
-    session["created_account"] = {"family_id": family_id, "nickname": nickname or real_name,
-                                  "login": phone + ("/" + username if username else ""),
-                                  "password": password}
+    from account_notices import store
+    try:
+        session["created_account"] = store(me.id, family_id, "created_account", {
+            "nickname": nickname or real_name, "login": phone + ("/" + username if username else ""), "password":password})
+    except OSError:
+        session["member_form_error"] = {"family_id":family_id, "message":"账号已开通，但一次性结果暂不可用；请通过短信找回或重新设置密码。"}
     return redirect(url_for("main.family_manage", family_id=family_id, section="accounts"))
 
 
@@ -2042,10 +2057,12 @@ def member_reset_password(family_id, member_id):
     u.update_by = me.id
     u.update_date = datetime.datetime.now()
     s.commit()
-    session["reset_notice"] = {
-        "family_id": family_id, "nickname": u.nickname or u.phone or u.username,
-        "login": u.phone or u.username or "",
-        "password": new_password}
+    from account_notices import store
+    try:
+        session["reset_notice"] = store(me.id, family_id, "reset_notice", {
+            "nickname":u.nickname or u.phone or u.username,"login":u.phone or u.username or "", "password":new_password})
+    except OSError:
+        session["reset_error"] = {"family_id":family_id,"message":"密码已重置，但一次性结果暂不可用；请重新设置或使用短信找回。"}
     return redirect(url_for("main.family_manage", family_id=family_id))
 
 
