@@ -23,3 +23,13 @@ def test_legacy_timestamps_remain_explicit_estimates(client,login):
     story=next(x for x in data['stories'] if x['id']=='public-a')
     assert story['publication_time_inferred']
     assert get_session().query(Interview).filter_by(id='public-a').one().published_at is None
+
+
+def test_publication_clock_follows_configured_timezone(monkeypatch):
+    import reporting
+    from zoneinfo import ZoneInfo
+    monkeypatch.setattr(reporting.Config,'APP_TIMEZONE','America/Los_Angeles')
+    before=datetime.datetime.now(ZoneInfo('America/Los_Angeles')).replace(tzinfo=None)
+    value=reporting.local_now()
+    after=datetime.datetime.now(ZoneInfo('America/Los_Angeles')).replace(tzinfo=None)
+    assert before<=value<=after and value.tzinfo is None

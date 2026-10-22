@@ -5,8 +5,13 @@ from zoneinfo import ZoneInfo
 from config import Config
 
 
+def local_now():
+    """New publication/revision timestamps use the same local clock as weekly boundaries."""
+    return datetime.datetime.now(ZoneInfo(Config.APP_TIMEZONE)).replace(tzinfo=None)
+
+
 def current_period():
-    today = datetime.datetime.now(ZoneInfo(Config.APP_TIMEZONE)).date()
+    today = local_now().date()
     year, week, _ = today.isocalendar()
     return year, week
 

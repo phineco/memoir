@@ -7,7 +7,7 @@ from flask import Blueprint, Response, abort, current_app, send_file, jsonify, r
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from access import family_role, story_visible
-from reporting import current_period, report_period
+from reporting import current_period, report_period, local_now
 from legal import TERMS_VERSION, PRIVACY_VERSION, accepted_current_documents
 
 from models import (Comment, Draft, Family, FamilyMember, Interview, InterviewPerson,
@@ -1088,20 +1088,20 @@ def write_article(family_id):
         iv = Interview(
             id=new_id(), family_id=family_id, author_id=me.id,
             person_id=subject_id, topic=topic, status="done",
-            published_at=datetime.datetime.now() if action == "publish" else None,
+            published_at=local_now() if action == "publish" else None,
             publish_status="published" if action == "publish" else "draft",
             narrator_person_id=narrator_person_id or narrator_default_id or None,
             period_start=datetime.date.fromisoformat(p_start) if p_start else None,
             period_end=datetime.date.fromisoformat(p_end) if p_end else None,
             period_precision=precision,
-            create_by=me.id, create_date=datetime.datetime.now(),
+            create_by=me.id, create_date=local_now(),
         )
         s.add(iv)
         s.flush()
         _save_visibility(s, iv, request.form, family_id, me)
         s.add(Draft(id=new_id(), interview_id=iv.id, version=1, is_current=True,
                     content=content, create_by=me.id,
-                    create_date=datetime.datetime.now()))
+                    create_date=local_now()))
         if subject_id:
             s.add(InterviewPerson(id=new_id(), interview_id=iv.id,
                                   person_id=subject_id, role="subject"))
@@ -1147,7 +1147,7 @@ def publish_article(family_id, interview_id):
     if not iv or iv.author_id != me.id:
         abort(404)
     if iv.publish_status == "draft":
-        iv.published_at = datetime.datetime.now()
+        iv.published_at = local_now()
     iv.publish_status = "published"
     iv.update_date = datetime.datetime.now()
     s.commit()
@@ -1220,7 +1220,7 @@ def edit_article(family_id, interview_id):
                                    related_ids={l.person_id for l in cur_links
                                                 if l.role == "related"})
         # Claim the story before changing metadata; stale tabs cannot overwrite a newer revision.
-        now = datetime.datetime.now()
+        now = local_now()
         changed = s.query(Interview).filter(Interview.id == iv.id, Interview.update_date == iv.update_date).update(
             {Interview.update_date:now}, synchronize_session=False)
         if changed != 1:
@@ -1249,7 +1249,7 @@ def edit_article(family_id, interview_id):
         max_v = s.query(func.max(Draft.version)).filter_by(interview_id=iv.id).scalar() or 0
         s.add(Draft(id=new_id(), interview_id=iv.id, version=max_v + 1,
                     is_current=True, content=content, create_by=me.id, remarks=reason[:255],
-                    create_date=datetime.datetime.now()))
+                    create_date=local_now()))
         for l in cur_links:
             l.del_flag = 1
         if subject_id:
