@@ -9,11 +9,11 @@
 {% if is_operator %}<a class="card" href="{{ url_for('privacy.operations_list') }}"><h2 class="card-title">运营：隐私申请处理</h2><p class="card-sub">仅限明确授权的站点运营人员</p></a>{% endif %}
 {% if is_operator %}<a class="card" href="{{ url_for('metrics.dashboard') }}"><h2 class="card-title">运营：周度指标</h2><p class="card-sub">受限汇总与真实人工样本记录</p></a>{% endif %}
 {% if is_operator and voice_feature_enabled %}<a class="card" href="{{ url_for('voices.operations') }}"><h2 class="card-title">运营：声音授权与删除</h2><p class="card-sub">单独同意核验、异常核对与删除处理</p></a>{% endif %}
-<a class="card" href="{{ url_for('voices.my_voices') }}"><h2 class="card-title">我的声音授权</h2><p class="card-sub">查看本人确认记录，撤回授权与删除</p></a>
+<a class="card" href="{{ url_for('voices.my_voices',family_id=family.id if family else None) }}"><h2 class="card-title">我的声音授权</h2><p class="card-sub">查看本人确认记录，撤回授权与删除</p></a>
 <a class="card" href="{{ url_for('main.account_ai_memory',family_id=family.id if family else None) }}"><h2 class="card-title">我的 AI 记忆</h2><p class="card-sub">查看摘要，重置旧对话的使用范围</p></a>
 <a class="card" href="{{ url_for('main.display_preferences',family_id=family.id if family else None) }}"><h2 class="card-title">显示设置</h2><p class="card-sub">字体、大字、高对比和简洁模式</p></a>
 <a class="card" href="{{ url_for('main.account_drafts',family_id=family.id if family else None) }}"><h2 class="card-title">我的草稿</h2><p class="card-sub">查看你在已加入家庭中的草稿，继续编辑或发布</p></a>
-<a class="card" href="{{ url_for('main.index',switch=1) }}"><h2 class="card-title">我的家庭</h2><p class="card-sub">选择或切换家庭</p></a>
+<a class="card" href="{{ url_for('main.index',switch=1,family_id=family.id if family else None) }}"><h2 class="card-title">我的家庭</h2><p class="card-sub">选择或切换家庭</p></a>
 </div>
 <section class="card legal-account-links" aria-labelledby="legal-heading"><h2 id="legal-heading" class="card-title">协议与隐私</h2><p class="hint">查看服务规则、数据用途与个人信息权利。</p><div class="form-actions"><a class="btn-secondary" href="{{ url_for('main.terms',family_id=family.id if family else None) }}">用户服务协议</a><a class="btn-secondary" href="{{ url_for('main.privacy',family_id=family.id if family else None) }}">隐私政策</a></div></section>
 {% endblock %}

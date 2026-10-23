@@ -12,10 +12,10 @@
 <a class="skip-link" href="#main-content">跳到正文</a>
 <header class="topbar">
 <div class="topbar-inner">
-  <a class="brand" href="{{ url_for('main.index', switch=1) }}"><span class="brand-mark" aria-hidden="true">家</span> 家音</a>
+  <a class="brand" href="{{ url_for('main.index', switch=1, family_id=family.id if family else None) }}"><span class="brand-mark" aria-hidden="true">家</span> 家音</a>
   <button type="button" id="site-menu-toggle" class="btn-secondary" aria-controls="site-menu" aria-expanded="false" hidden>菜单</button>
   <div class="topright" id="site-menu">
-    {% block nav %}{% endblock %}
+    {% block nav %}{% if family %}{% include '_family_nav.html' %}{% endif %}{% endblock %}
     <span class="auth">
     <a href="{{ url_for('main.guide', family_id=family.id if family else None) }}">帮助</a>
     {% if me %}

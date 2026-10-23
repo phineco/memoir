@@ -9,6 +9,6 @@
 {% endfor %}
 <a class="card" href="{{ url_for('main.ebook_preview',family_id=family.id) }}"><h2 class="card-title">生成电子书</h2><p class="card-sub">选取文章，让 AI 整理成家庭电子书</p><p class="card-sub"><strong>付费功能 · 尚未开放</strong></p></a>
 {% if is_admin %}<a class="card" href="{{ url_for('main.family_manage',family_id=family.id) }}"><h2 class="card-title">家庭管理</h2><p class="card-sub">人物、成员、账号、邀请与分享</p></a>{% endif %}
-<a class="card" href="{{ url_for('main.index', switch=1) }}"><h2 class="card-title">切换家庭</h2><p class="card-sub">回到你的家庭列表</p></a>
+<a class="card" href="{{ url_for('main.index', switch=1, family_id=family.id) }}"><h2 class="card-title">切换家庭</h2><p class="card-sub">回到你的家庭列表</p></a>
 </div>
 {% endblock %}

@@ -1,3 +1,5 @@
+from html import unescape
+
 from models import FamilyMember, Interview, get_session
 
 
@@ -44,3 +46,37 @@ def test_help_preserves_family_navigation_and_auth_controls(client, login):
     client.get('/logout')
     guest=client.get('/guide').get_data(as_text=True)
     assert '登录' in guest and '注册' in guest
+
+
+def test_personal_voice_and_family_picker_preserve_authorized_navigation(client, login):
+    login()
+    account=unescape(client.get('/account?family_id=a').get_data(as_text=True))
+    assert '/account/voices?family_id=a' in account
+    assert '/?switch=1&family_id=a' in account
+    for target in ['/account/voices?family_id=a','/?switch=1&family_id=a']:
+        response=client.get(target)
+        assert response.status_code==200
+        body=response.get_data(as_text=True)
+        assert 'aria-label="家庭导航"' in body
+        for link in ['/f/a/stories','/f/a/write','/f/a/more','/f/a','/account?family_id=a','/guide?family_id=a']:
+            assert f'href="{link}"' in body
+        assert 'Beta Secret Family' not in body
+    assert 'href="/account?family_id=a"' in client.get('/account/voices?family_id=a').get_data(as_text=True)
+    # Explicit picker requests keep all choices; selecting one uses that family's own links.
+    s=get_session();s.add(FamilyMember(id='second-family',family_id='b',user_id='owner-a',role='member'));s.commit()
+    body=client.get('/?switch=1&family_id=a').get_data(as_text=True)
+    assert 'data-family-choice="a"' in body and 'data-family-choice="b"' in body
+    body=client.get('/account/voices?family_id=b').get_data(as_text=True)
+    assert 'href="/f/b/stories"' in body and 'href="/f/a/stories"' not in body
+
+
+def test_navigation_context_never_restores_revoked_family_access(client,login):
+    login()
+    assert client.get('/?switch=1&family_id=b').status_code==404
+    assert client.get('/account/voices?family_id=b').status_code==404
+    s=get_session();s.query(FamilyMember).filter_by(id='ma').one().del_flag=1;s.commit()
+    assert client.get('/?switch=1&family_id=a').status_code==404
+    assert client.get('/account/voices?family_id=a').status_code==404
+    body=client.get('/account/voices').get_data(as_text=True)
+    assert '我的声音授权' in body and 'Alpha Family' not in body
+    assert 'aria-label="家庭导航"' not in body

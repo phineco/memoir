@@ -351,6 +351,23 @@ def test_person_can_withdraw_own_consent_after_family_removal_and_switch_off(voi
     login('member-a');assert client.post('/account/voices/'+identifier+'/withdraw',data={'csrf_token':csrf}).status_code==400
 
 
+@pytest.mark.parametrize('remove_family',[False,True])
+def test_withdrawal_keeps_only_a_still_authorized_navigation_context(voice,app,client,login,remove_family):
+    csrf=ready(app,client,login);identifier=profile().id
+    page=client.get('/account/voices?family_id=a').get_data(as_text=True)
+    assert 'aria-label="家庭导航"' in page
+    assert 'href="/account?family_id=a"' in page
+    assert '/account/voices/'+identifier+'/withdraw?family_id=a' in page
+    if remove_family:
+        s=get_session();s.query(FamilyMember).filter_by(family_id='a',user_id='owner-a').one().del_flag=1;s.commit()
+    app.config['VOICE_ENABLED']=False
+    response=client.post('/account/voices/'+identifier+'/withdraw?family_id=a',data={'csrf_token':csrf})
+    assert response.status_code==302
+    assert response.location==('/account/voices' if remove_family else '/account/voices?family_id=a')
+    assert client.get(response.location).status_code==200
+    assert profile().status=='deleting'
+
+
 def test_deletion_always_targets_known_model_even_when_list_index_is_empty(voice,app,client,login):
     csrf=ready(app,client,login);assert voice.voices
     voice.list=lambda prefix:[]

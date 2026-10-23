@@ -124,9 +124,11 @@ def revoke(profile,actor):
 @bp.get('/account/voices')
 def my_voices():
     me=_current_user();s=get_session()
+    family_id=request.args.get('family_id')
+    family=_family_or_404(family_id) if family_id else None
     rows=s.query(VoiceProfile,VoiceConsent).join(VoiceConsent,VoiceConsent.profile_id==VoiceProfile.id).filter(
         VoiceConsent.user_id==me.id,VoiceConsent.epoch==VoiceProfile.epoch).order_by(VoiceConsent.create_date.desc(),VoiceProfile.id).all()
-    return render_template('my_voices.html',rows=rows,states=STATES)
+    return render_template('my_voices.html',rows=rows,states=STATES,family=family)
 
 
 @bp.post('/account/voices/<profile_id>/withdraw')
@@ -135,7 +137,11 @@ def withdraw_own(profile_id):
     profile=s.query(VoiceProfile).filter_by(id=profile_id).with_for_update().first()
     if not profile or not s.query(VoiceConsent.id).filter_by(profile_id=profile_id,epoch=profile.epoch,user_id=me.id,revoked_at=None).first():abort(404)
     if profile.status!='deleted':revoke(profile,me.id)
-    s.commit();return redirect(url_for('voices.my_voices'))
+    s.commit()
+    # Navigation is independent of consent ownership, including after family removal.
+    family_id=request.args.get('family_id')
+    if family_id and not family_role(s,family_id,me.id):family_id=None
+    return redirect(url_for('voices.my_voices',family_id=family_id))
 
 
 @bp.route('/f/<family_id>/person/<person_id>/voice',methods=['GET','POST'])

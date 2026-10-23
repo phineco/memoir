@@ -526,7 +526,9 @@ def index():
     me = _current_user()
     if not me:
         return render_template("welcome.html")
-    return render_template("index.html", families=_families_for_user(me))
+    family_id = request.args.get('family_id')
+    family = _family_or_404(family_id) if family_id else None
+    return render_template("index.html", families=_families_for_user(me), family=family)
 
 
 @bp.route("/account")
