@@ -10,6 +10,7 @@ def old_database(tmp_path):
     path = tmp_path / "old.db"
     with sqlite3.connect(path) as db:
         db.execute("CREATE TABLE users (id TEXT PRIMARY KEY, nickname TEXT)")
+        db.execute("CREATE TABLE drafts (id TEXT PRIMARY KEY, content TEXT)")
         db.execute("CREATE TABLE persons (id TEXT PRIMARY KEY, name TEXT, birth_year INTEGER, death_year INTEGER, birth_calendar TEXT, death_calendar TEXT)")
         db.execute("INSERT INTO persons VALUES ('old-person', 'Ancestor', 1940, 2001, 'lunar', 'solar')")
         db.execute("CREATE TABLE interviews (id TEXT PRIMARY KEY, create_date DATETIME, publish_status TEXT)")

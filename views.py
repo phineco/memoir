@@ -726,13 +726,10 @@ def stories(family_id):
     fam = _family_or_404(family_id)
     s = _s()
     me = _current_user()
-    q = s.query(Interview, Person).outerjoin(
-        Person, Interview.person_id == Person.id
-    ).filter(Interview.family_id == family_id, Interview.del_flag == 0)
-    q = _visible_filter(q, s, me)
-    from sqlalchemy import func
-    rows = q.order_by(func.coalesce(Interview.published_at,Interview.create_date).desc(),Interview.id).all()
-    return render_template("stories.html", family=fam, rows=rows, me=me)
+    from story_search import search
+    result=search(s,family_id,me,request.args,_visible_filter,_published_only)
+    def page_url(page):return url_for('main.stories',family_id=family_id,page=page,**result['filters'])
+    return render_template("stories.html", family=fam,me=me,page_url=page_url,**result)
 
 
 def _can_edit_story(iv, me, fam):

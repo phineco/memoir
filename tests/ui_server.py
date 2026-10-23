@@ -44,6 +44,12 @@ import datetime
 s.add(Invite(id="ui-invite",family_id="ui",code="ui-invite-only",max_uses=5,used_count=0,
              expire_at=datetime.datetime.now()+datetime.timedelta(days=7)))
 s.commit()
+if os.environ.get('P2_UI_LARGE')=='1':
+    for index in range(25):
+        identifier='page-story-%02d'%index
+        s.add(Interview(id=identifier,family_id='ui',author_id='ui-user',topic='分页测试 %02d'%index,publish_status='published',visibility='public'))
+        s.add(Draft(id='draft-'+identifier,interview_id=identifier,version=1,is_current=True,content='<p>分页测试内容。</p>'))
+    s.commit()
 ai.ai_enabled = lambda: True  # 展示界面；底层 key 为空，无法调用真实模型。
 
 if __name__ == "__main__":

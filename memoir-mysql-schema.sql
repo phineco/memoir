@@ -192,6 +192,7 @@ CREATE TABLE `drafts` (
   `interview_id` varchar(64) DEFAULT NULL COMMENT '整理任务 id',
   `version` int(11) DEFAULT NULL COMMENT '版本号',
   `content` mediumtext COMMENT '初稿全文',
+  `search_text` mediumtext,
   `is_current` tinyint(1) DEFAULT NULL COMMENT '是否为当前版（1 是）',
   `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
   `create_date` datetime DEFAULT NULL COMMENT '创建时间',

@@ -161,6 +161,9 @@ def run_migrations(url, dry_run=False, migrations_dir=None):
                     conn.execute(text(_adapt(stmt, dialect)))
                     print("   执行: %s" % stmt[:100].replace("\n", " "))
             if not dry_run:
+                if f == '009_draft_search_text.sql':
+                    from search_index import backfill_drafts
+                    backfill_drafts(conn,text)
                 conn.execute(
                     text("INSERT INTO schema_migrations (filename) VALUES (:f)"),
                     {"f": f})

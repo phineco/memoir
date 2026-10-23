@@ -3,7 +3,17 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>一家人的故事</h1><p class="hint">记住那些平凡、珍贵、值得再讲一遍的日子。</p><div class="form-actions"><a class="btn-primary" href="{{ url_for('main.write_article', family_id=family.id) }}">记录一段回忆</a></div></div>
-<div class="cards">
+<form method="get" class="disclosure" aria-label="查找故事">
+  <label>关键词<input class="full" type="search" name="q" maxlength="200" value="{{ filters.q }}" placeholder="搜索标题、正文或金句"></label>
+  <details {% if filters.subject or filters.narrator or filters.period_from or filters.period_to or filters.published_from or filters.published_to or filters.sort != 'published_desc' %}open{% endif %}><summary>按人物与时间筛选</summary><div class="form-row">
+  {% for name,label in [('subject','讲述对象'),('narrator','讲述者')] %}<label>{{ label }}<select name="{{ name }}" class="full"><option value="">全部</option>{% for p in people %}<option value="{{ p.id }}" {% if filters[name]==p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></label>{% endfor %}
+  {% for name,label in [('period_from','故事时间：从'),('period_to','故事时间：至'),('published_from','首次发布：从'),('published_to','首次发布：至')] %}<label>{{ label }}<input type="date" name="{{ name }}" value="{{ filters[name] }}" class="full"></label>{% endfor %}
+  <label>排序<select name="sort" class="full">{% for value,label in [('published_desc','最近发布优先'),('period_asc','故事时间从早到晚'),('period_desc','故事时间从晚到早')] %}<option value="{{ value }}" {% if filters.sort==value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  </div><p class="hint">故事时间按区间相交筛选，未知时间会被排除。历史发布时间可能按录入时间推定；本人草稿不参加首次发布时间筛选。</p></details>
+  <div class="form-actions"><button type="submit" class="btn-primary">搜索</button>{% if filtered %}<a class="btn-secondary" href="{{ url_for('main.stories',family_id=family.id) }}">清除筛选</a>{% endif %}</div>
+</form>
+<p class="hint" role="status">共 {{ total }} 篇 · 第 {{ page }} / {{ pages }} 页</p>
+<div class="cards story-results">
 {% for iv, person in rows %}
   <a class="card" href="{{ url_for('main.story_detail', family_id=family.id, interview_id=iv.id) }}">
     <div class="card-title">《{{ iv.topic or '未命名' }}》{% if iv.publish_status == 'draft' %} <span class="badge-draft">草稿</span>{% endif %}</div>
@@ -11,7 +21,9 @@
     {% if iv.period_start or iv.period_end %}<div class="card-sub">📅 {{ iv.period_start.strftime('%Y') if iv.period_start else '?' }} → {{ iv.period_end.strftime('%Y') if iv.period_end else '?' }}</div>{% endif %}
   </a>
 {% else %}
-  <section class="empty-state"><h2>第一段故事，可以很简单</h2><p>小时候住在哪里？最拿手的一道菜是什么？从一句话开始。</p><a class="btn-primary" href="{{ url_for('main.write_article', family_id=family.id) }}">写下第一段回忆</a></section>
+  {% if filtered %}<section class="empty-state"><h2>没有找到符合条件的故事</h2><p>试试更短的关键词，或放宽人物与时间条件。</p><a class="btn-secondary" href="{{ url_for('main.stories',family_id=family.id) }}">查看全部可见故事</a></section>{% else %}
+  <section class="empty-state"><h2>第一段故事，可以很简单</h2><p>小时候住在哪里？最拿手的一道菜是什么？从一句话开始。</p><a class="btn-primary" href="{{ url_for('main.write_article', family_id=family.id) }}">写下第一段回忆</a></section>{% endif %}
 {% endfor %}
 </div>
+{% if pages>1 %}<nav class="form-actions" aria-label="故事分页">{% if page>1 %}<a class="btn-secondary" href="{{ page_url(page-1) }}">上一页</a>{% endif %}<span aria-current="page">第 {{ page }} / {{ pages }} 页</span>{% if page<pages %}<a class="btn-secondary" href="{{ page_url(page+1) }}">下一页</a>{% endif %}</nav>{% endif %}
 {% endblock %}

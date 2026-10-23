@@ -10,10 +10,11 @@ import uuid
 
 from sqlalchemy import (
     JSON, BigInteger, Boolean, Column, Date, DateTime, Integer, Numeric,
-    String, Text, UniqueConstraint, create_engine,
+    String, Text, UniqueConstraint, create_engine, event,
 )
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 from sqlalchemy.engine import make_url
+from sqlalchemy.dialects.mysql import MEDIUMTEXT
 
 Base = declarative_base()
 
@@ -187,7 +188,15 @@ class Draft(AuditMixin, Base):
     interview_id = Column(String(64), index=True)
     version = Column(Integer)
     content = Column(Text)
+    search_text = Column(Text().with_variant(MEDIUMTEXT(), 'mysql'))
     is_current = Column(Boolean, default=False)
+
+
+@event.listens_for(Draft,'before_insert')
+@event.listens_for(Draft,'before_update')
+def normalize_draft_search(mapper,connection,target):
+    from search_index import plain_text
+    target.search_text=plain_text(target.content)
 
 
 class Quote(AuditMixin, Base):
