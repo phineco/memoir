@@ -40,7 +40,8 @@
 <ol>
 {% for v in verifs %}
   <li>{{ '✅' if v.status == 'resolved' else '⏳' }} 「{{ v.text }}」→ {{ v.reason }}
-      {% if v.correction %}<br><span class="correction">修正：{{ v.correction }}</span>{% endif %}</li>
+      {% if v.correction %}<br><span class="correction">修正：{{ v.correction }}</span>{% endif %}
+      <a href="{{ url_for('main.story_detail',family_id=family.id,interview_id=v.interview_id) }}#corrections">到原故事提出修正或补充</a></li>
 {% else %}<li class="hint">暂无。</li>{% endfor %}
 </ol>
 
@@ -50,6 +51,6 @@
 {% else %}<li class="hint">暂无。</li>{% endfor %}
 </ul>
 
-<p class="hint">家人纠正格式：<code>编号. 结论 ✅/✏️/❓</code>，如 <code>1. 三叔全名叫王建军 ✅</code></p>
+<p class="hint">记忆有出入？进入原故事的“家人核实与修正”，写下你的建议和依据即可。</p>
 </div>
 {% endblock %}

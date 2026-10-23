@@ -10,7 +10,7 @@
   <section class="disclosure" aria-label="正文自动保留">
     <p id="recovery-status" class="hint" role="status">输入后自动保留在当前浏览器；共用设备请在完成后清除。</p>
     <div id="recovery-list" class="form-actions"></div>
-    <button id="recovery-clear" class="btn-small btn-secondary" type="button" hidden>清除本页本机恢复记录</button>
+    <button id="recovery-clear" class="btn-small btn-secondary" type="button" hidden>清除本篇在这台设备上的临时内容</button>
     <input id="recovery-ids" name="recovery_ids" type="hidden">
   </section>
   <label>标题<br><input name="topic" class="full" value="{{ form.get('topic','') if form else '' }}" required></label>

@@ -12,7 +12,7 @@
 </div>
 <details id="family-tree" class="disclosure advanced-section"><summary>查看家族关系树</summary><p class="hint">点击节点查看人物。也可使用上方的家人列表。</p><div id="tree" class="tree-box" role="img" aria-label="家族关系树；上方家人列表提供可访问的文字入口"></div></details>
 {% else %}
-<section class="empty-state"><span class="empty-symbol" aria-hidden="true">家</span><h2>从第一位家人开始</h2><p>先添加一位家人，再慢慢记录属于他的故事。</p>{% if is_admin %}<a class="btn-primary" href="{{ url_for('main.tree_add', family_id=family.id) }}">添加家人</a>{% else %}<p class="hint">请家庭管理员添加家人；你也可以先写下回忆。</p><a class="btn-primary" href="{{ url_for('main.write_article', family_id=family.id) }}">记录第一段回忆</a>{% endif %}</section>
+<section class="empty-state"><span class="empty-symbol" aria-hidden="true">家</span><h2>先记下一段回忆</h2><p>从一件记得的小事开始，人物资料可以以后再补。不必先添加或认领家人。</p><div class="form-actions"><a class="btn-primary" href="{{ url_for('main.write_article', family_id=family.id) }}">记录第一段回忆</a>{% if is_admin %}<a class="btn-secondary" href="{{ url_for('main.tree_add', family_id=family.id) }}">添加家人（选填）</a>{% endif %}</div>{% if not is_admin %}<p class="hint">需要添加人物时，可请家庭管理员帮忙。</p>{% endif %}</section>
 {% endif %}
 {% if is_admin %}<div class="form-actions advanced-section"><a class="btn-secondary" href="{{ url_for('main.tree_add', family_id=family.id) }}">添加家人</a><a class="btn-secondary" href="{{ url_for('main.family_manage', family_id=family.id) }}">家庭管理</a></div>{% endif %}
 {% endblock %}

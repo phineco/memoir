@@ -92,11 +92,11 @@
     document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
     window.addEventListener('storage', function (event) { if (event.key && event.key.indexOf(scope) === 0) show(); });
     clear.onclick = function () {
-      if (!window.confirm('清除此账号在本页的所有本机恢复记录？当前编辑区仍保留，请及时保存。')) return;
+      if (!window.confirm('清除这篇回忆在此浏览器中的所有临时副本？当前编辑区和已保存的草稿不会删除；其他窗口也将失去这些临时副本，请先核对。')) return;
       try {
         var keys = []; for (var i=0;i<localStorage.length;i++) if(localStorage.key(i).indexOf(scope)===0) keys.push(localStorage.key(i));
         keys.forEach(function (k) { localStorage.removeItem(k); });
-        dirty = false; status.textContent = '本机恢复记录已清除。'; show();
+        dirty = false; status.textContent = '这篇回忆在此浏览器中的临时副本已清除；当前编辑区仍保留。'; show();
       } catch (_) { status.textContent = '清除失败，请检查浏览器存储设置。'; }
     };
     show();
