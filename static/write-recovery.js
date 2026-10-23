@@ -17,6 +17,8 @@
     function freshId() { return window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2); }
     var id = freshId();
     var key = scope + id, used = [id], timer, leaving = false, dirty = false;
+    function clock(){return window.performance?performance.now():Date.now();}
+    function measure(kind,outcome,started){try{if(window.memoirUsage)window.memoirUsage(kind,outcome,clock()-started);}catch(_){}}
     function fields() {
       var data = {};
       new FormData(form).forEach(function (value, name) {
@@ -28,10 +30,12 @@
     }
     function save() {
       if (!dirty) return;
+      var started=clock();
       try {
         localStorage.setItem(key, JSON.stringify(fields()));
         status.textContent = '已自动保留在此浏览器；正式保存请点下方按钮。';
-      } catch (_) { status.textContent = '自动保留失败，请及时保存草稿；离开前请复制正文。'; }
+        measure('retention','success',started);
+      } catch (_) { status.textContent = '自动保留失败，请及时保存草稿；离开前请复制正文。';measure('retention','failed',started); }
     }
     function changed() {
       dirty = true; clear.hidden = false; status.textContent = '正在保留…'; clearTimeout(timer); timer = setTimeout(save, 350);
@@ -59,10 +63,13 @@
               if (el.type === 'checkbox' || el.type === 'radio') el.checked = values.indexOf(el.value) !== -1;
               else if (el.type !== 'submit' && el.type !== 'button') el.value = values[0] || '';
             });
-            options.write(row.value.content);
+            var started=clock();
+            try {options.write(row.value.content);}
+            catch (_) {measure('restore','failed',started);status.textContent='恢复未完成，本机副本仍保留，请刷新核对后重试。';return;}
             var visibility = form.querySelector('input[name="visibility"]:checked');
             if (visibility) visibility.dispatchEvent(new Event('change', {bubbles:true}));
             form.dispatchEvent(new Event('change', {bubbles:true})); changed(); save();
+            measure('restore','success',started);
           };
           list.appendChild(button);
         });

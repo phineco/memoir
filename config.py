@@ -28,6 +28,7 @@ class Config:
     APP_VERSION = os.environ.get("APP_VERSION", "")
     REQUEST_LOGGING = os.environ.get("REQUEST_LOGGING", "0") == "1"
     OPERATIONS_USER_IDS = tuple(value.strip() for value in os.environ.get('OPERATIONS_USER_IDS','').split(',') if value.strip())
+    USAGE_METRICS_ENABLED = os.environ.get('USAGE_METRICS_ENABLED','0')=='1'
 
     # ---- 环境开关 ----
     APP_ENV = os.environ.get("APP_ENV", "local")  # local | cloud

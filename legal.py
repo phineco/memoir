@@ -1,6 +1,6 @@
 """Published document versions; update these whenever the corresponding text changes."""
 TERMS_VERSION = "2026-10-23.1"
-PRIVACY_VERSION = "2026-10-23.3"
+PRIVACY_VERSION = "2026-10-23.4"
 
 
 def accepted_current_documents(data):

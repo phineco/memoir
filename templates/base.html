@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}家音 · 回忆录{% endblock %}</title>
+{% if me and usage_metrics %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endif %}
 <script src="{{ asset_url('preferences.js') }}"></script>
 <link rel="stylesheet" href="{{ asset_url('app.css') }}">
 </head>
@@ -38,5 +39,6 @@
 <script src="{{ asset_url('family-context.js') }}"></script>
 {% if saved_write_recovery %}<script src="{{ asset_url('write-recovery.js') }}"></script><script>clearWriteRecoveries({{ saved_write_recovery|tojson }});</script>{% endif %}
 {% block script %}{% endblock %}
+{% if me and usage_metrics and family %}<script src="{{ asset_url('usage.js') }}"></script>{% endif %}
 </body>
 </html>

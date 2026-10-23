@@ -47,6 +47,7 @@ s.commit()
 if os.environ.get('P2_UI_LARGE')=='1':
     s.add(User(id='ui-operator',username='ui-operator',nickname='运营测试',password_hash=generate_password_hash('ui-operator-test-only')))
     app.config['OPERATIONS_USER_IDS']=('ui-operator',)
+    app.config['USAGE_METRICS_ENABLED']=True
     for index in range(25):
         identifier='page-story-%02d'%index
         s.add(Interview(id=identifier,family_id='ui',author_id='ui-user',topic='分页测试 %02d'%index,publish_status='published',visibility='public'))

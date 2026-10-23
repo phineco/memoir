@@ -20,6 +20,8 @@ def create_app():
     app.register_blueprint(bp)
     from privacy_routes import bp as privacy_bp
     app.register_blueprint(privacy_bp)
+    from product_metrics import bp as metrics_bp
+    app.register_blueprint(metrics_bp)
     from person_dates import LUNAR_MONTHS, LUNAR_DAYS
     app.jinja_env.globals.update(lunar_months=LUNAR_MONTHS, lunar_days=LUNAR_DAYS)
     from forms import csrf_token
@@ -47,12 +49,14 @@ def create_app():
         from legal import TERMS_VERSION, PRIVACY_VERSION
         from sms import development_mode
         from operations import is_operator
+        from product_metrics import collection_enabled
         return {"me": me, "storage_url": storage_url, "asset_url": asset_url, "public_url":public_url,
                 "terms_version": TERMS_VERSION, "privacy_version": PRIVACY_VERSION,
                 "privacy_contact_email": app.config["PRIVACY_CONTACT_EMAIL"],
                 "sms_development_mode": development_mode(),
                 "app_version": app.config['RELEASE_VERSION'],
                 "is_operator":is_operator(me),
+                "usage_metrics":bool(me and collection_enabled()),
                 "saved_write_recovery": session.pop("saved_write_recovery", None)}
 
     return app

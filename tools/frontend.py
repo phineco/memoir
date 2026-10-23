@@ -63,7 +63,7 @@ def outputs():
         subprocess.run([str(compiler()), '-c', 'tailwind.config.js', '-i', 'static/src.css', '-o', str(target), '--minify'], cwd=ROOT, check=True)
         css = target.read_bytes() + b'\n' + (ROOT / 'static/ui.css').read_bytes()
     sources = {'app.css':css}
-    for name in ['preferences.js','read-aloud.js','family-context.js','navigation.js','voice-input.js','write-recovery.js','ai-chat.js','share-links.js']:
+    for name in ['preferences.js','read-aloud.js','family-context.js','navigation.js','voice-input.js','write-recovery.js','ai-chat.js','share-links.js','usage.js']:
         sources[name] = (ROOT / 'static' / name).read_bytes()
     for path in LOCK['vendor']:
         if path.endswith(('.css','.js')):

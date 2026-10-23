@@ -62,9 +62,10 @@ window.initAiChat = function (options) {
     var empty=document.getElementById('empty-hint');if(empty)empty.remove();
     add('user',item.text);var node=add('assistant','思考中…');
     controller=typeof AbortController!=='undefined'?new AbortController():null;
-    var full='',rows=[],done=false;
+    var full='',rows=[],done=false,trace='';
     try{
-      var response=await fetch(options.stream,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:item.text,request_id:item.id}),signal:controller?controller.signal:undefined});
+      var response=await fetch(options.stream,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:item.text,request_id:item.id,retry_of:item.retryOf||undefined}),signal:controller?controller.signal:undefined});
+      trace=response.headers.get('X-Request-ID')||'';
       if(response.status===409)return poll(item,node,number);
       if(!response.ok||!response.body)throw Error('http');
       var reader=response.body.getReader(),decoder=new TextDecoder(),buffer='';
@@ -77,14 +78,14 @@ window.initAiChat = function (options) {
           var value=line.slice(5).trim();
           if(value==='[DONE]'){done=true;break;}
           var event;try{event=JSON.parse(value);}catch(_){continue;}
-          if(event.error){fail(item,node,event.error,number);await reader.cancel();return;}
+          if(event.error){var reference=event.request_id||trace;fail(item,node,event.error+(/^[a-f0-9]{24}$/.test(reference)?'（故障编号：'+reference+'）':''),number);await reader.cancel();return;}
           if(event.sources){rows=event.sources;sources(node.div,rows);}
           if(event.chunk){full+=event.chunk;node.body.textContent=full;log.scrollTop=log.scrollHeight;}
         }
         if(done)break;
       }
       if(!done||!full)throw Error('incomplete');success(item,node,full,rows,number);
-    }catch(error){if(number===serial)fail(item,node,error.name==='AbortError'?'已取消生成，问题已保留。':'连接中断或服务暂不可用，问题已保留，可重试。',number);}
+    }catch(error){if(number===serial)fail(item,node,(error.name==='AbortError'?'已取消生成，问题已保留。':'连接中断或服务暂不可用，问题已保留，可重试。')+(/^[a-f0-9]{24}$/.test(trace)?'（故障编号：'+trace+'）':''),number);}
   }
   async function submit(){
     if(pending)return;if(voice&&voice.active()){voice.stop();return;}
@@ -95,7 +96,7 @@ window.initAiChat = function (options) {
         var result=await statusOf(previous);
         if(result&&result.status==='running'){var n=++serial;active=previous;add('user',text);return poll(previous,add('assistant','思考中…'),n);}
         if(result&&result.status==='succeeded'){var n=++serial;return success(previous,add('assistant',''),result.answer,result.sources,n);}
-        if(result) {remove(previous.id);previous={id:freshId(),text:text};}
+        if(result) {remove(previous.id);previous={id:freshId(),text:text,retryOf:previous.id};}
         busy(false);return run(previous);
       }catch(_){busy(false);state.textContent='暂时无法核对原请求，请稍后重试；不会自动重复生成。';retry.hidden=false;return;}
     }

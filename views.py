@@ -804,13 +804,14 @@ def story_detail(family_id, interview_id):
                                s.query(StoryCorrection.user_id).filter_by(interview_id=iv.id, del_flag=0))).all()})
 
 
-def _weekly_data(family_id, week, viewer_id=None, year=None):
+def _weekly_data(family_id, week, viewer_id=None, year=None, include_extras=True):
     """周报数据。viewer_id 传入时只含该用户可见的故事；不传则只含公开故事。"""
     year, week, start, end = _report_period(week, year)
     s = _s()
     from sqlalchemy import func
     published_time = func.coalesce(Interview.published_at, Interview.create_date)
-    interviews = s.query(Interview).filter_by(family_id=family_id, del_flag=0).filter(
+    query=s.query(Interview) if include_extras else s.query(Interview.id,Interview.publish_status,Interview.visibility)
+    interviews = query.filter(Interview.family_id==family_id,Interview.del_flag==0).filter(
         published_time >= start, published_time < end).all()
     if viewer_id:
         visible_ids = {v.interview_id for v in s.query(InterviewViewer).filter_by(
@@ -823,6 +824,7 @@ def _weekly_data(family_id, week, viewer_id=None, year=None):
                 and (iv.visibility or "public") == "public")
 
     interviews = [iv for iv in interviews if _ok(iv)]
+    if not include_extras:return {'interviews':interviews}
     iv_ids = [iv.id for iv in interviews]
     verifs, quotes, new_persons = [], [], []
     if iv_ids:
@@ -2280,7 +2282,7 @@ def ai_ask_stream(family_id):
     import ai_turns
     nonce=data.get('request_id') or secrets.token_urlsafe(24)
     try:
-        turn,created=ai_turns.begin(family_id,me.id,nonce,msg)
+        turn,created=ai_turns.begin(family_id,me.id,nonce,msg,retry_of=data.get('retry_of'))
     except (ValueError,ai_turns.TurnConflict):
         return jsonify(error="请求编号无效或已使用"),409
     if not created:

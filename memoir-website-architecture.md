@@ -1,6 +1,6 @@
 # 家音网站架构
 
-更新日期：2026-10-22。基于现有仓库重建，不代表已实现仓库之外的原设计。
+更新日期：2026-10-23。基于现有仓库重建，不代表已实现仓库之外的原设计。
 
 ## 一、产品与流程
 
@@ -10,7 +10,7 @@
 
 ## 二、数据模型
 
-35 张业务表，另有迁移工具维护的 `schema_migrations`。主键为应用生成的不透明字符串，保留审计与软删除字段。
+38 张业务表，另有迁移工具维护的 `schema_migrations`。主键为应用生成的不透明字符串，保留审计与软删除字段。
 
 | 分类 | 表 |
 |---|---|
@@ -22,6 +22,7 @@
 | 互动与分享（4） | `comments`、`likes`、`share_snapshots`、`story_corrections` |
 | 同步（2） | `sync_log`、`person_id_map` |
 | 个人权利（2） | `privacy_requests`、`privacy_responses` |
+| 受限运营指标（3） | `usage_events`、`story_publications`、`metric_samples` |
 | AI（5） | `ai_memories`、`ai_messages`、`ai_cache`、`ai_turns`、`ai_preferences` |
 | 计划（1） | `writing_plans` |
 

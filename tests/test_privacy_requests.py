@@ -74,6 +74,7 @@ def test_submission_disabled_until_a_real_operator_is_explicitly_configured(app,
     login();app.config['OPERATIONS_USER_IDS']=()
     body=client.get('/account/privacy-requests').get_data(as_text=True)
     assert '站内申请尚未启用' in body and 'mailto:' in body
-    with client.session_transaction() as state:state['_csrf']='known-test-token'
+    with client.session_transaction() as state:
+        state['_csrf']='known-test-token';state['_csrf_user']='owner-a'
     response=client.post('/account/privacy-requests',data=dict(csrf_token='known-test-token',nonce='test-nonce',kind='ai',details='request'))
     assert response.status_code==503 and get_session().query(PrivacyRequest).count()==0

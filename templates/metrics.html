@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}运营：周度指标 · 家音{% endblock %}
+{% macro percent(value) %}{{ (value|string)+'%' if value is not none else '暂无样本' }}{% endmacro %}
+{% block content %}
+<div class="nav"><a href="{{ url_for('main.account') }}">← 个人中心</a></div>
+<h1>运营：周度指标</h1><p class="hint">站点受限汇总，不向家庭管理员开放个人行为明细。统计截至 {{ report.as_of.strftime('%Y-%m-%d %H:%M') }}，按站点时区和 ISO 年周。</p>
+<form method="get" class="form-row"><label>周年<input type="number" name="year" value="{{ report.year }}" min="1" max="9999" class="full" required></label><label>周数<input type="number" name="week" value="{{ report.week }}" min="1" max="53" class="full" required></label><div class="form-actions"><button class="btn-primary" type="submit">查看本周</button></div></form>
+<div class="cards">
+<section class="card"><h2 class="card-title">1. 首篇完成</h2><p>7 日内正式保存：{{ percent(report.conversion.saved_rate) }}<br>7 日内首次发布：{{ percent(report.conversion.published_rate) }}</p><p class="hint">首次观测且既往无写作记录 {{ report.conversion.observed }} 个用户/家庭；已完成 7 日观察 {{ report.conversion.mature }} 个。未满观察期不算失败，旧资料不补造首次访问。</p></section>
+<section class="card"><h2 class="card-title">2. 本机保留与恢复</h2><p>保留写入成功：{{ percent(report.client.retention.rate) }}（{{ report.client.retention.count }} 次上报）<br>恢复到编辑区：{{ percent(report.client.restore.rate) }}（{{ report.client.restore.count }} 次上报）</p><p class="hint">{{ '浏览器样本已启用' if collection else '浏览器样本记录未启用；现有数字仅为此前已上报样本' }}。不是服务器自动保存；离线、存储限制、上报失败及限流会导致样本不完整。</p></section>
+<section class="card"><h2 class="card-title">3. 家人核实</h2><p>本周提出修正建议 {{ report.corrections.count }} 项，已处理 {{ report.corrections.handled }} 项：{{ percent(report.corrections.rate) }}</p><p>已处理平均耗时：{{ (report.corrections.hours|string)+' 小时' if report.corrections.hours is not none else '暂无可靠时间样本' }}</p><p class="hint">本周新增待核实条目 {{ report.verifications.count }} 项，其中已解决 {{ report.verifications.resolved }} 项：{{ percent(report.verifications.rate) }}。已解决平均耗时：{{ (report.verifications.hours|string)+' 小时' if report.verifications.hours is not none else '暂无可靠时间样本' }}（{{ report.verifications.timed }} 项有可靠解决时间）；历史未知不补造，与修正建议分别计算。</p></section>
+<section class="card"><h2 class="card-title">4. 周报完整性</h2><p>遗漏：{{ report.weekly.missing if report.weekly.missing is not none else '暂无确定首次发布样本' }}</p><p class="hint">以独立首次发布记录核对当前周报，已核对 {{ report.weekly.checked }} 篇；历史按录入时间推定 {{ report.weekly.legacy }} 篇另列，不伪造首次发布时间。已撤回公开范围的文章不列为遗漏。</p></section>
+<section class="card"><h2 class="card-title">5. AI 恢复与依据</h2><p>失败/取消后恢复：{{ percent(report.ai.rate) }}（{{ report.ai.recovered }} / {{ report.ai.failed }} 个逻辑问题）<br>来源当前仍可访问：{{ percent(report.ai.available_rate) }}（{{ report.ai.source_count }} 条依据）<br>人工抽检支持答案：{{ percent(report.manual.source_support.rate) }}（{{ report.manual.source_support.count }} 个样本）</p><p class="hint">只统计明确关联的重试，重放不算新调用；历史无关联编号 {{ report.ai.legacy }} 次不猜测匹配。来源能打开不代表支持答案，事实正确性须人工核查。</p></section>
+<section class="card"><h2 class="card-title">6. 老人实机任务</h2><p>完成：{{ percent(report.manual.elder_task.rate) }}<br>独立完成：{{ percent(report.manual.elder_task.independent_rate) }}</p><p class="hint">{{ report.manual.elder_task.count }} 次真实任务样本，含协助成功 {{ report.manual.elder_task.assisted }} 次。浏览器模拟不计入实机结果，设备与任务见受限证据记录。</p></section>
+</div>
+<details class="disclosure"><summary>录入真实人工样本</summary><p class="hint">仅录入已经执行的核查或实机任务。每组样本提供唯一的受限证据记录编号；不填姓名、家庭正文、问题、密码或网址。输入有误先作废，使用新编号录入修正。</p>
+<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="nonce" value="{{ nonce }}"><div class="form-row">
+<label>类别<select name="kind" class="full"><option value="source_support">来源支持答案（人工核查）</option><option value="elder_task">老人实机任务</option></select></label>
+<label>实机任务（来源核查时忽略）<select name="task" class="full">{% for value,label in tasks.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+<label>设备/系统/浏览器（实机必填）<input name="device" maxlength="80" class="full" placeholder="例如：iPhone / iOS / Safari 版本"></label>
+<label>证据记录编号<input name="evidence_ref" maxlength="80" pattern="[A-Za-z0-9._-]+" class="full" required></label>
+<label>样本数<input type="number" min="1" max="1000" name="sample_count" class="full" required></label>
+<label>成功数（含协助）<input type="number" min="0" max="1000" name="success_count" class="full" required></label>
+<label>其中借助协助成功数（实机）<input type="number" min="0" max="1000" name="assisted_success" value="0" class="full"></label>
+</div><button class="btn-primary" type="submit">保存人工样本</button></form></details>
+<h2>本周人工记录（最近 100 组）</h2><div class="cards">{% for sample in report.samples %}<section class="card"><h3 class="card-title">{{ '来源支持核查' if sample.kind=='source_support' else tasks.get(sample.task,'实机任务') }}</h3><p>样本 {{ sample.sample_count }} · 成功 {{ sample.success_count }} · 协助成功 {{ sample.assisted_success }}</p><p class="hint break-words">证据 {{ sample.evidence_ref }} · {{ sample.device or '人工核查' }}</p>{% if sample.del_flag==1 %}<p class="hint">已作废：{{ sample.void_reason }}</p>{% else %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="void"><input type="hidden" name="sample_id" value="{{ sample.id }}"><label>作废原因<select name="reason" class="full"><option>输入错误</option><option>重复记录</option><option>非真实样本</option></select></label><button type="submit" class="btn-secondary">作废此记录</button></form>{% endif %}</section>{% else %}<p class="hint">暂无人工样本，不自动填入模拟测试数字。</p>{% endfor %}</div>
+{% endblock %}

@@ -36,7 +36,7 @@ def public_result(turn):
     return {'status':turn.status,'question':turn.question,'answer':turn.answer or '', 'error':turn.error or '', 'sources':sources}
 
 
-def begin(family_id,user_id,nonce,message):
+def begin(family_id,user_id,nonce,message,retry_of=None):
     s=get_session()
     from ai_memory import preference
     preference(family_id,user_id,create=True);s.commit()
@@ -44,9 +44,17 @@ def begin(family_id,user_id,nonce,message):
     if prior:
         if prior.question!=message:raise TurnConflict('请求编号已用于另一个问题')
         return prior,False
+    stamp=ai.user_context_stamp(family_id,user_id)
+    logical_id=turn_id(family_id,user_id,nonce)
+    if retry_of is not None:
+        parent=lookup(family_id,user_id,retry_of)
+        if not parent or parent.question!=message:raise TurnConflict('重试来源无效')
+        if parent.context_stamp==stamp:
+            if parent.status not in ('failed','cancelled'):raise TurnConflict('原请求仍在处理或已经完成')
+            logical_id=parent.logical_id or parent.id
     from retrieval import retrieve
     turn=AiTurn(id=turn_id(family_id,user_id,nonce),family_id=family_id,user_id=user_id,question=message,
-                status='running',answer='',remarks=nonce,context_stamp=ai.user_context_stamp(family_id,user_id),sources=retrieve(family_id,user_id,message),
+                logical_id=logical_id,status='running',answer='',remarks=nonce,context_stamp=stamp,sources=retrieve(family_id,user_id,message),
                 lease_until=datetime.datetime.now()+datetime.timedelta(minutes=5),create_by=user_id)
     s.add(turn)
     try:s.commit()

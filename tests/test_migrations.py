@@ -11,9 +11,11 @@ def old_database(tmp_path):
     with sqlite3.connect(path) as db:
         db.execute("CREATE TABLE users (id TEXT PRIMARY KEY, nickname TEXT)")
         db.execute("CREATE TABLE drafts (id TEXT PRIMARY KEY, content TEXT)")
+        db.execute("CREATE TABLE verification_items (id TEXT PRIMARY KEY, status TEXT)")
+        db.execute("INSERT INTO verification_items VALUES ('legacy-resolved','resolved')")
         db.execute("CREATE TABLE persons (id TEXT PRIMARY KEY, name TEXT, birth_year INTEGER, death_year INTEGER, birth_calendar TEXT, death_calendar TEXT)")
         db.execute("INSERT INTO persons VALUES ('old-person', 'Ancestor', 1940, 2001, 'lunar', 'solar')")
-        db.execute("CREATE TABLE interviews (id TEXT PRIMARY KEY, create_date DATETIME, publish_status TEXT)")
+        db.execute("CREATE TABLE interviews (id TEXT PRIMARY KEY, family_id TEXT, author_id TEXT, create_date DATETIME, publish_status TEXT)")
         db.execute("INSERT INTO users VALUES ('old', 'preserved')")
     return path
 
@@ -29,6 +31,7 @@ def test_migration_dry_run_is_read_only_and_repeat_is_safe(tmp_path):
     with sqlite3.connect(path) as db:
         assert "name" in {r[1] for r in db.execute("PRAGMA table_info(users)")}
         assert db.execute("SELECT nickname FROM users WHERE id='old'").fetchone()[0] == "preserved"
+        assert db.execute("SELECT resolved_at FROM verification_items WHERE id='legacy-resolved'").fetchone()[0] is None
         assert db.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == len(list((Path(__file__).resolve().parents[1]/"migrations").glob("*.sql")))
 
 

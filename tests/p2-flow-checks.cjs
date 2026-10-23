@@ -54,8 +54,27 @@ const assert=require('node:assert/strict');
   await navigate(()=>op.getByRole('button',{name:'提交人工反馈',exact:true}).click(),op);
   await op.getByText('已完成合成测试资料的处理。',{exact:true}).waitFor();
   await page.reload();assert.match(await page.locator('body').innerText(),/已处理完成/);
+  assert.equal((await context.request.get(base+'/operations/metrics')).status(),403);
+  await op.goto(base+'/operations/metrics');
+  await op.getByText('录入真实人工样本',{exact:true}).click();
+  await op.locator('[name=kind]').selectOption('elder_task');await op.locator('[name=task]').selectOption('large_text');
+  await op.locator('[name=device]').fill('Synthetic device / browser');await op.locator('[name=evidence_ref]').fill('qa-browser-synthetic');
+  await op.locator('[name=sample_count]').fill('2');await op.locator('[name=success_count]').fill('1');
+  await navigate(()=>op.getByRole('button',{name:'保存人工样本',exact:true}).click(),op);
+  assert.match(await op.locator('body').innerText(),/qa-browser-synthetic/);
+  await page.goto(base+'/f/ui/write');
+  await page.locator('.ql-editor').fill('MEMOIR_RAW_BODY_SHOULD_NOT_LEAK');
+  await page.waitForFunction(()=>document.getElementById('recovery-status').textContent.includes('已自动保留'));
+  const sampleResponse=page.waitForResponse(response=>response.url().endsWith('/f/ui/usage') && response.request().method()==='POST');
+  await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));
+  const sample=await sampleResponse;assert.equal(sample.status(),200);
+  assert(!(sample.request().postData()||'').includes('MEMOIR_RAW_BODY_SHOULD_NOT_LEAK'));
+  for(const width of [320,390,1280]) {
+   await op.setViewportSize({width,height:844});await op.reload();
+   assert(await op.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  }
   await operator.close();
   assert.deepEqual(errors,[]);
-  console.log('P2 flow: search, pagination, 3 viewport layouts, AI reset, private request submission and explicit-operator feedback/completion passed.');
+  console.log('P2 flow: search/pagination, AI reset, private request/operator review, restricted metrics, manual evidence, body-free status samples and 3 viewport layouts passed.');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -172,6 +172,12 @@ def run_migrations(url, dry_run=False, migrations_dir=None):
                 if f == '009_draft_search_text.sql':
                     from search_index import backfill_drafts
                     backfill_drafts(conn,text)
+                if f == '012_product_metrics.sql':
+                    from reporting import local_now
+                    conn.execute(text('INSERT INTO story_publications (id,family_id,user_id,published_at,create_date,remarks,del_flag) '
+                        "SELECT i.id,i.family_id,i.author_id,i.published_at,:observed_at,'known-time-backfill',0 FROM interviews i "
+                        'WHERE i.published_at IS NOT NULL AND i.family_id IS NOT NULL '
+                        'AND NOT EXISTS (SELECT 1 FROM story_publications p WHERE p.id=i.id)'),dict(observed_at=local_now().isoformat(sep=' ')))
                 conn.execute(
                     text("INSERT INTO schema_migrations (filename) VALUES (:f)"),
                     {"f": f})

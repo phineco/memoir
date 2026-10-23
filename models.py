@@ -10,7 +10,7 @@ import uuid
 
 from sqlalchemy import (
     JSON, BigInteger, Boolean, Column, Date, DateTime, Integer, Numeric,
-    String, Text, UniqueConstraint, create_engine, event,
+    String, Text, UniqueConstraint, create_engine, event, Index, inspect,
 )
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 from sqlalchemy.engine import make_url
@@ -214,6 +214,15 @@ class VerificationItem(AuditMixin, Base):
     person_id = Column(String(64))
     status = Column(String(16))  # pending/resolved
     correction = Column(String(512))
+    resolved_at = Column(DateTime)
+
+
+@event.listens_for(VerificationItem,'before_insert')
+@event.listens_for(VerificationItem,'before_update')
+def mark_verification_resolution(mapper,connection,target):
+    if not inspect(target).attrs.status.history.has_changes():return
+    from reporting import local_now
+    target.resolved_at=local_now() if target.status=='resolved' else None
 
 
 class PersonLink(AuditMixin, Base):
@@ -417,6 +426,57 @@ class PrivacyResponse(AuditMixin, Base):
     __table_args__ = (UniqueConstraint('request_id','revision',name='uq_privacy_response_revision'),)
 
 
+class UsageEvent(AuditMixin, Base):
+    __tablename__ = 'usage_events'
+    family_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64), nullable=False, index=True)
+    kind = Column(String(16), nullable=False)
+    outcome = Column(String(16), nullable=False)
+    duration_ms = Column(Integer, nullable=False)
+    __table_args__ = (Index('ix_usage_actor_time','user_id','family_id','create_date'),
+                      Index('ix_usage_events_create_date','create_date'))
+
+
+class StoryPublication(AuditMixin, Base):
+    """Immutable first publication evidence; id is the story id, no body is copied."""
+    __tablename__ = 'story_publications'
+    family_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64))
+    published_at = Column(DateTime, nullable=False, index=True)
+
+
+@event.listens_for(Interview,'after_insert')
+@event.listens_for(Interview,'after_update')
+def record_first_publication(mapper,connection,target):
+    if not target.published_at or not target.family_id:return
+    from reporting import local_now
+    values=dict(id=target.id,family_id=target.family_id,user_id=target.author_id,published_at=target.published_at,
+                create_date=local_now(),create_by=target.update_by or target.create_by,del_flag=0)
+    if connection.dialect.name=='mysql':
+        from sqlalchemy.dialects.mysql import insert
+        statement=insert(StoryPublication.__table__).values(**values)
+        statement=statement.on_duplicate_key_update(id=statement.inserted.id)
+    else:
+        from sqlalchemy.dialects.sqlite import insert
+        statement=insert(StoryPublication.__table__).values(**values).on_conflict_do_nothing(index_elements=['id'])
+    connection.execute(statement)
+
+
+class MetricSample(AuditMixin, Base):
+    __tablename__ = 'metric_samples'
+    year = Column(Integer, nullable=False)
+    week = Column(Integer, nullable=False)
+    kind = Column(String(24), nullable=False)
+    task = Column(String(24), nullable=False, default='')
+    device = Column(String(80))
+    evidence_ref = Column(String(80), nullable=False)
+    sample_count = Column(Integer, nullable=False)
+    success_count = Column(Integer, nullable=False)
+    assisted_success = Column(Integer, nullable=False, default=0)
+    void_reason = Column(String(32))
+    __table_args__ = (UniqueConstraint('year','week','kind','task','evidence_ref',name='uq_metric_evidence'),)
+
+
 class AiMessage(AuditMixin, Base):
     """AI 问答聊天记录。"""
     __tablename__ = "ai_messages"
@@ -492,6 +552,7 @@ class AiTurn(AuditMixin, Base):
     family_id = Column(String(64), nullable=False, index=True)
     user_id = Column(String(64), nullable=False, index=True)
     question = Column(Text, nullable=False)
+    logical_id = Column(String(64), index=True)
     answer = Column(Text)
     status = Column(String(16), nullable=False)
     error = Column(String(255))

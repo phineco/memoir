@@ -229,6 +229,7 @@ CREATE TABLE `verification_items` (
   `person_id` varchar(64) DEFAULT NULL COMMENT '已对应到树上的人物 id（可空）',
   `status` varchar(16) DEFAULT NULL COMMENT 'pending/resolved',
   `correction` varchar(512) DEFAULT NULL COMMENT '核实后的修正文字',
+  `resolved_at` datetime DEFAULT NULL COMMENT '本次实际解决时间；历史未知不补造',
   `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
   `create_date` datetime DEFAULT NULL COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
@@ -611,6 +612,7 @@ CREATE TABLE `ai_turns` (
   `family_id` varchar(64) NOT NULL,
   `user_id` varchar(64) NOT NULL,
   `question` text NOT NULL,
+  `logical_id` varchar(64) DEFAULT NULL,
   `answer` text,
   `status` varchar(16) NOT NULL,
   `error` varchar(255) DEFAULT NULL,
@@ -622,7 +624,8 @@ CREATE TABLE `ai_turns` (
   `update_by` varchar(64) DEFAULT NULL,
   `update_date` datetime DEFAULT NULL,
   `remarks` varchar(255) DEFAULT NULL,
-  `del_flag` int DEFAULT 0
+  `del_flag` int DEFAULT 0,
+  KEY `ix_ai_turns_logical_id` (`logical_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `ai_preferences` (
@@ -697,3 +700,61 @@ CREATE TABLE `privacy_responses` (
   KEY `ix_privacy_responses_request_id` (`request_id`),
   UNIQUE KEY `uq_privacy_response_revision` (`request_id`,`revision`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='隐私申请处理记录';
+
+CREATE TABLE `usage_events` (
+  `id` varchar(64) NOT NULL,
+  `family_id` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `kind` varchar(16) NOT NULL,
+  `outcome` varchar(16) NOT NULL,
+  `duration_ms` int NOT NULL,
+  `create_by` varchar(64) DEFAULT NULL,
+  `create_date` datetime DEFAULT NULL,
+  `update_by` varchar(64) DEFAULT NULL,
+  `update_date` datetime DEFAULT NULL,
+  `remarks` varchar(255) DEFAULT NULL,
+  `del_flag` int DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `ix_usage_events_user_id` (`user_id`),
+  KEY `ix_usage_events_family_id` (`family_id`),
+  KEY `ix_usage_actor_time` (`user_id`,`family_id`,`create_date`),
+  KEY `ix_usage_events_create_date` (`create_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='浏览器状态样本';
+
+CREATE TABLE `story_publications` (
+  `id` varchar(64) NOT NULL,
+  `family_id` varchar(64) NOT NULL,
+  `user_id` varchar(64) DEFAULT NULL,
+  `published_at` datetime NOT NULL,
+  `create_by` varchar(64) DEFAULT NULL,
+  `create_date` datetime DEFAULT NULL,
+  `update_by` varchar(64) DEFAULT NULL,
+  `update_date` datetime DEFAULT NULL,
+  `remarks` varchar(255) DEFAULT NULL,
+  `del_flag` int DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `ix_story_publications_family_id` (`family_id`),
+  KEY `ix_story_publications_published_at` (`published_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='确定首次发布记录';
+
+CREATE TABLE `metric_samples` (
+  `id` varchar(64) NOT NULL,
+  `year` int NOT NULL,
+  `week` int NOT NULL,
+  `kind` varchar(24) NOT NULL,
+  `task` varchar(24) NOT NULL,
+  `device` varchar(80) DEFAULT NULL,
+  `evidence_ref` varchar(80) NOT NULL,
+  `sample_count` int NOT NULL,
+  `success_count` int NOT NULL,
+  `assisted_success` int NOT NULL DEFAULT 0,
+  `void_reason` varchar(32) DEFAULT NULL,
+  `create_by` varchar(64) DEFAULT NULL,
+  `create_date` datetime DEFAULT NULL,
+  `update_by` varchar(64) DEFAULT NULL,
+  `update_date` datetime DEFAULT NULL,
+  `remarks` varchar(255) DEFAULT NULL,
+  `del_flag` int DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_metric_evidence` (`year`,`week`,`kind`,`task`,`evidence_ref`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='真实人工指标样本';
