@@ -1100,6 +1100,12 @@ def write_article(family_id):
     narrator_default = s.query(Person).filter_by(
         family_id=family_id, user_id=me.id, del_flag=0).first()
     narrator_default_id = narrator_default.id if narrator_default else ""
+    self_narrator_id = narrator_default_id
+    mode = request.form.get('recording_mode', 'self') if request.method == 'POST' else request.args.get('mode', 'self')
+    if mode not in ('self', 'accompany'):
+        abort(400, '请选择自己写或陪家人记录')
+    if mode == 'accompany':
+        narrator_default_id = ''
     if request.method == "POST":
         from models import new_id
         topic = request.form.get("topic", "").strip()
@@ -1126,13 +1132,14 @@ def write_article(family_id):
             return render_template("write.html", family=fam, persons=persons, me=me,
                                    error="标题和正文不能为空",
                                    form=request.form,
+                                   self_narrator_id=self_narrator_id,
                                    members=_family_member_users(s, family_id))
         iv = Interview(
             id=new_id(), family_id=family_id, author_id=me.id,
             person_id=subject_id, topic=topic, status="done",
             published_at=local_now() if action == "publish" else None,
             publish_status="published" if action == "publish" else "draft",
-            narrator_person_id=narrator_person_id or narrator_default_id or None,
+            narrator_person_id=(narrator_person_id if 'narrator_person_id' in request.form else narrator_default_id) or None,
             period_start=datetime.date.fromisoformat(p_start) if p_start else None,
             period_end=datetime.date.fromisoformat(p_end) if p_end else None,
             period_precision=precision,
@@ -1163,6 +1170,7 @@ def write_article(family_id):
     return render_template("write.html", family=fam, persons=persons, me=me,
                            form=request.form,
                            members=_family_member_users(s, family_id),
+                           self_narrator_id=self_narrator_id,
                            narrator_default_id=narrator_default_id)
 
 

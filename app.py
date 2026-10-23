@@ -26,6 +26,8 @@ def create_app():
     app.register_blueprint(voices_bp)
     from person_dates import LUNAR_MONTHS, LUNAR_DAYS
     app.jinja_env.globals.update(lunar_months=LUNAR_MONTHS, lunar_days=LUNAR_DAYS)
+    from writing_aids import QUESTIONS
+    app.jinja_env.globals['writing_questions'] = QUESTIONS
     from forms import csrf_token
     app.jinja_env.globals['csrf_token']=csrf_token
     from assets import asset_resolver
