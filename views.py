@@ -573,6 +573,68 @@ def account_ai_memory():
                            memory=ai_mod._user_memory(fam.id,me.id) if fam else None)
 
 
+@bp.route('/account/exports')
+def account_article_exports():
+    me = _current_user()
+    if not me:
+        return redirect(url_for('main.login', next=request.path))
+    family_id = request.args.get('family_id')
+    if family_id:
+        _family_or_404(family_id)
+        return redirect(url_for('main.article_export', family_id=family_id))
+    return render_template('article_export_families.html', families=_families_for_user(me))
+
+
+@bp.route('/f/<family_id>/exports/articles', methods=['GET','POST'])
+def article_export(family_id):
+    from article_exports import (BATCH_SIZE, MAX_ALL_STORIES, SCOPE_LABELS, build_archive,
+                                 current_drafts, prepare, revision_marks, scope_query, selection)
+    fam = _family_or_404(family_id)
+    me = _current_user()
+    user_id = me.id
+    source = request.form if request.method == 'POST' else request.args
+    scope = source.get('scope', 'own')
+    if scope not in SCOPE_LABELS:
+        abort(400, '导出范围无效')
+    if scope == 'family' and not _is_admin(fam, me):
+        abort(403)
+    try:
+        batch = int(source.get('batch', '1'))
+    except (ValueError, TypeError):
+        abort(400, '导出批次无效')
+    if batch < 1:
+        abort(400, '导出批次无效')
+    s = _s()
+    if request.method == 'POST':
+        from forms import require_csrf
+        require_csrf()
+        records, info, marks = prepare(s, fam, user_id, scope, batch, source.get('mode', 'all'))
+        payload = build_archive(records, info)
+        # End the read transaction so MySQL also sees newly committed revocations.
+        # Nothing from this operation is persisted and no reusable download URL is made.
+        s.rollback()
+        fresh_family = _family_or_404(family_id)
+        if scope == 'family' and not _is_admin(fresh_family, _current_user()):
+            abort(403)
+        fresh_rows = scope_query(s, family_id, user_id, scope).filter(Interview.id.in_(marks)).all()
+        if {row.id for row in fresh_rows} != set(marks):
+            abort(409, '生成期间资料范围已变化，请重新导出；本次文件未发送')
+        fresh_drafts = current_drafts(s, list(marks))
+        if revision_marks(fresh_rows, fresh_drafts) != marks:
+            abort(409, '生成期间文章已修订，请重新导出；本次文件未发送')
+        part = 'all' if info['mode'] == 'all' else 'batch-'+str(info['batch'])
+        response = send_file(payload, mimetype='application/zip', as_attachment=True,
+                             download_name='memoir-articles-'+scope+'-'+part+'-'+local_now().strftime('%Y%m%d-%H%M%S')+'.zip',
+                             max_age=0, conditional=False, etag=False)
+        response.headers['Cache-Control'] = 'private, no-store'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        return response
+    rows, total, pages = selection(scope_query(s, family_id, user_id, scope), batch)
+    return render_template('article_export.html', family=fam, rows=rows, total=total, pages=pages,
+                           batch=batch, scope=scope, scope_label=SCOPE_LABELS[scope],
+                           batch_size=BATCH_SIZE, max_all=MAX_ALL_STORIES, is_admin=_is_admin(fam, me))
+
+
 @bp.route("/f/<family_id>")
 def family_home(family_id):
     fam = _family_or_404(family_id)

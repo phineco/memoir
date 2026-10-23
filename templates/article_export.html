@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}导出可读文章 · {{ family.name }}{% endblock %}
+{% block nav %}{% include '_family_nav.html' %}{% endblock %}
+{% block content %}
+<div class="nav"><a href="{{ url_for('main.account',family_id=family.id) }}">← 个人中心</a></div>
+<h1>导出可读文章</h1><p class="hint">解压下载的文件后，打开 index.html 即可离线阅读，不需要登录或联网；同时附带篇数、版本和时间等资料清单。</p>
+<nav class="management-tabs" aria-label="文章导出范围">
+  <a href="{{ url_for('main.article_export',family_id=family.id) }}" {% if scope == 'own' %}aria-current="page"{% endif %}>我记录的文章与草稿</a>
+  {% if is_admin %}<a href="{{ url_for('main.article_export',family_id=family.id,scope='family') }}" {% if scope == 'family' %}aria-current="page"{% endif %}>全家可见的已发布文章</a>{% endif %}
+</nav>
+<section class="disclosure"><h2>本次范围：{{ scope_label }}</h2>
+<p>{% if scope == 'own' %}仅导出你在这个家庭中记录的文章，包括自己的草稿、仅自己或指定人可见文章。不包含其他人写的受限文章，即使你能阅读。{% else %}只导出已发布且全家人可见的文章；不包含其他人的私密、指定人文章或草稿。{% endif %}</p>
+<p class="hint">每篇只保留当前正文及人物、时间、可见范围等说明。本批不含照片、录音、小传、金句、评论、核实记录和历史版本，不是完整家庭备份，也不是 AI 生成的电子书。</p>
+<p class="hint">文件下载后可独立保存，后续在本站删除或调整权限无法撤回已下载副本，请妥善保管。服务器不保存此次导出包，也不会生成对外分享链接。</p></section>
+<p class="hint" role="status">当前范围共 {{ total }} 篇 · 本页为第 {{ batch }} / {{ pages }} 批，每批最多 {{ batch_size }} 篇。篇数和内容以下载时为准。</p>
+{% if rows %}
+<form method="post" class="disclosure">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="scope" value="{{ scope }}"><input type="hidden" name="batch" value="{{ batch }}">
+  <div class="form-actions">{% if total <= max_all %}<button type="submit" name="mode" value="all" class="btn-primary">下载本范围全部文章（{{ total }} 篇）</button>{% endif %}<button type="submit" name="mode" value="batch" class="btn-secondary">只下载第 {{ batch }} 批（{{ rows|length }} 篇）</button></div>
+  <p class="hint">单包最多 {{ max_all }} 篇、约 8 MB 正文资料；超过限制会明确提示，不会悄悄遗漏。资料较多时请按批次下载，期间有新增或修订时请重新核对各批。</p>
+</form>
+<h2>本批文章</h2><ul class="card-list">{% for row in rows %}<li class="card"><strong>{{ row.topic or '未命名回忆' }}</strong><p class="hint">{{ '草稿' if row.publish_status == 'draft' else '已发布' }} · {{ {'public':'全家人可见','private':'仅自己可见','specific':'指定人可见'}.get(row.visibility or 'public','未标明') }}</p></li>{% endfor %}</ul>
+{% else %}<p class="hint">这个范围暂时没有文章。可以先记录一段回忆，保存后再来下载。</p><a class="btn-primary" href="{{ url_for('main.write_article',family_id=family.id) }}">记录一段回忆</a>{% endif %}
+{% if pages > 1 %}<nav class="form-actions" aria-label="导出批次">{% if batch > 1 %}<a class="btn-secondary" href="{{ url_for('main.article_export',family_id=family.id,scope=scope,batch=batch-1) }}">上一批</a>{% endif %}{% if batch < pages %}<a class="btn-secondary" href="{{ url_for('main.article_export',family_id=family.id,scope=scope,batch=batch+1) }}">下一批</a>{% endif %}</nav>{% endif %}
+{% endblock %}

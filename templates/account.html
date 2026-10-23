@@ -4,6 +4,7 @@
 {% block content %}
 <div class="page-heading"><p class="eyebrow">{{ me.nickname }}，欢迎回来</p><h1>个人中心</h1><p class="hint">管理你的阅读习惯，接着写还没讲完的故事。</p></div>
 <div class="cards menu-cards">
+<a class="card" href="{{ url_for('main.account_article_exports',family_id=family.id if family else None) }}"><h2 class="card-title">导出我的文章</h2><p class="card-sub">下载自己记录的文章与草稿，离线阅读和保存</p></a>
 <a class="card" href="{{ url_for('privacy.requests_list',family_id=family.id if family else None) }}"><h2 class="card-title">隐私申请</h2><p class="card-sub">提交更正、删除或注销申请，查看人工处理进度</p></a>
 {% if is_operator %}<a class="card" href="{{ url_for('privacy.operations_list') }}"><h2 class="card-title">运营：隐私申请处理</h2><p class="card-sub">仅限明确授权的站点运营人员</p></a>{% endif %}
 {% if is_operator %}<a class="card" href="{{ url_for('metrics.dashboard') }}"><h2 class="card-title">运营：周度指标</h2><p class="card-sub">受限汇总与真实人工样本记录</p></a>{% endif %}

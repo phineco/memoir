@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>{{ info.family_name }} · 回忆文章</title>
+<style>
+html{font-size:20px}body{max-width:46rem;margin:auto;padding:1rem;font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.85;color:#202020;background:#fff;overflow-wrap:anywhere}h1{font-size:1.7rem}h2{font-size:1.35rem}a{color:#164e74}header,article{border-bottom:1px solid #ccc;padding-bottom:1.5rem;margin-bottom:1.5rem}.note{color:#555;font-size:.9rem}dl{display:grid;grid-template-columns:6rem minmax(0,1fr);gap:.25rem .5rem}dt,dd{margin:0}blockquote{border-left:3px solid #888;padding-left:1rem;margin-left:0}pre{white-space:pre-wrap}li[data-list=bullet]{list-style-type:disc}.ql-align-center{text-align:center}.ql-align-right{text-align:right}.ql-align-justify{text-align:justify}.ql-size-small{font-size:.85em}.ql-size-large{font-size:1.25em}.ql-size-huge{font-size:1.5em}@media print{body{max-width:none;padding:0}article{break-before:page}a{color:inherit;text-decoration:none}}@page{margin:16mm}
+</style></head><body>
+<header id="top"><h1>{{ info.family_name }} · 回忆文章</h1><p>导出范围：{{ info.scope_label }}</p><p>本包 {{ info.article_count }} 篇；当前范围共 {{ info.eligible_total }} 篇。{% if info.mode == 'batch' %}这是第 {{ info.batch }} 批，不是全部范围。{% else %}本包包含此次导出范围的全部文章。{% endif %}</p><p class="note">导出时间：{{ info.exported_at }}。仅当前正文，不含媒体与历史版本。此文件可离线阅读，请妥善保管。</p>
+<nav aria-label="文章目录"><h2>目录</h2><ol>{% for record in records %}<li><a href="#article-{{ loop.index }}">{{ record.title }}</a></li>{% endfor %}</ol></nav></header>
+{% for record in records %}<article id="article-{{ loop.index }}"><h2>{{ record.title }}</h2><dl class="note">
+<dt>记录人</dt><dd>{{ record.author }}</dd><dt>讲述对象</dt><dd>{{ record.subject }}</dd><dt>讲述者</dt><dd>{{ record.narrator }}</dd>
+<dt>故事时间</dt><dd>{{ record.period_label }}</dd><dt>保存状态</dt><dd>{{ record.status }} · {{ record.visibility }}</dd>
+<dt>正文版本</dt><dd>{{ record.version if record.version is not none else '历史版本号未记明' }}</dd>
+<dt>录入时间</dt><dd>{{ record.created_at or '未知' }}</dd><dt>首次发布</dt><dd>{% if record.status == '草稿' %}尚未发布{% elif record.published_at %}{{ record.published_at }}{% elif record.publication_estimate %}{{ record.publication_estimate }}（按录入时间推定）{% else %}未知{% endif %}</dd></dl>
+<div class="body">{{ record.body_html|safe }}</div><p class="note"><a href="#top">返回目录</a></p></article>{% endfor %}
+<footer class="note">{% for note in info.notes %}<p>{{ note }}</p>{% endfor %}</footer>
+</body></html>
