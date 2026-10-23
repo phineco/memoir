@@ -1,0 +1,12 @@
+[Unit]
+Description=Memoir verified backup and replica
+RequiresMountsFor=/mnt/memoir-backup-replica
+
+[Service]
+Type=oneshot
+User=memoir
+WorkingDirectory=/opt/memoir
+EnvironmentFile=/opt/memoir/.env
+UMask=0077
+ExecStartPre=/usr/bin/mountpoint -q /mnt/memoir-backup-replica
+ExecStart=/opt/memoir/.venv/bin/python tools/backup_job.py --output-dir /secure-backups/memoir --replica-dir /mnt/memoir-backup-replica --keep-days 30

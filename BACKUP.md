@@ -78,3 +78,18 @@ OSS 归档的对象先恢复到指定媒体目录，再上传到独立私有桶�
 `python -m pytest -q` 包含 WAL、历史版本、照片恢复、校验失败、路径越界与拒绝覆盖测试。GitHub Actions 对 Python 3.10 / 3.12 执行 SQLite 回归，独立 MySQL 5.7 服务测试建表、增量迁移与原生备份恢复。
 
 本机没有 MySQL 服务时，该集成用例会跳过；只有配置 `MEMOIR_TEST_MYSQL_ADMIN_URL` 才会创建并清理随机 `memoir_test_*` 数据库，不能把它指向生产。CI 通过需要实际运行结果确认，加入工作流不代表已经通过。
+
+## 定时任务工具与部署交接（2026-10-23）
+
+`tools/backup_job.py` 单次完成创建、归档校验、副本复制和校验，全部成功后才记录 `status.json`。有互斥锁，失败不清理旧备份；保留策略仅作用于本工具创建的 `memoir-auto-*` 文件。目录须为运行账号私有（0700），副本目录必须预先存在，归档和状态文件为 0600。
+
+```bash
+.venv/bin/python tools/backup_job.py --output-dir /secure-backups/memoir --replica-dir /mnt/memoir-backup-replica --keep-days 30
+.venv/bin/python tools/backup_job.py --output-dir /secure-backups/memoir --check-age-hours 30
+```
+
+副本目录须由运维确认挂载到受限异机/异地存储；文件副本校验并不证明物理异地。本项目不替用户挂载或创建云存储。OSS 须在同一暂停媒体写入窗口导出完整对象，额外传 `--media-dir` 指向导出目录；示例 systemd 服务用于本地照片，OSS 部署需先安排导出步骤，否则任务会拒绝只备数据库。
+
+`tools/systemd/` 提供每日备份和每小时新鲜度检查示例，未安装、未启用。替换项目路径、账号、挂载点和保留天数后先手工验证；每日按服务器时区执行，核对 Asia/Shanghai。备份服务会检查挂载点，失败退出非零；新鲜度检查在最近一次失败或超过 30 小时未成功时退出非零。运维必须将这两个服务的失败接到现有告警渠道，完成一次失败告警验证，不能把日志存在等同于已经通知。未配置告警接收者时，生产保障仍未验收。
+
+演练使用已校验副本和独立恢复环境文件，记录执行人、时间、发布版本、备份点、数据库和媒体核查结果、耗时与告警结果。恢复命令沿用前文，禁止覆盖生产。
