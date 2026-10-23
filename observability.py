@@ -49,6 +49,15 @@ def install(app, engine):
         if has_request_context() and hasattr(context,'_memoir_started'):
             g.sql_ms=g.get('sql_ms',0)+(time.perf_counter()-context._memoir_started)*1000
             g.sql_count=g.get('sql_count',0)+1
+            del context._memoir_started
+
+    @event.listens_for(engine,'handle_error')
+    def failed_sql(exception_context):
+        context=exception_context.execution_context
+        if has_request_context() and context is not None and hasattr(context,'_memoir_started'):
+            g.sql_ms=g.get('sql_ms',0)+(time.perf_counter()-context._memoir_started)*1000
+            g.sql_count=g.get('sql_count',0)+1
+            del context._memoir_started
 
     @app.before_request
     def begin_request():
@@ -68,16 +77,19 @@ def install(app, engine):
             if isinstance(payload,dict):
                 payload['request_id']=identifier;response.set_data(app.json.dumps(payload))
         if app.config.get('REQUEST_LOGGING') or response.status_code>=400:
-            app.logger.log(logging.WARNING if response.status_code>=400 else logging.INFO,json.dumps(dict(event='request',request_id=identifier,version=app.config['RELEASE_VERSION'],
+            app.logger.log(logging.ERROR if response.status_code>=500 else logging.WARNING if response.status_code>=400 else logging.INFO,json.dumps(dict(event='request',request_id=identifier,version=app.config['RELEASE_VERSION'],
                 endpoint=request.endpoint,method=request.method,status=response.status_code,
                 app_ms=round(duration,2),sql_ms=round(g.get('sql_ms',0),2),sql_count=g.get('sql_count',0))))
         return response
 
     @app.errorhandler(Exception)
     def unexpected_error(error):
-        if isinstance(error,HTTPException):return error
-        record_error(error)
+        status=error.code if isinstance(error,HTTPException) else 500
+        message={400:'填写内容有误，请核对后重试。',401:'请先登录后重试。',403:'你没有执行此操作的权限。',404:'页面不存在或暂不可访问。',409:'内容已有新进度，请刷新后核对。',429:'操作较频繁，请稍后重试。'}.get(status,'暂时无法完成，请稍后重试。')
+        if isinstance(error,HTTPException):
+            if status not in (401,403,404) and re.search('[\u4e00-\u9fff]',error.description or ''):message=error.description
+        else:record_error(error)
         # This template has no DB-dependent context processors or family data.
         if request.is_json or request.path.startswith('/api/'):
-            return jsonify(error='暂时无法完成，请稍后重试',request_id=g.request_id),500
-        return app.jinja_env.get_template('error.html').render(request_id=g.request_id),500
+            return jsonify(ok=False,error=message,request_id=g.request_id),status
+        return app.jinja_env.get_template('error.html').render(request_id=g.request_id,message=message),status

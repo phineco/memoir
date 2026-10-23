@@ -32,3 +32,16 @@ def test_fault_page_and_json_share_safe_diagnostics(app,client,caplog):
         response=client.post('/synthetic-fault',json={'question':'PRIVATE_QUESTION'})
     assert response.status_code==500 and response.json['request_id']==response.headers['X-Request-ID']
     assert 'PRIVATE_QUESTION' not in caplog.text and 'PRIVATE_BODY_SECRET' not in response.get_data(as_text=True)
+
+
+def test_handled_http_errors_have_visible_reference_and_failed_sql_does_not_log_parameters(app,client,caplog):
+    from sqlalchemy import text
+    from models import get_session
+    @app.route('/sql-fault')
+    def sql_fault():get_session().execute(text("SELECT 'PRIVATE_SQL_LITERAL' FROM nonexistent_table"))
+    response=client.get('/missing-page?secret=PRIVATE_QUERY')
+    assert response.status_code==404 and response.headers['X-Request-ID'] in response.get_data(as_text=True)
+    assert response.headers['X-Request-ID'] in caplog.text and 'PRIVATE_QUERY' not in caplog.text
+    response=client.get('/sql-fault')
+    assert response.status_code==500 and '1 queries' in response.headers['Server-Timing']
+    assert 'PRIVATE_SQL_LITERAL' not in caplog.text and 'PRIVATE_SQL_LITERAL' not in response.get_data(as_text=True)
