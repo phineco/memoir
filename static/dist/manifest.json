@@ -1,10 +1,10 @@
 {
   "files": {
     "ai-chat.js": "ai-chat.c765be6c85a34eae.js",
-    "app.css": "app.7fdbabed7cdab2c6.css",
+    "app.css": "app.be6e3b3269bcd015.css",
     "family-context.js": "family-context.8debcaf0224ca923.js",
     "navigation.js": "navigation.abd2cafcd95362e5.js",
-    "preferences.js": "preferences.16016e74e4ceaf8b.js",
+    "preferences.js": "preferences.819b7406705f127e.js",
     "read-aloud.js": "read-aloud.ca0c7d0555db6cb2.js",
     "share-links.js": "share-links.80dc9f6d8be18cdc.js",
     "vendor/echarts-5.5.0.min.js": "echarts-5.5.0.min.42f8329d989b6f65.js",
@@ -15,11 +15,11 @@
   },
   "sha256": {
     "ai-chat.c765be6c85a34eae.js": "c765be6c85a34eae69e57eb321b2a2f0ddadef28386f81de32030b121701c462",
-    "app.7fdbabed7cdab2c6.css": "7fdbabed7cdab2c6496c44053a7862d8403c3505596b88e1cec202c855964c38",
+    "app.be6e3b3269bcd015.css": "be6e3b3269bcd0151212a45586a237cbabe20282015f4312ac28f65f760cbdbf",
     "echarts-5.5.0.min.42f8329d989b6f65.js": "42f8329d989b6f6539dd2b15bbdf0d82025762ac112fbb60dc57b27d7bcf3946",
     "family-context.8debcaf0224ca923.js": "8debcaf0224ca92384dad4ec3af11850e8cf3dadcd594e0e69105bf7cd5f403a",
     "navigation.abd2cafcd95362e5.js": "abd2cafcd95362e56a6923f987a1e69073f63ad71adef8c5c23ec76d21725d82",
-    "preferences.16016e74e4ceaf8b.js": "16016e74e4ceaf8b552fb1f2170311809131ebff1a534b37b2142bca10b7b6b0",
+    "preferences.819b7406705f127e.js": "819b7406705f127eefb04b036d1cb7eabc93cd5e96be50013544a72c52397645",
     "quill-2.0.3.f6157c72ac9b3f51.js": "f6157c72ac9b3f51cdead426335688a027b12405d9d6a4daadd38a676b2d7ff2",
     "quill-2.0.3.snow.1c7948cd13aa92fa.css": "1c7948cd13aa92fac6390319bc1e5e461823da171519d3a768db56164f871636",
     "read-aloud.ca0c7d0555db6cb2.js": "ca0c7d0555db6cb2b89f54a15c04b4c952edb21b3a6604d9c143c26f7ac22fea",

@@ -2,6 +2,7 @@
 {% block title %}家人 · {{ family.name }}{% endblock %}
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
+<aside id="large-text-hint" class="disclosure" hidden aria-label="大字阅读提示"><p>字太小？可以一键调大，仅改变当前浏览器的显示。</p><div class="form-actions"><button id="large-text-enable" class="btn-primary" type="button">一键大字</button><button id="large-text-dismiss" class="btn-secondary" type="button">不再提示</button><a href="{{ url_for('main.display_preferences',family_id=family.id) }}">更多显示设置</a></div><p data-display-status class="hint" role="status"></p></aside>
 <div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>让每一位家人，都被记住</h1><p class="hint">从一个名字、一张照片，走进家人的一生。</p></div>
 <div class="stats"><span>{{ n_person }} 位家人</span><span>{{ n_story }} 篇故事</span><span>{{ n_pending }} 条待核实</span></div>
 {% if persons %}

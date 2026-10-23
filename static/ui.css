@@ -276,3 +276,7 @@ html {scroll-padding-top:calc(var(--site-header-height,5rem) + 1rem);}
 #voice-status {min-height:1.5em;margin-block:.5rem;}
 #voice-status:empty {display:none;}
 #voice-btn[aria-pressed=true] {border:2px solid var(--accent);background:var(--surface-soft);color:var(--accent);}
+
+.reading-controls {border:1px solid var(--line);border-radius:var(--radius);padding:.5rem .8rem;margin:1rem 0;}
+.reading-controls legend {font-size:.9rem;color:var(--muted);}
+.reading-controls button[aria-pressed="true"] {border:2px solid var(--accent);font-weight:700;}

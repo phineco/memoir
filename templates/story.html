@@ -26,6 +26,7 @@
 <h2>故事正文</h2>
 {% set ra_prefix = 'story' %}{% set ra_label = '朗读全文' %}{% set ra_target = 'articleBody' %}
 {% include '_read_aloud.html' %}
+{% include '_reading_controls.html' %}
 <div class="prose article-body" id="articleBody">
 {% if draft %}{% if draft.content and draft.content.lstrip().startswith('<') %}{{ draft.content | safe }}{% else %}{% for para in draft.content.split("\n\n") %}{% if para.strip() %}<p>{{ para }}</p>{% endif %}{% endfor %}{% endif %}{% else %}<p class="hint">暂无初稿。</p>{% endif %}
 </div>
