@@ -639,3 +639,23 @@ CREATE TABLE `ai_preferences` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_ai_preference` (`family_id`,`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI上下文重置边界';
+
+CREATE TABLE `family_visits` (
+  `id` varchar(64) NOT NULL,
+  `family_id` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `first_seen_at` datetime NOT NULL,
+  `first_read_at` datetime DEFAULT NULL,
+  `first_saved_at` datetime DEFAULT NULL,
+  `first_published_at` datetime DEFAULT NULL,
+  `guide_status` varchar(16) NOT NULL DEFAULT 'auto',
+  `cohort_eligible` boolean NOT NULL DEFAULT 0,
+  `create_by` varchar(64) DEFAULT NULL,
+  `create_date` datetime DEFAULT NULL,
+  `update_by` varchar(64) DEFAULT NULL,
+  `update_date` datetime DEFAULT NULL,
+  `remarks` varchar(255) DEFAULT NULL,
+  `del_flag` int DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_family_visit` (`family_id`,`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='个人家庭引导与首次观察';

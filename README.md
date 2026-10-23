@@ -56,7 +56,7 @@ python app.py
 
 ## 技术与配置
 
-Flask + Jinja2、SQLAlchemy、Tailwind CSS 3；家族树 ECharts、编辑器 Quill。现有 **32 张业务表**，见[模型](models.py)和[建表 SQL](memoir-mysql-schema.sql)。`schema_migrations` 为迁移记录表，不计入业务表。
+Flask + Jinja2、SQLAlchemy、Tailwind CSS 3；家族树 ECharts、编辑器 Quill。现有 **33 张业务表**，见[模型](models.py)和[建表 SQL](memoir-mysql-schema.sql)。`schema_migrations` 为迁移记录表，不计入业务表。
 
 | 配置 | 含义 |
 |---|---|
@@ -112,7 +112,7 @@ python -m pytest -q
 
 人物的出生、去世分别支持公历与农历年/月/日，两套可独立选填；支持农历闰月及不完整日期，不自动换算。人物页、家人列表和 AI 参考资料会显示已录入的信息。旧年份按原历法迁入新增字段，未记载的月日保持为空。
 
-**已有数据库更新前须备份并执行 `python migrate.py`，按序完成 001–009 的未执行迁移（含生存状态、核实建议、首次发布时间、AI 请求状态）**，具体顺序见 [部署文档](DEPLOY.md)；不能仅替换代码后直接启动。
+**已有数据库更新前须备份并执行 `python migrate.py`，按序完成 001–010 的未执行迁移（含生存状态、核实建议、首次发布时间、AI 请求状态）**，具体顺序见 [部署文档](DEPLOY.md)；不能仅替换代码后直接启动。
 
 ## 邀请链接与二维码
 

@@ -382,6 +382,19 @@ class AiPreference(AuditMixin, Base):
     __table_args__ = (UniqueConstraint('family_id','user_id',name='uq_ai_preference'),)
 
 
+class FamilyVisit(AuditMixin, Base):
+    __tablename__ = 'family_visits'
+    family_id = Column(String(64), nullable=False)
+    user_id = Column(String(64), nullable=False)
+    first_seen_at = Column(DateTime, nullable=False)
+    first_read_at = Column(DateTime)
+    first_saved_at = Column(DateTime)
+    first_published_at = Column(DateTime)
+    guide_status = Column(String(16), nullable=False, default='auto')
+    cohort_eligible = Column(Boolean, nullable=False, default=False)
+    __table_args__ = (UniqueConstraint('family_id','user_id',name='uq_family_visit'),)
+
+
 class AiMessage(AuditMixin, Base):
     """AI 问答聊天记录。"""
     __tablename__ = "ai_messages"

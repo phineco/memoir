@@ -3,12 +3,13 @@
 {% block nav %}{% if family %}{% include "_family_nav.html" %}{% endif %}{% endblock %}
 {% block content %}
 <h1>📖 使用帮助</h1>
+{% if family %}<form method="post" action="{{ url_for('main.onboarding_visibility',family_id=family.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" name="action" value="show" class="btn-secondary">重新查看上手指引</button></form>{% endif %}
 <p class="hint">家音是家庭的口述回忆录：老人讲、AI 整理、全家一起看和纠正，逐步积累成一家人的回忆。</p>
 
 <p class="hint">手机上先点顶部“菜单”展开导航，再点用户名称进入个人中心，可调整显示设置或继续编辑我的草稿。滚动阅读时顶栏会保持可见。</p>
 <h2>🚀 三步上手</h2>
 <ol class="steps">
-  <li><strong>认领身份</strong> — 注册登录后，在“家人”中找到自己，进人物页点「👤这是我」。之后树上会显示你的名字，称谓也会变成"对你：…"。</li>
+  <li><strong>按需认领身份（选填）</strong> — 在“家人”中找到自己，进人物页点「👤这是我」。之后可显示相对称谓；未建人物或尚未认领，也能先阅读、记录。</li>
   <li><strong>看故事、听故事</strong> — 「📖故事」列表点开一篇，点「🔊朗读全文」，手机放着听就行，适合不方便看字的老人。人物小传和每周周报也有朗读按钮。</li>
   <li><strong>写下回忆</strong> — 点「记录」，支持富文本和🎤语音转文字，写完可「保存草稿」（只自己可见）或「发布」（按选择的范围可见）。</li>
 </ol>

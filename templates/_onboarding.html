@@ -1,0 +1,15 @@
+{% if onboarding %}
+<section class="disclosure" aria-labelledby="onboarding-title" id="onboarding-guide">
+<h2 id="onboarding-title">从这里开始</h2><p class="hint">已完成 {{ onboarding.completed }} / {{ onboarding.total }} 项 · 顺序任选，可跳过；认领不影响写作。</p>
+{% if onboarding.admin %}
+<ul><li>{{ '✓' if onboarding.has_people else '○' }} 添加第一位家人</li><li>{{ '✓' if onboarding.invited else '○' }} 准备邀请或已有其他成员</li><li>{{ '✓' if onboarding.written else '○' }} 保存第一篇回忆</li></ul>
+<div class="form-actions">{% if not onboarding.has_people %}<a class="btn-secondary" href="{{ url_for('main.tree_add',family_id=family.id) }}">添加家人</a>{% endif %}<a class="btn-secondary" href="{{ url_for('main.family_manage',family_id=family.id,section='invites') }}">邀请家人</a><a class="btn-primary" href="{{ url_for('main.write_article',family_id=family.id) }}">先记录一段</a></div>
+{% else %}
+<ul><li>{{ '✓' if onboarding.read else '○' }} 读一篇已发布故事</li><li>{{ '✓' if onboarding.written else '○' }} 保存第一篇回忆</li><li>{{ '✓' if onboarding.claimed else '○' }} 找到并认领自己（选填）</li></ul>
+<div class="form-actions">{% if n_story %}<a class="btn-secondary" href="{{ url_for('main.stories',family_id=family.id) }}">先读故事</a>{% endif %}<a class="btn-primary" href="{{ url_for('main.write_article',family_id=family.id) }}">先记录一段</a>{% if onboarding.has_people %}<a class="btn-secondary" href="#family-people">找找自己</a>{% endif %}</div>
+{% if not onboarding.has_people %}<p class="hint">人物尚未建立，可请管理员稍后添加；现在就能记录，不必等待认领。</p>{% endif %}
+{% endif %}
+<form method="post" action="{{ url_for('main.onboarding_visibility',family_id=family.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" name="action" value="hide" class="btn-small btn-secondary">不再显示上手指引</button></form>
+<p class="hint">需要时可从帮助重新打开。</p>
+</section>
+{% endif %}

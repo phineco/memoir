@@ -5,8 +5,9 @@
 <aside id="large-text-hint" class="disclosure" hidden aria-label="大字阅读提示"><p>字太小？可以一键调大，仅改变当前浏览器的显示。</p><div class="form-actions"><button id="large-text-enable" class="btn-primary" type="button">一键大字</button><button id="large-text-dismiss" class="btn-secondary" type="button">不再提示</button><a href="{{ url_for('main.display_preferences',family_id=family.id) }}">更多显示设置</a></div><p data-display-status class="hint" role="status"></p></aside>
 <div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>让每一位家人，都被记住</h1><p class="hint">从一个名字、一张照片，走进家人的一生。</p></div>
 <div class="stats"><span>{{ n_person }} 位家人</span><span>{{ n_story }} 篇故事</span><span>{{ n_pending }} 条待核实</span></div>
+{% include '_onboarding.html' %}
 {% if persons %}
-<div class="cards person-cards">
+<div class="cards person-cards" id="family-people">
 {% for p in persons %}<a class="card person-card" href="{{ url_for('main.person_page', family_id=family.id, person_id=p.id) }}"><span class="avatar" aria-hidden="true">{{ p.name[:1] }}</span><div><div class="card-title">{{ p.name }}</div><div class="card-sub">{{ p.relation or '家人' }}{% if p.birth_date_label %} · 出生：{{ p.birth_date_label }}{% endif %}</div></div><span aria-hidden="true">→</span></a>{% endfor %}
 </div>
 <details id="family-tree" class="disclosure advanced-section"><summary>查看家族关系树</summary><p class="hint">点击节点查看人物。也可使用上方的家人列表。</p><div id="tree" class="tree-box" role="img" aria-label="家族关系树；上方家人列表提供可访问的文字入口"></div></details>

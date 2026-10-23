@@ -47,6 +47,9 @@ def _family_login_gate():
         family_id = (request.view_args or {}).get("family_id")
         if family_id:
             _family_or_404(family_id)
+            from onboarding import touch
+            touch(family_id,_current_user().id)
+            _s().commit()
 
 
 # ---------- 登录（原型：手机号+密码；生产换微信 OAuth） ----------
@@ -587,11 +590,25 @@ def family_home(family_id):
     me = _current_user()
     viewer = s.query(Person).filter_by(family_id=family_id, user_id=me.id,
                                        del_flag=0).first() if me else None
+    from onboarding import guide as onboarding_guide
     return render_template("family.html", family=fam,
                            tree=_build_tree(family_id, viewer.id if viewer else None),
                            persons=_tree_persons(family_id), n_person=n_person,
                            n_story=n_story, n_pending=n_pending,
+                           onboarding=onboarding_guide(family_id,me.id,_is_admin(fam,me)),
                            is_admin=_is_admin(fam, me))
+
+
+@bp.route('/f/<family_id>/onboarding',methods=['POST'])
+def onboarding_visibility(family_id):
+    from forms import require_csrf
+    from onboarding import touch
+    require_csrf()
+    action=request.form.get('action')
+    if action not in ('hide','show'):abort(400)
+    touch(family_id,_current_user().id).guide_status='hidden' if action=='hide' else 'show'
+    _s().commit()
+    return redirect(url_for('main.family_home',family_id=family_id))
 
 
 @bp.route("/f/<family_id>/more")
@@ -747,6 +764,9 @@ def story_detail(family_id, interview_id):
     me = _current_user()
     if not _can_view(iv, me):
         abort(404)
+    if (iv.publish_status or 'published')=='published':
+        from onboarding import record
+        if record(family_id,me.id,'read'):_s().commit()
     # 观看数：同会话去重（生产用 Redis/IP 去重）
     viewed = session.setdefault("viewed", [])
     if interview_id not in viewed:
@@ -1127,6 +1147,9 @@ def write_article(family_id):
             if pid != subject_id:
                 s.add(InterviewPerson(id=new_id(), interview_id=iv.id,
                                       person_id=pid, role="related"))
+        from onboarding import record
+        record(family_id,me.id,'saved')
+        if action=='publish':record(family_id,me.id,'published')
         s.commit()
         _saved_write_recovery(me, family_id, "new")
         if action == "publish":
@@ -1288,6 +1311,9 @@ def edit_article(family_id, interview_id):
                 if item:
                     item.status="resolved"; item.correction=correction.proposal[:512]
                     item.update_by=me.id; item.update_date=now
+        from onboarding import record
+        record(family_id,me.id,'saved')
+        if action=='publish' and not was_published:record(family_id,me.id,'published')
         s.commit()
         _saved_write_recovery(me, family_id, iv.id)
         if action == "publish":
