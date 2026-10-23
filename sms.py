@@ -4,14 +4,14 @@
 签名：https://help.aliyun.com/zh/sdk/product-overview/v3-request-structure-and-signature
 
 - send_code(phone, purpose): 生成 6 位验证码 → 入库 → 发短信。
-  未配置 AK 时为开发模式：验证码写服务日志，API 直接返回 code（仅原型测试用）。
+  缺配置时停用；仅显式开启的本地开发模式允许在页面显示测试码，不写日志。
 - verify_code(phone, code, purpose): 校验（10 分钟有效，一次性使用）。
 """
 import datetime
 import hashlib
 import hmac
 import logging
-import random
+import secrets
 import uuid
 from urllib.parse import quote
 
@@ -33,6 +33,18 @@ class SMSError(Exception):
 
 def sms_enabled():
     return bool(Config.SMS_ENABLED)
+
+
+def development_mode():
+    return Config.APP_ENV == "local" and Config.SMS_DEVELOPMENT_MODE and not sms_enabled()
+
+
+def _delivery_mode():
+    if sms_enabled():
+        return "sms:v1:provider"
+    if development_mode():
+        return "sms:v1:development"
+    raise SMSError("短信验证暂不可用，请使用密码登录或联系管理员")
 
 
 def _s():
@@ -114,15 +126,14 @@ def _send_sms_api(phone, template_param):
     try:
         r = requests.post("https://%s/?%s" % (host, qs),
                           headers=headers, timeout=15)
-    except requests.RequestException as e:
-        raise SMSError("短信网关连接失败：%s" % e)
+    except requests.RequestException:
+        raise SMSError("短信发送失败，请稍后再试") from None
     try:
         data = r.json()
     except ValueError:
-        raise SMSError("短信网关返回异常：%s" % r.text[:200])
+        raise SMSError("短信服务返回异常，请稍后再试") from None
     if data.get("Code") != "OK":
-        raise SMSError("短信发送失败：%s（%s）" % (
-            data.get("Message"), data.get("Code")))
+        raise SMSError("短信发送失败，请稍后再试")
     return True
 
 
@@ -135,6 +146,7 @@ def send_code(phone, purpose):
         raise SMSError("用途不对")
     if not _re.fullmatch(r"\d{11}", phone or ""):
         raise SMSError("手机号应为 11 位数字")
+    mode = _delivery_mode()
     s = _s()
     now = datetime.datetime.now()
     last = s.query(SmsCode).filter_by(
@@ -142,17 +154,17 @@ def send_code(phone, purpose):
         SmsCode.create_date.desc()).first()
     if last and (now - last.create_date).total_seconds() < RESEND_COOLDOWN_SECONDS:
         raise SMSError("发送太频繁，请 %s 秒后再试" % RESEND_COOLDOWN_SECONDS)
-    code = "%06d" % random.randint(0, 999999)
+    code = "%06d" % secrets.randbelow(1000000)
+    if mode == "sms:v1:provider":
+        import json
+        _send_sms_api(phone, json.dumps({"code": code}, ensure_ascii=False))
     s.add(SmsCode(id=new_id(), phone=phone, code=code, purpose=purpose,
-                  used=0,
+                  used=0, remarks=mode,
                   expire_at=now + datetime.timedelta(minutes=CODE_TTL_MINUTES),
                   create_date=now))
     s.commit()
-    if not sms_enabled():
-        log.warning("[短信开发模式] %s 的 %s 验证码：%s", phone, purpose, code)
+    if mode == "sms:v1:development":
         return {"dev_mode": True, "code": code}
-    import json as _json
-    _send_sms_api(phone, _json.dumps({"code": code}, ensure_ascii=False))
     return {"dev_mode": False}
 
 
@@ -160,16 +172,19 @@ def verify_code(phone, code, purpose):
     """校验验证码。成功返回 True（并标记已用），失败抛 SMSError。"""
     if purpose not in PURPOSES:
         raise SMSError("用途不对")
+    mode = _delivery_mode()
     s = _s()
     now = datetime.datetime.now()
     row = s.query(SmsCode).filter_by(
-        phone=phone, purpose=purpose, used=0, del_flag=0).order_by(
+        phone=phone, purpose=purpose, used=0, del_flag=0, remarks=mode).order_by(
         SmsCode.create_date.desc()).first()
     if not row or row.code != (code or "").strip():
         raise SMSError("验证码不正确")
     if row.expire_at and row.expire_at < now:
         raise SMSError("验证码已过期，请重新获取")
-    row.used = 1
-    row.update_date = now
+    if s.query(SmsCode).filter_by(id=row.id, used=0).update(
+            {SmsCode.used: 1, SmsCode.update_date: now}, synchronize_session=False) != 1:
+        s.rollback()
+        raise SMSError("验证码已使用，请重新获取")
     s.commit()
     return True

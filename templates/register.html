@@ -5,8 +5,10 @@
 {% if invite %}
 <p class="success">📨 你被邀请加入「{{ invite.family_id}}」家庭，注册后自动加入。</p>
 {% endif %}
-{% if not sms_enabled %}
-<p class="hint">短信服务未配置（开发模式）：点"获取验证码"后验证码会直接显示，生产环境请配置阿里云短信。</p>
+{% if sms_development_mode %}
+<p class="hint">本地测试模式：测试验证码会显示在此设备上，请勿用于公网服务。</p>
+{% elif not sms_enabled %}
+<p class="hint">短信验证暂不可用，请稍后重试或联系管理员。</p>
 {% endif %}
 <form method="post" class="authform" id="regForm">
 {% if invite_code %}<input type="hidden" name="invite_code" value="{{ invite_code}}">{% endif %}

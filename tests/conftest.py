@@ -20,6 +20,9 @@ def app(tmp_path, monkeypatch):
     models._engine.dispose()
     monkeypatch.setattr(Config, "DATABASE_URL", "sqlite://")
     monkeypatch.setattr(Config, "UPLOAD_DIR", str(tmp_path / "uploads"))
+    monkeypatch.setattr(Config, "APP_ENV", "local")
+    monkeypatch.setattr(Config, "SMS_DEVELOPMENT_MODE", True)
+    monkeypatch.setattr(Config, "SMS_ENABLED", False)
     application = create_app()
     application.config.update(TESTING=True, SECRET_KEY="test-only-secret")
     # Test provisioning is explicit; application workers never perform DDL.

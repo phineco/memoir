@@ -44,7 +44,7 @@ OSS_URL_EXPIRES=3600
 完整变量见 [.env.example](.env.example)：
 
 - AI：`DEEPSEEK_API_KEY/BASE_URL/MODEL`，模型名按账户实际可用值配置；缺 key 则禁用。
-- 短信：`ALIYUN_SMS_ACCESS_KEY_ID/ACCESS_KEY_SECRET/SIGN_NAME/TEMPLATE_CODE`；公网必须配好，缺配置会开启开发验证码模式。
+- 短信：`ALIYUN_SMS_ACCESS_KEY_ID/ACCESS_KEY_SECRET/SIGN_NAME/TEMPLATE_CODE`；公网必须配好；缺配置时停用短信验证，不能降级返回开发验证码。
 - 本地照片：`UPLOAD_DIR` 建议绝对路径；OSS 可选 `OSS_ENDPOINT`，签名 URL 必须能被访问者网络访问，不要把仅服务器可达的内网域名用于浏览器展示。
 
 OSS 桶设为私有。运行账号至少需要对象上传、读取和删除权限，分别对应 `oss:PutObject/GetObject/DeleteObject`。短期签名 URL 到期前仍可使用，成员移除不撤销已签发 URL。
@@ -304,3 +304,7 @@ sudo systemctl restart memoir
 ## AI 请求与证据
 
 执行 007 增加 AI 请求状态表后再启动新版。请求编号按用户与家庭隔离，重复编号不重复调用模型，成功结果可复用；失败、取消及超时状态保留原问题，重试由用户明确发起。全文采用本站关键词/中文词组段落检索，无新增检索服务依赖；只使用家庭公开已发布文章。取消会在下一段服务回复到达时生效，不能承诺撤销服务方已产生的用量。进程中断的请求在五分钟保护期后标记失败，不自动再次生成。
+
+## 2026-10-23 短信生产保护
+
+短信参数不完整时，发送与校验都停用，不返回或记录验证码。仅 `APP_ENV=local` 且显式设置 `SMS_DEVELOPMENT_MODE=1` 才可显示本地测试码；默认值为 0，cloud 环境始终禁止开发码。接入真实短信后不能使用此前的开发码，升级前签发的旧无来源标记验证码也失效，须重新获取。无需表结构迁移。

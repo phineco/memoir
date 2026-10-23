@@ -28,6 +28,7 @@ class Config:
 
     # ---- 环境开关 ----
     APP_ENV = os.environ.get("APP_ENV", "local")  # local | cloud
+    SMS_DEVELOPMENT_MODE = os.environ.get("SMS_DEVELOPMENT_MODE", "0") == "1"
     STORAGE_BACKEND = os.environ.get(
         "STORAGE_BACKEND",
         "oss" if os.environ.get("APP_ENV") == "cloud" else "local",
@@ -59,5 +60,6 @@ class Config:
     ALIYUN_SMS_ENDPOINT = os.environ.get(
         "ALIYUN_SMS_ENDPOINT", "dysmsapi.aliyuncs.com")
     SMS_ENABLED = bool(os.environ.get("ALIYUN_SMS_ACCESS_KEY_ID", "")
+                       and os.environ.get("ALIYUN_SMS_ACCESS_KEY_SECRET", "")
                        and os.environ.get("ALIYUN_SMS_SIGN_NAME", "")
                        and os.environ.get("ALIYUN_SMS_TEMPLATE_CODE", ""))

@@ -68,7 +68,7 @@ Flask + Jinja2、SQLAlchemy、Tailwind CSS 3；家族树 ECharts、编辑器 Qui
 | `UPLOAD_DIR` | 默认仓库内 `uploads/` |
 | `OSS_*` | 私有桶、地域、凭据与签名有效期，见[环境示例](.env.example) |
 | `DEEPSEEK_*` | AI 接口配置；缺少 key 时禁用；模型名按供应商实际可用配置核对 |
-| `ALIYUN_SMS_*` | 阿里云短信；未配置时返回开发验证码，不能直接用于公网服务 |
+| `ALIYUN_SMS_*` | 阿里云短信；缺配置时停用，显式本地测试模式除外 |
 
 `.env` 自动加载，不提交 Git。ECharts、Quill 与 Tailwind 编译产物均自托管，不要求生产环境访问 CDN。
 

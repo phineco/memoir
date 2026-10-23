@@ -20,7 +20,7 @@ def registration_data():
 
 def add_sms_and_invite():
     s=get_session()
-    s.add(SmsCode(id='sms-test',phone='13800001234',purpose='register',code='123456',used=0,
+    s.add(SmsCode(id='sms-test',phone='13800001234',purpose='register',code='123456',used=0,remarks='sms:v1:development',
                   expire_at=datetime.datetime.now()+datetime.timedelta(minutes=5)))
     s.add(Invite(id='invite-test',family_id='a',code='legal-test-invite',used_count=0,max_uses=2,
                  expire_at=datetime.datetime.now()+datetime.timedelta(days=1)))

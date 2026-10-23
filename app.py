@@ -38,9 +38,11 @@ def create_app():
         me = get_session().query(User).filter_by(id=uid, del_flag=0).first() if uid else None
         from storage import storage_url
         from legal import TERMS_VERSION, PRIVACY_VERSION
+        from sms import development_mode
         return {"me": me, "storage_url": storage_url, "asset_url": asset_url, "public_url":public_url,
                 "terms_version": TERMS_VERSION, "privacy_version": PRIVACY_VERSION,
                 "privacy_contact_email": app.config["PRIVACY_CONTACT_EMAIL"],
+                "sms_development_mode": development_mode(),
                 "saved_write_recovery": session.pop("saved_write_recovery", None)}
 
     return app
