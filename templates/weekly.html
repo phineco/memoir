@@ -4,6 +4,7 @@
 {% block content %}
 <h1>📰 {{ family.name }} · {{ year }} 年第 {{ week }} 周周报</h1>
 <p class="hint">按周一至周日汇总首次发布的家庭公开故事；跨年周使用统一的周年编号。</p>
+{% if is_admin %}<p class="hint"><a href="{{ url_for('main.api_weekly_report') }}?family_id={{ family.id }}&year={{ year }}&week={{ week }}">管理员：查看本周结构化资料</a></p>{% endif %}
 {% set ra_prefix = 'weekly' %}{% set ra_label = '朗读周报' %}{% set ra_target = 'weeklyBody' %}
 {% include '_read_aloud.html' %}
 <div id="weeklyBody">
