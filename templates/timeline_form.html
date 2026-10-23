@@ -4,7 +4,7 @@
 {% block content %}
 <div class="nav"><a href="{{ url_for('main.person_page', family_id=family.id, person_id=person.id) }}">← 返回人物页</a></div>
 <h2>{% if mode == 'edit' %}✏️ 编辑时间轴事件{% else %}➕ 添加时间轴事件{% endif %}</h2>
-<p class="hint">时间轴由 skill 整理时自动抽取；管理员可手动增删改。</p>
+<p class="hint">管理员可手动维护人生事件，也可导入站外整理的资料。</p>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="post">
   <label>事件标题 *<br><input name="title" class="full" value="{{ form.get('title','') if form else '' }}" required></label>

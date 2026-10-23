@@ -10,7 +10,7 @@
   <span class="hint">AI 按长辈优先、待采访优先排个初版，你再手动改</span>
 </form>
 {% elif not plan %}
-<p class="hint">配置 DEEPSEEK_API_KEY 后可用 AI 给出计划建议。</p>
+<p class="hint">AI 建议尚未启用，请联系管理员；也可直接填写计划。</p>
 {% endif %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 {% if not plan %}

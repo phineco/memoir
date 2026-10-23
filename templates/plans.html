@@ -3,7 +3,7 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <h1>📋 写作计划</h1>
-<p class="hint">管理员定"先写谁"，skill 拉取当前计划后按它引导家人补故事。skill 同步接口：<code>/api/writing-plan?family_id={{ family.id }}</code></p>
+<p class="hint">管理员安排接下来记录谁、补充哪些线索；AI 建议需要人工核对后采用。</p>
 {% if is_admin %}
 <p><a href="{{ url_for('main.plan_new', family_id=family.id) }}" class="btn-primary" style="text-decoration:none">➕ 新建计划</a></p>
 {% endif %}

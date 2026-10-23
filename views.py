@@ -2196,7 +2196,7 @@ def ai_ask(family_id):
         if not msg:
             error = "请输入问题"
         elif not ai_mod.ai_enabled():
-            error = "AI 未启用：请联系管理员配置 DEEPSEEK_API_KEY"
+            error = "AI 服务尚未启用，请联系管理员"
         else:
             try:
                 ai_mod.chat(family_id, me.id, msg, family_name=fam.name)

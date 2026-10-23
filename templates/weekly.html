@@ -3,7 +3,7 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <h1>📰 {{ family.name }} · {{ year }} 年第 {{ week }} 周周报</h1>
-<p class="hint">按 ISO 年与周数汇总 · 接口：<a href="{{ url_for('main.api_weekly_report') }}?family_id={{ family.id }}&year={{ year }}&week={{ week }}">/api/weekly-report</a></p>
+<p class="hint">按周一至周日汇总首次发布的家庭公开故事；跨年周使用统一的周年编号。</p>
 {% set ra_prefix = 'weekly' %}{% set ra_label = '朗读周报' %}{% set ra_target = 'weeklyBody' %}
 {% include '_read_aloud.html' %}
 <div id="weeklyBody">
@@ -19,7 +19,7 @@
   <button type="submit" class="btn-primary">✨ 生成 AI 导读</button>
 </form>
 {% elif not ai_enabled %}
-<p class="hint">配置 DEEPSEEK_API_KEY 后可生成 AI 导读。</p>
+<p class="hint">AI 导读尚未启用；本周故事与核实动态仍可阅读。</p>
 {% else %}
 <p class="hint">暂无 AI 导读，请管理员生成。</p>
 {% endif %}
