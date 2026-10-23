@@ -14,6 +14,9 @@ def create_app():
     app.config["PUBLIC_BASE_URL"] = public_base_url(app.config["PUBLIC_BASE_URL"])
     app.secret_key = Config.SECRET_KEY
     init_db(Config.DATABASE_URL, pool_recycle_seconds=Config.DB_POOL_RECYCLE_SECONDS)
+    import models
+    from observability import install
+    install(app, models._engine)
     app.register_blueprint(bp)
     from person_dates import LUNAR_MONTHS, LUNAR_DAYS
     app.jinja_env.globals.update(lunar_months=LUNAR_MONTHS, lunar_days=LUNAR_DAYS)
@@ -43,6 +46,7 @@ def create_app():
                 "terms_version": TERMS_VERSION, "privacy_version": PRIVACY_VERSION,
                 "privacy_contact_email": app.config["PRIVACY_CONTACT_EMAIL"],
                 "sms_development_mode": development_mode(),
+                "app_version": app.config['RELEASE_VERSION'],
                 "saved_write_recovery": session.pop("saved_write_recovery", None)}
 
     return app

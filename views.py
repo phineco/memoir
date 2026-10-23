@@ -2252,6 +2252,9 @@ def ai_ask_stream(family_id):
     else:
         def gen():
             for payload in ai_turns.generate(turn,fam.name):
+                if payload.get('error'):
+                    from flask import g
+                    payload['request_id']=g.get('request_id')
                 yield 'data: '+json.dumps(payload,ensure_ascii=False)+'\n\n'
             yield 'data: [DONE]\n\n'
             if turn.status == 'succeeded':ai_mod._update_memory(family_id,me.id)

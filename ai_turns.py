@@ -82,7 +82,9 @@ def generate(turn,family_name):
         yield {'complete':True}
     except GeneratorExit:
         raise
-    except Exception:
+    except Exception as error:
+        from observability import record_error
+        record_error(error,'ai_stream')
         s.rollback();s.expire_all()
         s.query(AiTurn).filter_by(id=turn.id,status='running').update({AiTurn.status:'failed',AiTurn.answer:''.join(parts),AiTurn.error:'生成未完成，问题已保留，可核对后重试。'})
         s.commit();yield {'error':'生成未完成，问题已保留，可核对后重试。'}
