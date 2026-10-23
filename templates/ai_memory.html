@@ -9,7 +9,7 @@
 {% for message in get_flashed_messages(category_filter=['ai-memory']) %}<p class="success" role="status">{{ message }}</p>{% endfor %}
 <section class="card"><h3>当前摘要</h3><p>{{ memory }}</p></section>
 <p>重置会清空本人在此家庭的全部摘要，并停止把旧对话用于新问答和记忆提炼。正在生成的旧请求也会停止保存结果。</p>
-<p class="hint">旧对话仍保留在服务器，但不再显示于当前问答或作为新请求上下文。此操作不能撤回已发送给外部 AI 的资料，也不会立即清除已有备份；如需删除记录，请联系隐私服务渠道。</p>
+<p class="hint">旧对话仍保留在服务器，但不再显示于当前问答或作为新请求上下文。此操作不能撤回已发送给外部 AI 的资料，也不会立即清除已有备份；如需删除记录，可<a href="{{ url_for('privacy.requests_list') }}">提交隐私申请</a>或使用隐私联系邮箱。</p>
 <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn-danger" onclick="return confirm('清空本人在此家庭的摘要并开始新的 AI 上下文？')">重置此家庭的 AI 记忆</button></form>
 {% else %}<p>先选择要管理的家庭：</p><div class="cards">{% for fam in families %}<a class="card" href="{{ url_for('main.account_ai_memory',family_id=fam.id) }}">{{ fam.name }}</a>{% else %}<p class="hint">暂无可管理的家庭。已有资料的删除申请请通过隐私联系邮箱提交。</p>{% endfor %}</div>{% endif %}
 {% endblock %}

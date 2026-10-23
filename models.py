@@ -395,6 +395,28 @@ class FamilyVisit(AuditMixin, Base):
     __table_args__ = (UniqueConstraint('family_id','user_id',name='uq_family_visit'),)
 
 
+class PrivacyRequest(AuditMixin, Base):
+    __tablename__ = 'privacy_requests'
+    user_id = Column(String(64), nullable=False, index=True)
+    kind = Column(String(24), nullable=False)
+    details = Column(Text, nullable=False)
+    status = Column(String(16), nullable=False, default='submitted')
+    revision = Column(Integer, nullable=False, default=1)
+    first_response_at = Column(DateTime)
+    identity_verified_at = Column(DateTime)
+    resolved_at = Column(DateTime)
+
+
+class PrivacyResponse(AuditMixin, Base):
+    __tablename__ = 'privacy_responses'
+    request_id = Column(String(64), nullable=False, index=True)
+    actor_role = Column(String(16), nullable=False)
+    revision = Column(Integer, nullable=False)
+    status = Column(String(16), nullable=False)
+    content = Column(Text, nullable=False)
+    __table_args__ = (UniqueConstraint('request_id','revision',name='uq_privacy_response_revision'),)
+
+
 class AiMessage(AuditMixin, Base):
     """AI 问答聊天记录。"""
     __tablename__ = "ai_messages"

@@ -1,0 +1,1 @@
+{% if pages>1 %}<nav class="form-actions" aria-label="分页">{% if page>1 %}<a class="btn-secondary" href="{{ page_url(page-1) }}">上一页</a>{% endif %}<span>第 {{ page }} / {{ pages }} 页</span>{% if page<pages %}<a class="btn-secondary" href="{{ page_url(page+1) }}">下一页</a>{% endif %}</nav>{% endif %}

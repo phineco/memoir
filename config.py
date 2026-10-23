@@ -27,6 +27,7 @@ class Config:
     APP_TIMEZONE = os.environ.get("APP_TIMEZONE", "Asia/Shanghai")
     APP_VERSION = os.environ.get("APP_VERSION", "")
     REQUEST_LOGGING = os.environ.get("REQUEST_LOGGING", "0") == "1"
+    OPERATIONS_USER_IDS = tuple(value.strip() for value in os.environ.get('OPERATIONS_USER_IDS','').split(',') if value.strip())
 
     # ---- 环境开关 ----
     APP_ENV = os.environ.get("APP_ENV", "local")  # local | cloud

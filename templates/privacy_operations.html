@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block title %}运营：隐私申请 · 家音{% endblock %}
+{% block content %}
+<h1>运营：隐私申请</h1><p>由 {{ privacy_contact_email }} 对应运营人员处理；3 个工作日内首次人工反馈，完成前核验身份及实际处理范围。</p>
+<form method="get"><label>状态<select name="status" class="full"><option value="open" {% if status=='open' %}selected{% endif %}>待处理</option><option value="all" {% if status=='all' %}selected{% endif %}>全部</option>{% for key,label in statuses.items() %}<option value="{{ key }}" {% if status==key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><button type="submit" class="btn-primary">筛选</button></form>
+<div class="cards">{% for item in rows %}<a class="card" href="{{ url_for('privacy.operation_detail',request_id=item.id) }}"><h2 class="card-title">{{ kinds.get(item.kind,item.kind) }}</h2><p>{{ statuses[item.status] }} · {{ item.create_date.strftime('%Y-%m-%d %H:%M') }}</p><p class="hint">{{ '待首次人工反馈' if not item.first_response_at else '已有人工反馈' }} · 编号 {{ item.id[:12] }}</p></a>{% else %}<p class="hint">没有符合条件的申请。</p>{% endfor %}</div>
+{% include '_simple_pagination.html' %}
+{% endblock %}

@@ -35,6 +35,7 @@ _ALTER_ADD_COL = re.compile(
     re.IGNORECASE,
 )
 _COMMENT_CLAUSE = re.compile(r"\s+COMMENT\s+('[^']*'|\"[^\"]*\")", re.IGNORECASE)
+_CREATE_INDEX = re.compile(r'^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\s+[`"]?(\w+)[`"]?\s+ON\s+[`"]?(\w+)',re.IGNORECASE)
 
 
 def _dialect(url: str) -> str:
@@ -149,6 +150,13 @@ def run_migrations(url, dry_run=False, migrations_dir=None):
             stmts = _split_statements(path.read_text(encoding="utf-8"))
             print("== %s：%d 条语句" % (f, len(stmts)))
             for stmt in stmts:
+                index_match=_CREATE_INDEX.match(stmt)
+                if index_match:
+                    index_name,table_name=index_match.groups()
+                    inspector=inspect(conn)
+                    if inspector.has_table(table_name) and any(index['name']==index_name for index in inspector.get_indexes(table_name)):
+                        print('   跳过（索引已存在）: '+index_name)
+                        continue
                 m = _ALTER_ADD_COL.match(stmt)
                 if m:
                     table, column = m.group(1), m.group(2)

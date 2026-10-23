@@ -659,3 +659,41 @@ CREATE TABLE `family_visits` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_family_visit` (`family_id`,`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='个人家庭引导与首次观察';
+
+CREATE TABLE `privacy_requests` (
+  `id` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `kind` varchar(24) NOT NULL,
+  `details` text NOT NULL,
+  `status` varchar(16) NOT NULL,
+  `revision` int NOT NULL DEFAULT 1,
+  `first_response_at` datetime DEFAULT NULL,
+  `identity_verified_at` datetime DEFAULT NULL,
+  `resolved_at` datetime DEFAULT NULL,
+  `create_by` varchar(64) DEFAULT NULL,
+  `create_date` datetime DEFAULT NULL,
+  `update_by` varchar(64) DEFAULT NULL,
+  `update_date` datetime DEFAULT NULL,
+  `remarks` varchar(255) DEFAULT NULL,
+  `del_flag` int DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `ix_privacy_requests_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='隐私申请';
+
+CREATE TABLE `privacy_responses` (
+  `id` varchar(64) NOT NULL,
+  `request_id` varchar(64) NOT NULL,
+  `actor_role` varchar(16) NOT NULL,
+  `revision` int NOT NULL,
+  `status` varchar(16) NOT NULL,
+  `content` text NOT NULL,
+  `create_by` varchar(64) DEFAULT NULL,
+  `create_date` datetime DEFAULT NULL,
+  `update_by` varchar(64) DEFAULT NULL,
+  `update_date` datetime DEFAULT NULL,
+  `remarks` varchar(255) DEFAULT NULL,
+  `del_flag` int DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `ix_privacy_responses_request_id` (`request_id`),
+  UNIQUE KEY `uq_privacy_response_revision` (`request_id`,`revision`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='隐私申请处理记录';

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}我的隐私申请 · 家音{% endblock %}
+{% block nav %}{% if family %}{% include '_family_nav.html' %}{% endif %}{% endblock %}
+{% block content %}
+<div class="nav"><a href="{{ url_for('main.account',family_id=family.id if family else None) }}">← 个人中心</a></div>
+<h1>我的隐私申请</h1><p>运营人员将在 3 个工作日内首次人工反馈；完成时间依核验与申请范围确定。提交申请不会自动注销账号或删除资料。</p>
+<p class="hint">无法登录时可通过隐私政策中的邮箱联系。请勿填写密码、验证码、身份证件或大段家庭正文，只需说明资料位置与诉求。</p>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+{% if enabled %}<form method="post" class="card"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="nonce" value="{{ nonce }}">
+<label>申请事项<select name="kind" required class="full">{% for key,label in kinds.items() %}<option value="{{ key }}" {% if form.get('kind')==key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+<label>说明<textarea name="details" class="full" maxlength="2000" rows="5" required>{{ form.get('details','') }}</textarea></label><button class="btn-primary" type="submit">提交申请</button></form>
+{% else %}<p class="hint">站内申请尚未启用，请使用隐私联系邮箱：{% if privacy_contact_email %}<a href="mailto:{{ privacy_contact_email }}">{{ privacy_contact_email }}</a>{% else %}请先联系运营方补充联系渠道。{% endif %}</p>{% endif %}
+<h2>申请进度</h2><div class="cards">{% for item in rows %}<a class="card" href="{{ url_for('privacy.request_detail',request_id=item.id) }}"><h3 class="card-title">{{ kinds.get(item.kind,item.kind) }}</h3><p>{{ statuses.get(item.status,item.status) }} · {{ item.create_date.strftime('%Y-%m-%d %H:%M') }}</p><p class="hint">编号 {{ item.id[:12] }}</p></a>{% else %}<p class="hint">暂无申请。</p>{% endfor %}</div>
+{% include '_simple_pagination.html' %}
+{% endblock %}

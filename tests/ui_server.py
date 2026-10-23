@@ -45,6 +45,8 @@ s.add(Invite(id="ui-invite",family_id="ui",code="ui-invite-only",max_uses=5,used
              expire_at=datetime.datetime.now()+datetime.timedelta(days=7)))
 s.commit()
 if os.environ.get('P2_UI_LARGE')=='1':
+    s.add(User(id='ui-operator',username='ui-operator',nickname='运营测试',password_hash=generate_password_hash('ui-operator-test-only')))
+    app.config['OPERATIONS_USER_IDS']=('ui-operator',)
     for index in range(25):
         identifier='page-story-%02d'%index
         s.add(Interview(id=identifier,family_id='ui',author_id='ui-user',topic='分页测试 %02d'%index,publish_status='published',visibility='public'))

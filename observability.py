@@ -1,5 +1,6 @@
 """Safe request diagnostics: no bodies, SQL parameters, query strings or secrets."""
 import json
+import logging
 from pathlib import Path
 import re
 import secrets
@@ -37,6 +38,7 @@ def record_error(error, kind='request'):
 
 def install(app, engine):
     app.config['RELEASE_VERSION']=release_version(app.root_path,app.config.get('APP_VERSION',''))
+    if app.config.get('REQUEST_LOGGING'):app.logger.setLevel(logging.INFO)
 
     @event.listens_for(engine,'before_cursor_execute')
     def before_sql(conn,cursor,statement,parameters,context,executemany):
@@ -66,7 +68,7 @@ def install(app, engine):
             if isinstance(payload,dict):
                 payload['request_id']=identifier;response.set_data(app.json.dumps(payload))
         if app.config.get('REQUEST_LOGGING') or response.status_code>=400:
-            app.logger.info(json.dumps(dict(event='request',request_id=identifier,version=app.config['RELEASE_VERSION'],
+            app.logger.log(logging.WARNING if response.status_code>=400 else logging.INFO,json.dumps(dict(event='request',request_id=identifier,version=app.config['RELEASE_VERSION'],
                 endpoint=request.endpoint,method=request.method,status=response.status_code,
                 app_ms=round(duration,2),sql_ms=round(g.get('sql_ms',0),2),sql_count=g.get('sql_count',0))))
         return response

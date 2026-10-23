@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}隐私申请进度 · 家音{% endblock %}
+{% block content %}
+<div class="nav"><a href="{{ url_for('privacy.operations_list') if operator else url_for('privacy.requests_list') }}">← {{ '运营申请队列' if operator else '我的隐私申请' }}</a></div>
+<h1>{{ kinds.get(item.kind,item.kind) }}</h1><p>编号 {{ item.id[:12] }} · {{ statuses.get(item.status,item.status) }}</p>
+{% if operator %}<p class="hint">账号标识 <code class="break-all">{{ item.user_id }}</code> · 请按运营流程核验，不索要密码或短信验证码。</p>{% endif %}
+<section class="card"><h2>本人申请</h2><p class="prose break-words">{{ item.details }}</p><p class="hint">提交：{{ item.create_date.strftime('%Y-%m-%d %H:%M') }}</p></section>
+<p>首次人工反馈：{{ item.first_response_at.strftime('%Y-%m-%d %H:%M') if item.first_response_at else '本人已撤回，无需继续受理' if item.status=='withdrawn' else '待运营人员反馈（3 个工作日内）' }}</p>
+{% for reply in replies %}<section class="card"><h3>{{ '运营反馈' if reply.actor_role=='operator' else '本人补充' }}</h3><p class="prose break-words">{{ reply.content }}</p><p class="hint">{{ reply.create_date.strftime('%Y-%m-%d %H:%M') }} · {{ statuses.get(reply.status,reply.status) }}</p></section>{% endfor %}
+{% if item.status not in closed %}
+<form method="post" class="card"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="revision" value="{{ item.revision }}">
+<label>{{ '反馈说明（本人可见）' if operator else '补充说明' }}<textarea class="full" name="content" maxlength="2000" rows="5" required></textarea></label>
+{% if operator %}<label>处理状态<select class="full" name="status">{% for value in ['processing','needs_info','completed','rejected'] %}<option value="{{ value }}">{{ statuses[value] }}</option>{% endfor %}</select></label><label class="check"><input type="checkbox" name="verified" value="yes">已核验身份（标记完成前还须实际完成所述处理）</label><p class="hint">此表只记录处理进度，不会自动删除账号、家庭资料、备份或服务商记录。</p>{% endif %}
+<button type="submit" class="btn-primary">{{ '提交人工反馈' if operator else '补充到申请' }}</button>
+</form>
+{% if not operator %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="revision" value="{{ item.revision }}"><button type="submit" name="action" value="withdraw" class="btn-secondary" onclick="return confirm('撤回本人的申请？已完成的人工操作不能由此撤销。')">撤回申请</button></form>{% endif %}
+{% endif %}
+{% endblock %}
