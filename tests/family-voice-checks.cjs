@@ -10,7 +10,7 @@ function wav(){const frames=24000*12,b=Buffer.alloc(44+frames*2);b.write('RIFF')
   await context.addInitScript(()=>{window.__spoken=0;Object.defineProperty(window,'speechSynthesis',{value:{speak(){window.__spoken++;},cancel(){},getVoices(){return[];}}});window.SpeechSynthesisUtterance=function(text){this.text=text;};});
   const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
   async function nav(action,target=page){await Promise.all([target.waitForNavigation({waitUntil:'domcontentloaded'}),action()]);}
-  await page.goto(base+'/account?family_id=ui');await page.getByRole('link',{name:/我的声音授权/}).click();
+  await page.goto(base+'/account?family_id=ui');await nav(()=>page.getByRole('link',{name:/我的声音授权/}).click());
   assert(await page.getByRole('heading',{name:'上传声音或录音克隆',exact:true}).isVisible());
   assert.equal(await page.locator('nav[aria-label="家庭导航"] a').count(),4);
   await nav(()=>page.getByRole('button',{name:'开始建立声音档案'}).click());
@@ -51,7 +51,7 @@ function wav(){const frames=24000*12,b=Buffer.alloc(44+frames*2);b.write('RIFF')
   await Promise.all([page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/voice')),page.locator('#voice-read').click()]);
   const counts=await (await tick()).json();assert.equal(counts.creates,1);assert.equal(counts.syntheses,1);
   for(const width of [320,390,1280]){await page.setViewportSize({width,height:844});await page.evaluate(()=>document.documentElement.setAttribute('data-size','26'));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),JSON.stringify(await page.evaluate(()=>Array.from(document.querySelectorAll('body *')).filter(n=>n.getBoundingClientRect().right>innerWidth+1).slice(0,12).map(n=>({tag:n.tagName,id:n.id,right:n.getBoundingClientRect().right,text:n.textContent.slice(0,40)})))));assert(await page.locator('#voice-ai-label').isVisible());}
-  await page.goto(base+'/f/ui/story/voice-failure-story');await page.locator('#voice-authorize').check();
+  await page.goto(base+'/f/ui/story/voice-failure-story');await page.locator('#voice-choice').selectOption(await page.locator('#voice-choice option[data-name]').first().getAttribute('value'));await page.locator('#voice-authorize').check();
   await Promise.all([page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/voice')),page.locator('#voice-read').click()]);
   await context.request.post(base+'/__voice_test_tick',{headers:{'X-Voice-Test':'local-only-synthetic'},data:{fail_synthesis:true}});
   await page.waitForFunction(()=>window.__spoken>0);assert.match(await page.locator('#voice-play-status').innerText(),/普通朗读/);

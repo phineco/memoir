@@ -1,7 +1,26 @@
 <section class="card" id="family-voice-player" data-endpoint="{{ url_for('voices.request_audio',family_id=family.id,story_id=iv.id) }}" data-stamp="{{ voice_stamp }}" data-csrf="{{ csrf_token() }}">
-<h3 class="card-title">用家人的声音读</h3><p><strong id="voice-ai-label">AI 合成声音</strong> · 由授权音色合成，不是原始录音。</p>
-<label>选择声音<select id="voice-choice" class="full">{% for voice in voice_profiles %}<option value="{{ voice.id }}">{{ voice_names.get(voice.person_id,'家人') }}</option>{% endfor %}</select></label>
+<h3 class="card-title">朗读故事</h3>
+<label for="voice-choice">用谁的声音读</label>
+<select id="voice-choice" class="full" aria-describedby="voice-choice-help">
+  <option value="" {% if not voice_default %}selected{% endif %}>普通朗读（设备声音）</option>
+  {% for voice in voice_profiles %}<option value="{{ voice.id }}" data-name="{{ voice_names.get(voice.person_id,'家人') }}" {% if voice.id == voice_default %}selected{% endif %}>{{ voice_names.get(voice.person_id,'家人') }}{% if voice.person_id == iv.narrator_person_id %}（讲述者）{% endif %} · 家人合成声音</option>{% endfor %}
+</select>
+<p class="hint" id="voice-choice-help">只列出本家庭已授权且可用的音色。讲述者有可用音色时优先选中，否则使用普通朗读；切换声音会停止播放，点击朗读才开始。</p>
+{% if not voice_profiles %}<p class="hint">暂无可用的家人音色，可先用普通朗读。<a href="{{ url_for('voices.my_voices',family_id=family.id) }}">管理我的声音授权与录音</a></p>{% endif %}
+<p><strong id="voice-ai-label">AI 合成声音</strong> · 家人声音由授权音色合成，不是原始录音。</p>
+<div id="voice-authorization" {% if not voice_default %}hidden{% endif %}>
 {% if not voice_authorized %}{% if voice_can_authorize %}<label class="check"><input type="checkbox" id="voice-authorize">同意将本版本标题与正文发送给阿里云百炼（北京）合成为家庭内朗读音频；私密文章也会发送本次内容</label>{% else %}<p class="hint">须作者先同意将本版本文字交给语音服务朗读，可先用普通朗读。</p>{% endif %}{% endif %}
-<div class="form-actions"><button type="button" class="btn-primary" id="voice-read" {% if not voice_authorized and not voice_can_authorize %}disabled{% endif %}>用 TA 的声音读</button><button type="button" id="voice-stop" class="btn-secondary" disabled>停止</button><button type="button" id="voice-retry" class="btn-secondary" hidden>确认重试（可能再次计费）</button></div>
-<audio id="voice-audio" controls controlslist="nodownload noremoteplayback" preload="none" class="full" hidden></audio><p class="hint" id="voice-play-status" role="status">首次需等待后台合成，同版本再次播放使用缓存。无法使用时转为普通朗读；停止播放不会撤销已提交的合成用量。</p></section>
+</div>
+<div class="readbar">
+  <button type="button" id="storyReadBtn" class="read-btn" {% if voice_default %}hidden{% endif %}>🔊 普通朗读</button>
+  <button type="button" class="btn-primary" id="voice-read" {% if not voice_default %}hidden{% endif %} {% if not voice_authorized and not voice_can_authorize %}disabled{% endif %}>用所选家人的声音读</button>
+  <button type="button" id="voice-stop" class="btn-secondary" disabled>停止</button>
+  <label class="speed">语速<select id="storyReadRate"><option value="0.8" selected>慢速</option><option value="1">正常</option></select></label>
+  <button type="button" id="voice-retry" class="btn-secondary" hidden>确认重试（可能再次计费）</button>
+</div>
+<audio id="voice-audio" controls controlslist="nodownload noremoteplayback" preload="none" class="full" hidden></audio>
+<p class="hint" id="voice-play-status" role="status">{% if voice_default %}已选择讲述者的合成声音，点击朗读开始。{% else %}已选择普通朗读，使用当前设备的声音。{% endif %}</p>
+<p class="hint">家人声音首次需等待后台合成，同一声音与文章版本再次播放使用缓存；换人首次朗读需单独合成。无法使用时转为普通朗读；切换或停止不会撤销已提交的合成用量。</p>
+</section>
+<script>document.addEventListener('DOMContentLoaded',function(){if(typeof initReadAloud==='function')initReadAloud('storyReadBtn','storyReadRate','articleBody');});</script>
 <script src="{{ asset_url('family-voice.js') }}" defer></script>

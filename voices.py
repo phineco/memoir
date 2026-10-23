@@ -101,8 +101,10 @@ def story_context(story,user):
     profiles=get_session().query(VoiceProfile).filter_by(family_id=story.family_id,status='ready',del_flag=0).all()
     profiles=[row for row in profiles if permitted(row)]
     people={row.id:row.name for row in get_session().query(Person).filter_by(family_id=story.family_id,del_flag=0)}
+    profiles.sort(key=lambda row:(row.person_id!=story.narrator_person_id,people.get(row.person_id,''),row.id))
+    preferred=next((row.id for row in profiles if row.person_id==story.narrator_person_id),'')
     fam=get_session().query(Family).filter_by(id=story.family_id).one()
-    return dict(voice_profiles=profiles,voice_names=people,voice_stamp=digest,
+    return dict(voice_enabled=True,voice_profiles=profiles,voice_names=people,voice_default=preferred,voice_stamp=digest,
                 voice_authorized=story_granted(story,draft,digest),
                 voice_can_authorize=_can_edit_story(story,user,fam))
 

@@ -67,6 +67,14 @@ if os.environ.get('VOICE_UI')=='1':
     s.add(Interview(id='voice-failure-story',family_id='ui',author_id='ui-user',topic='声音异常模拟',publish_status='published',visibility='private'))
     s.add(Draft(id='voice-failure-draft',interview_id='voice-failure-story',version=1,is_current=True,content='<p>仅用于合成失败测试的文字。</p>'));s.commit()
 
+    if os.environ.get('VOICE_CHOICES_UI')=='1':
+        from tests.test_voice_choices import add_ready_voice
+        grandma=s.get(Person,'grandma');grandma.life_status='alive'
+        daughter=s.get(Person,'daughter');daughter.life_status='alive';daughter.user_id='ui-relative'
+        add_ready_voice(s,fake_voice,grandma,'voiceone')
+        add_ready_voice(s,fake_voice,daughter,'voicetwo')
+        s.commit()
+
     @app.post('/__voice_test_tick')
     def voice_test_tick():
         if request.headers.get('X-Voice-Test')!='local-only-synthetic':abort(404)
