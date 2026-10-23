@@ -734,8 +734,9 @@ def person_page(family_id, person_id):
     fam = _family_or_404(family_id)
     p = _person_or_404(family_id, person_id)
     me = _current_user()
+    from voices import person_context
     return render_template("person.html", family=fam, person=p,
-                           **_person_page_ctx(family_id, p, me))
+                           **_person_page_ctx(family_id, p, me),**person_context(p,me))
 
 
 @bp.route("/f/<family_id>/stories")
@@ -793,7 +794,8 @@ def story_detail(family_id, interview_id):
     ).filter(InterviewPerson.interview_id == interview_id,
              InterviewPerson.del_flag == 0, Person.del_flag == 0)\
      .order_by(InterviewPerson.role.desc()).all()
-    return render_template("story.html", family=fam, iv=iv, person=person, draft=draft,
+    from voices import story_context
+    return render_template("story.html", family=fam, iv=iv, person=person, draft=draft,**story_context(iv,me),
                            quotes=quotes, verifs=verifs, links=links,
                            comment_roots=comment_roots, comment_users=comment_users,
                            me=me, liked_ids=liked_ids, rel_rows=rel_rows,
@@ -1795,6 +1797,7 @@ def uploaded_file(filename):
     """本地照片也验证所属家庭，知道 URL 不能绕过家庭权限。"""
     from config import Config
     from flask import send_from_directory
+    if filename.startswith('voice/'):abort(404)
     if not _current_user():
         abort(401)
     photo = _s().query(Photo).filter_by(storage_path=filename, del_flag=0).first()
