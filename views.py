@@ -550,6 +550,26 @@ def account_drafts():
     return render_template("drafts.html", family=fam, rows=rows, draft_families=families)
 
 
+@bp.route('/account/ai-memory',methods=['GET','POST'])
+def account_ai_memory():
+    me=_current_user()
+    if not me:return redirect(url_for('main.login',next=request.path))
+    family_id=request.args.get('family_id')
+    fam=_family_or_404(family_id) if family_id else None
+    if request.method=='POST':
+        from forms import require_csrf
+        require_csrf()
+        if not fam:abort(400)
+        from ai_memory import reset
+        reset(fam.id,me.id)
+        from flask import flash
+        flash('本人在此家庭的摘要已清空，旧对话不再用于新的 AI 请求。','ai-memory')
+        return redirect(url_for('main.account_ai_memory',family_id=fam.id))
+    import ai as ai_mod
+    return render_template('ai_memory.html',family=fam,families=_families_for_user(me),
+                           memory=ai_mod._user_memory(fam.id,me.id) if fam else None)
+
+
 @bp.route("/f/<family_id>")
 def family_home(family_id):
     fam = _family_or_404(family_id)
@@ -2206,11 +2226,11 @@ def ai_ask(family_id):
                                 error=error) if error else
                         url_for("main.ai_ask", family_id=family_id))
     msgs = s.query(ai_mod.AiMessage).filter_by(
-        family_id=family_id, user_id=me.id, del_flag=0, remarks=ai_mod.context_stamp(family_id)).order_by(
+        family_id=family_id, user_id=me.id, del_flag=0, remarks=ai_mod.user_context_stamp(family_id,me.id)).order_by(
         ai_mod.AiMessage.create_date.desc()).limit(30).all()
     return render_template("ask.html", family=fam, me=me,
                            msgs=list(reversed(msgs)),
-                           turns=list(reversed(s.query(AiTurn).filter_by(family_id=family_id,user_id=me.id,del_flag=0,context_stamp=ai_mod.context_stamp(family_id)).order_by(AiTurn.create_date.desc()).limit(20).all())),
+                           turns=list(reversed(s.query(AiTurn).filter_by(family_id=family_id,user_id=me.id,del_flag=0,context_stamp=ai_mod.user_context_stamp(family_id,me.id)).order_by(AiTurn.create_date.desc()).limit(20).all())),
                            turn_result=__import__('ai_turns').public_result,
                            ai_enabled=ai_mod.ai_enabled(),
                            error=request.args.get("error"))

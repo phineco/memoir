@@ -145,10 +145,14 @@ def context_stamp(family_id):
     s = _s()
     rows = s.query(Interview).filter_by(family_id=family_id, del_flag=0).all()
     parts = []
+    visible_ids = [iv.id for iv in rows if (iv.publish_status or 'published') == 'published' and (iv.visibility or 'public') == 'public']
+    drafts_by_story = {}
+    for draft in s.query(Draft).filter(Draft.interview_id.in_(visible_ids),Draft.is_current.is_(True),Draft.del_flag==0).order_by(Draft.id).all():
+        drafts_by_story.setdefault(draft.interview_id,[]).append(draft)
     for iv in sorted(rows, key=lambda row: row.id):
         if (iv.publish_status or "published") != "published" or (iv.visibility or "public") != "public":
             continue
-        drafts = s.query(Draft).filter_by(interview_id=iv.id, is_current=True, del_flag=0).all()
+        drafts = drafts_by_story.get(iv.id,[])
         parts.append([iv.id, iv.topic, iv.person_id, iv.narrator_person_id, [[d.id, d.version, d.content] for d in drafts]])
     for person in s.query(Person).filter_by(family_id=family_id,del_flag=0).order_by(Person.id).all():
         parts.append([person.id,person.name,person.relation,person.life_state,person.birth_date_label,person.death_date_label])
@@ -160,10 +164,15 @@ def context_stamp(family_id):
     return "pub1:" + hashlib.sha256(json.dumps(parts, ensure_ascii=False).encode()).hexdigest()[:20]
 
 
+def user_context_stamp(family_id,user_id):
+    from ai_memory import context_stamp as personal_stamp
+    return personal_stamp(family_id,user_id)
+
+
 def _user_memory(family_id, user_id):
     s = _s()
     m = s.query(AiMemory).filter_by(
-        family_id=family_id, user_id=user_id, memory_key=context_stamp(family_id),
+        family_id=family_id, user_id=user_id, memory_key=user_context_stamp(family_id,user_id),
         del_flag=0).first()
     return m.content if m and m.content else "（暂无，第一次交流）"
 
@@ -257,17 +266,19 @@ def _chat_complete_stream(messages, temperature=0.7, max_tokens=1500,
         r.close()
 
 
-def chat_stream(family_id, user_id, message, family_name="", persist=True):
+def chat_stream(family_id, user_id, message, family_name="", persist=True, expected_stamp=None):
     """流式一轮问答：逐块产出回复；结束后存档并更新用户记忆。"""
     message = (message or "").strip()
     if not message:
         raise AIError("消息不能为空")
     s = _s()
-    stamp = context_stamp(family_id)
+    stamp = user_context_stamp(family_id,user_id)
+    if expected_stamp is not None and stamp != expected_stamp:
+        raise AIError('AI 记忆或资料已更新，请重新提问')
     knowledge = family_knowledge(family_id, viewer_id=user_id, question=message)
     memory = _user_memory(family_id, user_id)
     history = s.query(AiMessage).filter_by(
-        family_id=family_id, user_id=user_id, del_flag=0, remarks=context_stamp(family_id)).order_by(
+        family_id=family_id, user_id=user_id, del_flag=0, remarks=stamp).order_by(
         AiMessage.create_date.desc()).limit(10).all()
     history = list(reversed(history))
     messages = [{"role": "system",
@@ -276,6 +287,7 @@ def chat_stream(family_id, user_id, message, family_name="", persist=True):
     for h in history:
         messages.append({"role": h.role, "content": h.content})
     messages.append({"role": "user", "content": message})
+    s.commit()  # Do not hold a read transaction during an external model request.
 
     parts = []
     provider_stream = _chat_complete_stream(messages, user_id=user_id)
@@ -289,6 +301,9 @@ def chat_stream(family_id, user_id, message, family_name="", persist=True):
     if not persist:
         return
     reply = "".join(parts)
+    s.rollback()
+    from ai_memory import guard_write
+    if not guard_write(family_id,user_id,stamp):raise AIError('AI 记忆或资料已更新，请重新提问')
     now = datetime.datetime.now()
     s.add(AiMessage(id=new_id(), family_id=family_id, user_id=user_id,
                     role="user", content=message[:4000], remarks=stamp,
@@ -306,11 +321,11 @@ def chat(family_id, user_id, message, family_name=""):
     if not message:
         raise AIError("消息不能为空")
     s = _s()
-    stamp = context_stamp(family_id)
+    stamp = user_context_stamp(family_id,user_id)
     knowledge = family_knowledge(family_id, viewer_id=user_id, question=message)
     memory = _user_memory(family_id, user_id)
     history = s.query(AiMessage).filter_by(
-        family_id=family_id, user_id=user_id, del_flag=0, remarks=context_stamp(family_id)).order_by(
+        family_id=family_id, user_id=user_id, del_flag=0, remarks=stamp).order_by(
         AiMessage.create_date.desc()).limit(10).all()
     history = list(reversed(history))
     messages = [{"role": "system",
@@ -319,8 +334,12 @@ def chat(family_id, user_id, message, family_name=""):
     for h in history:
         messages.append({"role": h.role, "content": h.content})
     messages.append({"role": "user", "content": message})
+    s.commit()
 
     reply = _chat_complete(messages, user_id=user_id)
+    s.rollback()
+    from ai_memory import guard_write
+    if not guard_write(family_id,user_id,stamp):raise AIError('AI 记忆或资料已更新，请重新提问')
     now = datetime.datetime.now()
     s.add(AiMessage(id=new_id(), family_id=family_id, user_id=user_id,
                     role="user", content=message[:4000], remarks=stamp,
@@ -337,24 +356,28 @@ def _update_memory(family_id, user_id):
     """从最近对话提炼用户记忆（失败不影响主流程）。"""
     try:
         s = _s()
-        stamp = context_stamp(family_id)
+        stamp = user_context_stamp(family_id,user_id)
         old = _user_memory(family_id, user_id)
         recent = s.query(AiMessage).filter_by(
-            family_id=family_id, user_id=user_id, del_flag=0, remarks=context_stamp(family_id)).order_by(
+            family_id=family_id, user_id=user_id, del_flag=0, remarks=stamp).order_by(
             AiMessage.create_date.desc()).limit(6).all()
         if not recent:
             return
         convo = "\n".join(
             "%s：%s" % ("用户" if m.role == "user" else "AI", m.content[:500])
             for m in reversed(recent))
+        s.commit()
         out = _chat_complete(
             [{"role": "user",
               "content": _memory_extract_prompt(old, convo)}],
             temperature=0.3, max_tokens=300, json_mode=True, timeout=30,
             user_id=user_id)
         new_mem = (json.loads(out).get("memory") or "").strip()
-        if not new_mem or context_stamp(family_id) != stamp:
+        if not new_mem:
             return
+        s.rollback()
+        from ai_memory import guard_write
+        if not guard_write(family_id,user_id,stamp):return
         now = datetime.datetime.now()
         m = s.query(AiMemory).filter_by(
             family_id=family_id, user_id=user_id, memory_key=stamp,
@@ -368,7 +391,7 @@ def _update_memory(family_id, user_id):
                            create_by=user_id, create_date=now))
         s.commit()
     except Exception:
-        pass  # 记忆更新失败不影响问答
+        _s().rollback()  # 记忆更新失败不影响问答，及时释放事务。
 
 
 def get_weekly_summary(family_id, week, year=None):

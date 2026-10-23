@@ -75,7 +75,7 @@ mysql -h 127.0.0.1 -u memoir -p memoir < memoir-mysql-schema.sql
 .venv/bin/python create_admin.py --phone 13800000000 --nickname 主持人 --family-name 我的家
 ```
 
-业务表共 31 张，`schema_migrations` 由迁移程序维护。已有库不能重新导入建表 SQL。`create_admin.py` 交互输入密码，不清空已有记录；**生产不得执行 `seed.py`**。`install.sh` 只建立项目虚拟环境、安装依赖和缺省配置，不再自动执行 seed 或修改数据库。
+业务表共 32 张，`schema_migrations` 由迁移程序维护。已有库不能重新导入建表 SQL。`create_admin.py` 交互输入密码，不清空已有记录；**生产不得执行 `seed.py`**。`install.sh` 只建立项目虚拟环境、安装依赖和缺省配置，不再自动执行 seed 或修改数据库。
 
 ## 四、服务与 HTTPS
 
@@ -314,3 +314,7 @@ sudo systemctl restart memoir
 每个响应提供 `X-Request-ID`、`X-App-Version` 和 `Server-Timing`；版本优先取 `APP_VERSION`，其次发布包 RELEASE.json，再回退 Git，故不要求生产有 .git。未预期异常页/JSON 提供故障编号，流式 AI 中途失败同样带编号。日志仅记录端点、状态、异常类型和代码位置，不记录请求参数、正文、验证码或异常中的 SQL 参数。将 Gunicorn error log 收集到受限位置；启动、代理和迁移错误须通过版本及对应进程日志核查。
 
 `REQUEST_LOGGING=1` 开启安全的请求耗时记录。应用/SQL 耗时为响应开始前的服务器测量，SQL 已包含在应用耗时中；不能当作网络、静态资源、完整 AI 流或手机首屏耗时。生产的日志留存、告警接收和抽样频率由运维确认。
+
+## AI 记忆重置（008）
+
+上线前停服、备份并执行迁移 008，新增每账号/家庭的重置边界；旧摘要继续按原资料范围兼容，首次重置会清空本人全部版本摘要并取消旧生成。旧对话仍留存但不进入新请求或当前展示，第三方及备份处理需单独申请。MySQL 写入记忆和问答时锁定重置边界，防止旧生成覆盖重置。此版本隐私政策为 2026-10-23.1，首次人工反馈按 Louis 指定的 3 个工作日执行，不等同于完成删除。

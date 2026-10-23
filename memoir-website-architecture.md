@@ -10,7 +10,7 @@
 
 ## 二、数据模型
 
-31 张业务表，另有迁移工具维护的 `schema_migrations`。主键为应用生成的不透明字符串，保留审计与软删除字段。
+32 张业务表，另有迁移工具维护的 `schema_migrations`。主键为应用生成的不透明字符串，保留审计与软删除字段。
 
 | 分类 | 表 |
 |---|---|
@@ -21,7 +21,7 @@
 | 事件与照片（2） | `timeline_events`、`photos` |
 | 互动与分享（4） | `comments`、`likes`、`share_snapshots`、`story_corrections` |
 | 同步（2） | `sync_log`、`person_id_map` |
-| AI（4） | `ai_memories`、`ai_messages`、`ai_cache`、`ai_turns` |
+| AI（5） | `ai_memories`、`ai_messages`、`ai_cache`、`ai_turns`、`ai_preferences` |
 | 计划（1） | `writing_plans` |
 
 `Interview` 同时承载人工文章和访谈故事；`Draft` 保存正文版本。`PersonLink` 保存文字提及的对应，`InterviewPerson` 保存结构化人物关联。`SourceFile` / `Transcript` 有模型与样例，不代表已交付录音上传或自动 ASR。

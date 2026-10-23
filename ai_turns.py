@@ -25,7 +25,7 @@ def lookup(family_id,user_id,nonce):
 
 
 def public_result(turn):
-    current=ai.context_stamp(turn.family_id)
+    current=ai.user_context_stamp(turn.family_id,turn.user_id)
     if turn.context_stamp!=current:
         return {'status':'outdated','question':turn.question,'answer':'','sources':[], 'error':'资料范围已变化，请核对后重新提问。'}
     if turn.status=='running' and turn.lease_until and turn.lease_until<datetime.datetime.now():
@@ -37,13 +37,16 @@ def public_result(turn):
 
 
 def begin(family_id,user_id,nonce,message):
-    s=get_session();prior=lookup(family_id,user_id,nonce)
+    s=get_session()
+    from ai_memory import preference
+    preference(family_id,user_id,create=True);s.commit()
+    prior=lookup(family_id,user_id,nonce)
     if prior:
         if prior.question!=message:raise TurnConflict('请求编号已用于另一个问题')
         return prior,False
     from retrieval import retrieve
     turn=AiTurn(id=turn_id(family_id,user_id,nonce),family_id=family_id,user_id=user_id,question=message,
-                status='running',answer='',remarks=nonce,context_stamp=ai.context_stamp(family_id),sources=retrieve(family_id,user_id,message),
+                status='running',answer='',remarks=nonce,context_stamp=ai.user_context_stamp(family_id,user_id),sources=retrieve(family_id,user_id,message),
                 lease_until=datetime.datetime.now()+datetime.timedelta(minutes=5),create_by=user_id)
     s.add(turn)
     try:s.commit()
@@ -55,7 +58,7 @@ def begin(family_id,user_id,nonce,message):
 def cancelled_or_changed(turn):
     s=get_session();s.commit();s.expire_all();s.refresh(turn)
     return (turn.status!='running' or not family_role(s,turn.family_id,turn.user_id)
-            or ai.context_stamp(turn.family_id)!=turn.context_stamp)
+            or ai.user_context_stamp(turn.family_id,turn.user_id)!=turn.context_stamp)
 
 
 def generate(turn,family_name):
@@ -63,7 +66,7 @@ def generate(turn,family_name):
     source=None
     try:
         if cancelled_or_changed(turn):raise ai.AIError("请求已停止")
-        source=ai.chat_stream(turn.family_id,turn.user_id,turn.question,family_name=family_name,persist=False)
+        source=ai.chat_stream(turn.family_id,turn.user_id,turn.question,family_name=family_name,persist=False,expected_stamp=turn.context_stamp)
         yield {'sources':public_result(turn)['sources']}
         for piece in source:
             if cancelled_or_changed(turn):
@@ -71,6 +74,9 @@ def generate(turn,family_name):
             parts.append(piece);yield {'chunk':piece}
         if not parts:raise ai.AIError('未收到完整回复，请稍后重试。')
         if cancelled_or_changed(turn):raise ai.AIError('已停止生成或资料范围发生变化。')
+        s.rollback()
+        from ai_memory import guard_write
+        if not guard_write(turn.family_id,turn.user_id,turn.context_stamp):raise ai.AIError('AI 记忆已重置')
         now=datetime.datetime.now();answer=''.join(parts)
         claimed=s.query(AiTurn).filter_by(id=turn.id,status='running').update({
             AiTurn.status:'succeeded',AiTurn.answer:answer, AiTurn.update_date:now},synchronize_session=False)

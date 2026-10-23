@@ -20,6 +20,8 @@ def create_app():
     app.register_blueprint(bp)
     from person_dates import LUNAR_MONTHS, LUNAR_DAYS
     app.jinja_env.globals.update(lunar_months=LUNAR_MONTHS, lunar_days=LUNAR_DAYS)
+    from forms import csrf_token
+    app.jinja_env.globals['csrf_token']=csrf_token
     from assets import asset_resolver
     asset_url = asset_resolver(app.root_path)
 

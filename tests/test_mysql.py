@@ -23,6 +23,48 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def test_mysql_memory_reset_serializes_with_an_inflight_writer():
+    import threading
+    import models
+    import ai
+    import ai_memory
+    admin_url=make_url(os.environ['MEMOIR_TEST_MYSQL_ADMIN_URL'])
+    assert admin_url.get_backend_name()=='mysql'
+    admin=create_engine(admin_url,isolation_level='AUTOCOMMIT')
+    name='memoir_memory_test_'+uuid.uuid4().hex[:12]
+    created=False;thread=None;finished=threading.Event();errors=[]
+    try:
+        with admin.connect() as conn:
+            conn.execute(text(f'CREATE DATABASE `{name}` CHARACTER SET utf8mb4'));created=True
+        models.init_db(admin_url.set(database=name).render_as_string(hide_password=False))
+        Base.metadata.create_all(models._engine)
+        s=models.get_session()
+        s.add_all([models.User(id='owner'),models.Family(id='family',owner_user_id='owner'),
+                   models.FamilyMember(id='member',family_id='family',user_id='owner',role='owner')])
+        ai_memory.preference('family','owner',create=True);s.commit()
+        expected=ai.user_context_stamp('family','owner')
+        assert ai_memory.guard_write('family','owner',expected)
+        s.add(models.AiMemory(id='inflight',family_id='family',user_id='owner',memory_key=expected,content='old result'))
+        def reset():
+            try:ai_memory.reset('family','owner')
+            except Exception as error:errors.append(type(error).__name__)
+            finally:models.remove_session();finished.set()
+        thread=threading.Thread(target=reset,daemon=True);thread.start()
+        assert not finished.wait(.2), 'reset must wait for the active preference row lock'
+        s.commit()
+        assert finished.wait(10) and not errors
+        s.expire_all()
+        assert s.query(models.AiMemory).one().content is None
+        assert not ai_memory.guard_write('family','owner',expected)
+    finally:
+        models.remove_session()
+        if thread is not None:thread.join(timeout=10)
+        if models._engine is not None:models._engine.dispose()
+        if created:
+            with admin.connect() as conn:conn.execute(text(f'DROP DATABASE `{name}`'))
+        admin.dispose()
+
+
 def test_mysql_concurrent_workers_do_not_create_missing_tables():
     """Reproduce the ai_turns startup boundary on a disposable native MySQL DB."""
     admin_url = make_url(os.environ["MEMOIR_TEST_MYSQL_ADMIN_URL"])

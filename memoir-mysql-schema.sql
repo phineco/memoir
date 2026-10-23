@@ -623,3 +623,18 @@ CREATE TABLE `ai_turns` (
   `remarks` varchar(255) DEFAULT NULL,
   `del_flag` int DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `ai_preferences` (
+  `id` varchar(64) NOT NULL,
+  `family_id` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `epoch` varchar(32) NOT NULL,
+  `create_by` varchar(64) DEFAULT NULL,
+  `create_date` datetime DEFAULT NULL,
+  `update_by` varchar(64) DEFAULT NULL,
+  `update_date` datetime DEFAULT NULL,
+  `remarks` varchar(255) DEFAULT NULL,
+  `del_flag` int DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ai_preference` (`family_id`,`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI上下文重置边界';

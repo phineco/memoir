@@ -364,6 +364,15 @@ class AiMemory(AuditMixin, Base):
     )
 
 
+class AiPreference(AuditMixin, Base):
+    """Per-user/family reset boundary, locked when publishing derived AI state."""
+    __tablename__ = 'ai_preferences'
+    family_id = Column(String(64), nullable=False)
+    user_id = Column(String(64), nullable=False)
+    epoch = Column(String(32), nullable=False, default='legacy')
+    __table_args__ = (UniqueConstraint('family_id','user_id',name='uq_ai_preference'),)
+
+
 class AiMessage(AuditMixin, Base):
     """AI 问答聊天记录。"""
     __tablename__ = "ai_messages"
