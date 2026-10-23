@@ -1201,6 +1201,8 @@ def publish_article(family_id, interview_id):
         abort(404)
     if iv.publish_status == "draft":
         iv.published_at = local_now()
+        from onboarding import record
+        record(family_id,me.id,'published')
     iv.publish_status = "published"
     iv.update_date = datetime.datetime.now()
     s.commit()

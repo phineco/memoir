@@ -3,6 +3,7 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <div class="page-heading"><p class="eyebrow">{{ family.name }} · 功能预告</p><h1>生成电子书</h1><p class="hint">选取文章，让 AI 整理成一本可珍藏的家庭电子书。</p></div>
+<section class="card"><h2 class="card-title">现在可以做什么</h2><p>先记录和修订回忆，选择谁能阅读，再邀请家人一起看、提出补充。</p><div class="form-actions"><a class="btn-primary" href="{{ url_for('main.write_article',family_id=family.id) }}">先记录一段回忆</a><a class="btn-secondary" href="{{ url_for('main.stories',family_id=family.id) }}">阅读已有故事</a></div></section>
 <section class="card" aria-labelledby="ebook-status-heading">
   <h2 id="ebook-status-heading" class="card-title">付费功能 · 尚未开放</h2>
   <p>电子书生成计划作为付费服务提供，具体价格与计费方式将在正式开放时公布。</p>

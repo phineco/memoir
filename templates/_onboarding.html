@@ -1,14 +1,16 @@
 {% if onboarding %}
 <section class="disclosure" aria-labelledby="onboarding-title" id="onboarding-guide">
-<h2 id="onboarding-title">从这里开始</h2><p class="hint">已完成 {{ onboarding.completed }} / {{ onboarding.total }} 项 · 顺序任选，可跳过；认领不影响写作。</p>
+<h2 id="onboarding-title">从第一段回忆开始</h2><p class="hint">记录准备进度：{{ onboarding.completed }} / {{ onboarding.total }} 项 · 顺序任选，可跳过；认领不影响写作。</p>
 {% if onboarding.admin %}
-<ul><li>{{ '✓' if onboarding.has_people else '○' }} 添加第一位家人</li><li>{{ '✓' if onboarding.invited else '○' }} 准备邀请或已有其他成员</li><li>{{ '✓' if onboarding.written else '○' }} 保存第一篇回忆</li></ul>
-<div class="form-actions">{% if not onboarding.has_people %}<a class="btn-secondary" href="{{ url_for('main.tree_add',family_id=family.id) }}">添加家人</a>{% endif %}<a class="btn-secondary" href="{{ url_for('main.family_manage',family_id=family.id,section='invites') }}">邀请家人</a><a class="btn-primary" href="{{ url_for('main.write_article',family_id=family.id) }}">先记录一段</a></div>
+<ul><li>{{ '✓' if onboarding.written else '○' }} 已保存自己的第一篇回忆（可先存草稿）</li><li>{{ '✓' if onboarding.published else '○' }} 已发布自己的故事，按所选范围可阅读</li><li>{{ '✓' if onboarding.joined else '○' }} 已有另一位家人加入{% if onboarding.invited and not onboarding.joined %}（邀请已准备，等待家人加入）{% endif %}</li></ul>
+<p class="hint">下一步：把已发布故事的站内链接交给有权阅读的家人，听听他们的回应。有人加入不代表已经读过。</p>
+<div class="form-actions"><a class="btn-primary" href="{{ url_for('main.write_article',family_id=family.id) }}">先记录一段</a><a class="btn-secondary" href="{{ url_for('main.account_drafts',family_id=family.id) }}">继续草稿或发布</a><a class="btn-secondary" href="{{ url_for('main.family_manage',family_id=family.id,section='invites') }}">邀请家人</a>{% if not onboarding.has_people %}<a class="btn-secondary" href="{{ url_for('main.tree_add',family_id=family.id) }}">补充人物（选填）</a>{% endif %}</div>
 {% else %}
-<ul><li>{{ '✓' if onboarding.read else '○' }} 读一篇已发布故事</li><li>{{ '✓' if onboarding.written else '○' }} 保存第一篇回忆</li><li>{{ '✓' if onboarding.claimed else '○' }} 找到并认领自己（选填）</li></ul>
+<ul><li>{{ '✓' if onboarding.read else '○' }} 已打开一篇有权阅读的已发布故事</li><li>{{ '✓' if onboarding.written else '○' }} 保存自己的第一篇回忆（可先存草稿）</li><li>{{ '✓' if onboarding.published else '○' }} 发布自己的故事，按所选范围可阅读</li></ul>
 <div class="form-actions">{% if n_story %}<a class="btn-secondary" href="{{ url_for('main.stories',family_id=family.id) }}">先读故事</a>{% endif %}<a class="btn-primary" href="{{ url_for('main.write_article',family_id=family.id) }}">先记录一段</a>{% if onboarding.has_people %}<a class="btn-secondary" href="#family-people">找找自己</a>{% endif %}</div>
 {% if not onboarding.has_people %}<p class="hint">人物尚未建立，可请管理员稍后添加；现在就能记录，不必等待认领。</p>{% endif %}
 {% endif %}
+<p class="hint">先存草稿不等于发布，以上进度也不表示其他家人已读过。只想阅读也可以跳过指引。</p>
 <form method="post" action="{{ url_for('main.onboarding_visibility',family_id=family.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" name="action" value="hide" class="btn-small btn-secondary">不再显示上手指引</button></form>
 <p class="hint">需要时可从帮助重新打开。</p>
 </section>
