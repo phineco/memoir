@@ -25,6 +25,7 @@
   {% if person.life_state == "alive" %}<span>💚 健在</span>{% elif person.life_state == "deceased" %}<span>已故</span>{% else %}<span>生存状态待核实</span>{% endif %}
 </div>
 
+{% if voice_feature_enabled and person.life_state!='deceased' %}<section class="card"><h2 class="card-title">声音</h2><p>{{ voice_states.get(person_voice.status,'未建立') if person_voice else '尚未建立家人朗读音色' }}</p>{% if voice_manager %}<a class="btn-secondary" href="{{ url_for('voices.manage',family_id=family.id,person_id=person.id) }}">管理声音与授权</a>{% endif %}<p class="hint">仅家庭内朗读已授权的本站文章；须本人单独同意及运营核验。</p></section>{% endif %}
 <h2>📝 人物小传</h2>
 {% if is_admin %}<p><a href="{{ url_for('main.portrait_edit', family_id=family.id, person_id=person.id) }}" class="btn-small btn-secondary">✏️ 编辑小传</a> <span class="muted">管理员录入或导入外部整理结果，修订保留历史版本</span></p>{% endif %}
 {% if portrait %}

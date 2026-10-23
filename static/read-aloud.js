@@ -45,6 +45,9 @@ function initReadAloud(btnId, rateId, containerId) {
     highlight();
   }
   btn.addEventListener('click', function() { reading ? stop() : start(); });
+  window.memoirReaders=window.memoirReaders||{};
+  window.memoirReaders[btnId]={start:start,stop:stop};
+  window.addEventListener('pagehide',stop);
   rateSel.addEventListener('change', function() {
     if (reading) { speechSynthesis.cancel(); speakNext(); }  // 语速立即生效
   });

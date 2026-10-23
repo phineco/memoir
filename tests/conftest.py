@@ -23,6 +23,9 @@ def app(tmp_path, monkeypatch):
     monkeypatch.setattr(Config, "APP_ENV", "local")
     monkeypatch.setattr(Config, "SMS_DEVELOPMENT_MODE", True)
     monkeypatch.setattr(Config, "SMS_ENABLED", False)
+    monkeypatch.setattr(Config, "VOICE_ENABLED", False)
+    monkeypatch.setattr(Config, "VOICE_COMPLIANCE_APPROVED", False)
+    monkeypatch.setattr(Config, "VOICE_API_KEY", '')
     application = create_app()
     application.config.update(TESTING=True, SECRET_KEY="test-only-secret")
     # Test provisioning is explicit; application workers never perform DDL.

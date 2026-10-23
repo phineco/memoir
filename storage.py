@@ -41,6 +41,7 @@ class LocalStorageBackend(StorageBackend):
             os.remove(dest)
 
     def url(self, key: str) -> str:
+        if key and key.startswith('voice/'):return ''
         return f"/uploads/{key}"
 
 
@@ -86,6 +87,7 @@ class OssStorageBackend(StorageBackend):
             bucket=self.bucket, key=key))
 
     def url(self, key: str) -> str:
+        if key and key.startswith('voice/'):return ''
         r = self.client.presign(
             self._oss.GetObjectRequest(bucket=self.bucket, key=key),
             expires=datetime.timedelta(seconds=self.url_expires))
@@ -113,4 +115,5 @@ def get_storage() -> StorageBackend:
 
 
 def storage_url(key: str) -> str:
+    if key and key.startswith('voice/'):return ''
     return get_storage().url(key)

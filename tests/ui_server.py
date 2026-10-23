@@ -55,6 +55,27 @@ if os.environ.get('P2_UI_LARGE')=='1':
     s.commit()
 ai.ai_enabled = lambda: True  # 展示界面；底层 key 为空，无法调用真实模型。
 
+if os.environ.get('VOICE_UI')=='1':
+    from flask import abort,request
+    from tests.test_family_voices import FakeProvider
+    from voice_provider import VoiceError
+    fake_voice=FakeProvider()
+    app.config.update(TESTING=True,VOICE_ENABLED=True,VOICE_TEST_PROVIDER=fake_voice,
+                      VOICE_FAMILY_LIMITS={'ui':{'voices':2,'monthly_characters':50000}},OPERATIONS_USER_IDS=('ui-voice-operator',))
+    s.query(Person).filter_by(id='grandma').one().user_id='ui-user'
+    s.add(User(id='ui-voice-operator',username='ui-voice-operator',nickname='声音运营测试',password_hash=generate_password_hash('ui-voice-operator-test-only')))
+    s.add(Interview(id='voice-failure-story',family_id='ui',author_id='ui-user',topic='声音异常模拟',publish_status='published',visibility='private'))
+    s.add(Draft(id='voice-failure-draft',interview_id='voice-failure-story',version=1,is_current=True,content='<p>仅用于合成失败测试的文字。</p>'));s.commit()
+
+    @app.post('/__voice_test_tick')
+    def voice_test_tick():
+        if request.headers.get('X-Voice-Test')!='local-only-synthetic':abort(404)
+        if (request.get_json(silent=True) or {}).get('fail_synthesis'):
+            fake_voice.on_synthesis=lambda:(_ for _ in ()).throw(VoiceError('provider_unavailable'))
+        from voice_worker import process_one
+        process_one()
+        return dict(creates=fake_voice.creates,syntheses=fake_voice.syntheses)
+
 if __name__ == "__main__":
     import logging
     logging.getLogger("werkzeug").setLevel(logging.ERROR)

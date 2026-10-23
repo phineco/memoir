@@ -10,7 +10,7 @@
 
 ## 二、数据模型
 
-38 张业务表，另有迁移工具维护的 `schema_migrations`。主键为应用生成的不透明字符串，保留审计与软删除字段。
+43 张业务表，另有迁移工具维护的 `schema_migrations`。主键为应用生成的不透明字符串，保留审计与软删除字段。
 
 | 分类 | 表 |
 |---|---|
@@ -22,6 +22,7 @@
 | 互动与分享（4） | `comments`、`likes`、`share_snapshots`、`story_corrections` |
 | 同步（2） | `sync_log`、`person_id_map` |
 | 个人权利（2） | `privacy_requests`、`privacy_responses` |
+| 家人声音（5） | `voice_profiles`、`voice_consents`、`voice_audio`、`voice_charges`、`voice_audit` |
 | 受限运营指标（3） | `usage_events`、`story_publications`、`metric_samples` |
 | AI（5） | `ai_memories`、`ai_messages`、`ai_cache`、`ai_turns`、`ai_preferences` |
 | 计划（1） | `writing_plans` |

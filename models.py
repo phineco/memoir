@@ -190,6 +190,9 @@ class Draft(AuditMixin, Base):
     content = Column(Text)
     search_text = Column(Text().with_variant(MEDIUMTEXT(), 'mysql'))
     is_current = Column(Boolean, default=False)
+    voice_authorized_by = Column(String(64))
+    voice_authorized_at = Column(DateTime)
+    voice_authorized_hash = Column(String(64))
 
 
 @event.listens_for(Draft,'before_insert')
@@ -197,6 +200,74 @@ class Draft(AuditMixin, Base):
 def normalize_draft_search(mapper,connection,target):
     from search_index import plain_text
     target.search_text=plain_text(target.content)
+
+
+class VoiceProfile(AuditMixin, Base):
+    __tablename__ = 'voice_profiles'
+    family_id = Column(String(64), nullable=False, index=True)
+    person_id = Column(String(64), nullable=False, unique=True)
+    epoch = Column(Integer, nullable=False, default=1)
+    provider = Column(String(24), nullable=False, default='cosyvoice')
+    workspace_id = Column(String(80), nullable=False, default='')
+    model = Column(String(64), nullable=False)
+    prefix = Column(String(10), nullable=False, unique=True)
+    status = Column(String(24), nullable=False, default='consent')
+    subject_state = Column(String(16), nullable=False)
+    subject_user_id = Column(String(64))
+    reviewed_by = Column(String(64))
+    reviewed_at = Column(DateTime)
+    evidence_ref = Column(String(80))
+    sample_key = Column(String(255))
+    provider_voice_id = Column(String(255))
+    uncertain = Column(Boolean, nullable=False, default=False)
+    lease_token = Column(String(64))
+    lease_until = Column(DateTime)
+    error_code = Column(String(32))
+
+
+class VoiceConsent(AuditMixin, Base):
+    __tablename__ = 'voice_consents'
+    profile_id = Column(String(64), nullable=False, index=True)
+    epoch = Column(Integer, nullable=False)
+    user_id = Column(String(64), nullable=False)
+    relation = Column(String(32), nullable=False)
+    version = Column(String(32), nullable=False)
+    revoked_at = Column(DateTime)
+    __table_args__ = (UniqueConstraint('profile_id','epoch','user_id',name='uq_voice_consent'),)
+
+
+class VoiceAudio(AuditMixin, Base):
+    __tablename__ = 'voice_audio'
+    family_id = Column(String(64), nullable=False, index=True)
+    profile_id = Column(String(64), nullable=False, index=True)
+    epoch = Column(Integer, nullable=False)
+    interview_id = Column(String(64), nullable=False, index=True)
+    draft_id = Column(String(64), nullable=False)
+    text_hash = Column(String(64), nullable=False)
+    requested_by = Column(String(64), nullable=False)
+    status = Column(String(24), nullable=False, default='queued')
+    storage_key = Column(String(255))
+    charge_id = Column(String(64))
+    lease_token = Column(String(64))
+    lease_until = Column(DateTime)
+    error_code = Column(String(32))
+
+
+class VoiceCharge(AuditMixin, Base):
+    """Conservative reservations, not the provider's settled bill; failed attempts are retained."""
+    __tablename__ = 'voice_charges'
+    family_id = Column(String(64), nullable=False, index=True)
+    audio_id = Column(String(64), nullable=False, index=True)
+    period = Column(String(7), nullable=False)
+    characters = Column(Integer, nullable=False)
+    status = Column(String(24), nullable=False, default='reserved')
+
+
+class VoiceAudit(AuditMixin, Base):
+    __tablename__ = 'voice_audit'
+    profile_id = Column(String(64), nullable=False, index=True)
+    action = Column(String(32), nullable=False)
+    epoch = Column(Integer, nullable=False)
 
 
 class Quote(AuditMixin, Base):

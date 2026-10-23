@@ -22,6 +22,8 @@ def create_app():
     app.register_blueprint(privacy_bp)
     from product_metrics import bp as metrics_bp
     app.register_blueprint(metrics_bp)
+    from voices import bp as voices_bp
+    app.register_blueprint(voices_bp)
     from person_dates import LUNAR_MONTHS, LUNAR_DAYS
     app.jinja_env.globals.update(lunar_months=LUNAR_MONTHS, lunar_days=LUNAR_DAYS)
     from forms import csrf_token
@@ -56,6 +58,7 @@ def create_app():
                 "sms_development_mode": development_mode(),
                 "app_version": app.config['RELEASE_VERSION'],
                 "is_operator":is_operator(me),
+                "voice_feature_enabled":bool(app.config.get('VOICE_ENABLED')),
                 "usage_metrics":bool(me and collection_enabled()),
                 "saved_write_recovery": session.pop("saved_write_recovery", None)}
 

@@ -1,0 +1,4 @@
+{% extends 'base.html' %}
+{% block title %}我的声音授权 · 家音{% endblock %}
+{% block content %}<a href="{{ url_for('main.account') }}">← 个人中心</a><h1>我的声音授权</h1><p class="hint">仅显示本人确认的授权记录。即使功能停用或已离开家庭，也可在这里撤回自己的有效授权；此页面不提供原家庭的声音、人物或文章资料。</p><div class="cards">
+{% for profile,consent in rows %}<section class="card"><h2 class="card-title">{{ states.get(profile.status,'待核对') }}</h2><p class="hint break-words">授权档案 {{ profile.id }} · 版本 {{ consent.version }}<br>本人确认时间 {{ consent.create_date }}</p>{% if consent.revoked_at %}<p>本人授权已撤回；外部和存储清理进度以实际状态为准。</p>{% elif profile.status!='deleted' %}<form method="post" action="{{ url_for('voices.withdraw_own',profile_id=profile.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-danger" type="submit" onclick="return confirm('撤回本人授权，停止此音色使用并排队删除？')">撤回本人授权并删除</button></form>{% endif %}</section>{% else %}<p class="hint">暂无本人声音授权记录。家人声音默认关闭，开通后由人物页进入专门授权流程。</p>{% endfor %}</div>{% endblock %}

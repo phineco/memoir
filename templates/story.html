@@ -26,6 +26,8 @@
 <h2>故事正文</h2>
 {% set ra_prefix = 'story' %}{% set ra_label = '朗读全文' %}{% set ra_target = 'articleBody' %}
 {% include '_read_aloud.html' %}
+{% if voice_profiles %}{% include '_voice_player.html' %}{% endif %}
+{% if voice_authorized and voice_can_authorize %}<form method="post" action="{{ url_for('voices.withdraw_story',family_id=family.id,story_id=iv.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-secondary" type="submit">停止本版本的合成朗读</button><p class="hint">立即停止新的播放与合成，后台清理本故事的缓存音频，不删除家人的音色。</p></form>{% endif %}
 {% include '_reading_controls.html' %}
 <div class="prose article-body" id="articleBody">
 {% if draft %}{% if draft.content and draft.content.lstrip().startswith('<') %}{{ draft.content | safe }}{% else %}{% for para in draft.content.split("\n\n") %}{% if para.strip() %}<p>{{ para }}</p>{% endif %}{% endfor %}{% endif %}{% else %}<p class="hint">暂无初稿。</p>{% endif %}

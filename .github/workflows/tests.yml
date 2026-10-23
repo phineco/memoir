@@ -21,6 +21,7 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
       - run: python -m pip install -r requirements-dev.txt
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: python -m pytest -q
 
   mysql:
@@ -64,9 +65,11 @@ jobs:
       - run: python -m pip install -r requirements-dev.txt
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: python tools/frontend.py bootstrap
       - run: python tools/frontend.py check
       - run: python tools/run_ui.py
+      - run: VOICE_UI=1 UI_CHECK_SCRIPT=tests/family-voice-checks.cjs python tools/run_ui.py
       - name: Package verified release
         run: |
           python tools/frontend.py release --version "${GITHUB_SHA}" --output "dist/memoir-${GITHUB_SHA}.tar.gz"

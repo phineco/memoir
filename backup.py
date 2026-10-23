@@ -108,10 +108,13 @@ def _photo_keys(url):
     engine = create_engine(url)
     try:
         with engine.connect() as conn:
-            if not inspect(conn).has_table("photos"):
-                return []
-            return [r[0] for r in conn.execute(text(
-                "SELECT storage_path FROM photos WHERE del_flag = 0 AND storage_path IS NOT NULL"))]
+            inspector=inspect(conn);keys=[]
+            if inspector.has_table('photos'):
+                keys += [r[0] for r in conn.execute(text('SELECT storage_path FROM photos WHERE del_flag = 0 AND storage_path IS NOT NULL'))]
+            # Include audio awaiting deletion too; a backup must not silently omit private media.
+            for table,column in [('voice_profiles','sample_key'),('voice_audio','storage_key')]:
+                if inspector.has_table(table):keys += [r[0] for r in conn.execute(text(f'SELECT {column} FROM {table} WHERE {column} IS NOT NULL'))]
+            return keys
     finally:
         engine.dispose()
 

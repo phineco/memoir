@@ -29,6 +29,14 @@ class Config:
     REQUEST_LOGGING = os.environ.get("REQUEST_LOGGING", "0") == "1"
     OPERATIONS_USER_IDS = tuple(value.strip() for value in os.environ.get('OPERATIONS_USER_IDS','').split(',') if value.strip())
     USAGE_METRICS_ENABLED = os.environ.get('USAGE_METRICS_ENABLED','0')=='1'
+    VOICE_ENABLED = os.environ.get('VOICE_ENABLED','0')=='1'
+    VOICE_COMPLIANCE_APPROVED = os.environ.get('VOICE_COMPLIANCE_APPROVED','0')=='1'
+    VOICE_DECEASED_ENABLED = os.environ.get('VOICE_DECEASED_ENABLED','0')=='1'
+    VOICE_API_KEY = os.environ.get('DASHSCOPE_API_KEY','')
+    VOICE_WORKSPACE_ID = os.environ.get('VOICE_WORKSPACE_ID','')
+    VOICE_MODEL = os.environ.get('VOICE_MODEL','cosyvoice-v3.5-flash')
+    VOICE_FAMILY_LIMITS = os.environ.get('VOICE_FAMILY_LIMITS','{}')
+    VOICE_FFMPEG = os.environ.get('VOICE_FFMPEG','ffmpeg')
 
     # ---- 环境开关 ----
     APP_ENV = os.environ.get("APP_ENV", "local")  # local | cloud

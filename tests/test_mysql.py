@@ -23,6 +23,53 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def test_mysql_voice_cache_reservation_is_atomic_across_workers(monkeypatch):
+    import threading
+    import models
+    from app import create_app
+    from config import Config
+    from reporting import local_now
+    from voices import CONSENT_VERSION,story_content
+    admin_url=make_url(os.environ['MEMOIR_TEST_MYSQL_ADMIN_URL'])
+    assert admin_url.get_backend_name()=='mysql'
+    admin=create_engine(admin_url,isolation_level='AUTOCOMMIT');name='memoir_voice_test_'+uuid.uuid4().hex[:12]
+    created=False;threads=[];results=[];errors=[];barrier=threading.Barrier(2)
+    try:
+        with admin.connect() as conn:conn.execute(text(f'CREATE DATABASE `{name}` CHARACTER SET utf8mb4'));created=True
+        monkeypatch.setattr(Config,'DATABASE_URL',admin_url.set(database=name).render_as_string(hide_password=False))
+        app=create_app();app.config.update(TESTING=True,SECRET_KEY='native-voice-test-only-secret-32-characters',VOICE_ENABLED=True,VOICE_FAMILY_LIMITS={'family':{'voices':1,'monthly_characters':1000}})
+        models.Base.metadata.create_all(models._engine);s=models.get_session()
+        s.add_all([models.User(id='owner'),models.Family(id='family',owner_user_id='owner'),models.FamilyMember(id='member',family_id='family',user_id='owner',role='owner'),
+                   models.Person(id='speaker',family_id='family',user_id='owner',name='Synthetic',life_status='alive'),models.Interview(id='story',family_id='family',author_id='owner',visibility='public',publish_status='published'),
+                   models.Draft(id='draft',interview_id='story',is_current=True,version=1,content='Synthetic only'),
+                   models.VoiceProfile(id='a'*32,person_id='speaker',family_id='family',epoch=1,model='cosyvoice-v3.5-flash',prefix='testvoice',subject_state='alive',subject_user_id='owner',status='ready',reviewed_at=local_now()),
+                   models.VoiceConsent(id='consent',profile_id='a'*32,epoch=1,user_id='owner',relation='本人',version=CONSENT_VERSION)])
+        s.commit();draft,_,stamp=story_content(s.get(models.Interview,'story'));draft.voice_authorized_hash=stamp;draft.voice_authorized_by='owner';draft.voice_authorized_at=local_now();s.commit();models.remove_session()
+        def reserve():
+            try:
+                client=app.test_client();token=uuid.uuid4().hex
+                with client.session_transaction() as state:state.update(user_id='owner',_csrf=token,_csrf_user='owner')
+                barrier.wait(timeout=10)
+                response=client.post('/f/family/story/story/voice',json=dict(profile_id='a'*32,stamp=stamp),headers={'X-CSRF-Token':token})
+                results.append(response.status_code)
+            except Exception as error:errors.append(type(error).__name__)
+            finally:models.remove_session()
+        threads=[threading.Thread(target=reserve) for _ in range(2)]
+        for thread in threads:thread.start()
+        for thread in threads:thread.join(timeout=20)
+        assert not any(thread.is_alive() for thread in threads) and not errors
+        assert sorted(results)==[200,202]
+        assert models.get_session().query(models.VoiceAudio).count()==1
+        assert models.get_session().query(models.VoiceCharge).count()==1
+    finally:
+        for thread in threads:thread.join(timeout=20)
+        models.remove_session()
+        if models._engine is not None:models._engine.dispose()
+        if created:
+            with admin.connect() as conn:conn.execute(text(f'DROP DATABASE `{name}`'))
+        admin.dispose()
+
+
 def test_mysql_memory_reset_serializes_with_an_inflight_writer():
     import threading
     import models

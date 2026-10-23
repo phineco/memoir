@@ -4,6 +4,7 @@ body, main, header, footer, form, fieldset, section, article, details { min-widt
 body { overflow-wrap: anywhere; }
 fieldset { min-inline-size: 0; }
 img, video, svg { max-width: 100%; }
+audio { display:block; width:100%; max-width:100%; min-width:0; }
 input, select, textarea, button { max-width: 100%; }
 :focus-visible { outline: 3px solid #245e49; outline-offset: 3px; }
 .topbar { position: static; }

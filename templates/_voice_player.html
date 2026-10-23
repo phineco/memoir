@@ -1,0 +1,7 @@
+<section class="card" id="family-voice-player" data-endpoint="{{ url_for('voices.request_audio',family_id=family.id,story_id=iv.id) }}" data-stamp="{{ voice_stamp }}" data-csrf="{{ csrf_token() }}">
+<h3 class="card-title">用家人的声音读</h3><p><strong id="voice-ai-label">AI 合成声音</strong> · 由授权音色合成，不是原始录音。</p>
+<label>选择声音<select id="voice-choice" class="full">{% for voice in voice_profiles %}<option value="{{ voice.id }}">{{ voice_names.get(voice.person_id,'家人') }}</option>{% endfor %}</select></label>
+{% if not voice_authorized %}{% if voice_can_authorize %}<label class="check"><input type="checkbox" id="voice-authorize">同意将本版本标题与正文发送给阿里云百炼（北京）合成为家庭内朗读音频；私密文章也会发送本次内容</label>{% else %}<p class="hint">须作者先同意将本版本文字交给语音服务朗读，可先用普通朗读。</p>{% endif %}{% endif %}
+<div class="form-actions"><button type="button" class="btn-primary" id="voice-read" {% if not voice_authorized and not voice_can_authorize %}disabled{% endif %}>用 TA 的声音读</button><button type="button" id="voice-stop" class="btn-secondary" disabled>停止</button><button type="button" id="voice-retry" class="btn-secondary" hidden>确认重试（可能再次计费）</button></div>
+<audio id="voice-audio" controls controlslist="nodownload noremoteplayback" preload="none" class="full" hidden></audio><p class="hint" id="voice-play-status" role="status">首次需等待后台合成，同版本再次播放使用缓存。无法使用时转为普通朗读；停止播放不会撤销已提交的合成用量。</p></section>
+<script src="{{ asset_url('family-voice.js') }}" defer></script>
