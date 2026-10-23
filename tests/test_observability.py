@@ -1,6 +1,8 @@
 import json
 import logging
 
+import pytest
+
 from observability import release_version
 
 
@@ -45,3 +47,30 @@ def test_handled_http_errors_have_visible_reference_and_failed_sql_does_not_log_
     response=client.get('/sql-fault')
     assert response.status_code==500 and '1 queries' in response.headers['Server-Timing']
     assert 'PRIVATE_SQL_LITERAL' not in caplog.text and 'PRIVATE_SQL_LITERAL' not in response.get_data(as_text=True)
+
+
+@pytest.mark.parametrize('code,status,issue', [(1146,503,'schema_mismatch'),(1054,503,'schema_mismatch'),
+    (1142,500,'access_denied'),(1064,500,'sql_syntax')])
+def test_mysql_error_code_survives_redaction_without_driver_message(app,client,caplog,code,status,issue):
+    from pymysql.err import ProgrammingError as DriverError
+    from sqlalchemy.exc import ProgrammingError
+    @app.route('/mysql-fault')
+    def mysql_fault():
+        raise ProgrammingError('SELECT PRIVATE_SQL',{'secret':'PRIVATE_PARAMETER'},DriverError(code,'PRIVATE_DRIVER_MESSAGE'))
+    with caplog.at_level(logging.ERROR):
+        response=client.get('/mysql-fault')
+    assert response.status_code==status
+    assert f'"database_error_code": {code}' in caplog.text
+    assert f'"database_issue": "{issue}"' in caplog.text
+    assert 'PRIVATE_' not in caplog.text and 'PRIVATE_' not in response.get_data(as_text=True)
+    assert 'database_error_code' not in response.get_data(as_text=True)
+    if status==503:assert '网站升级配置尚未完成' in response.get_data(as_text=True)
+
+
+def test_untyped_driver_arguments_are_not_treated_as_safe_codes():
+    from database_diagnostics import database_details
+    from pymysql.err import ProgrammingError as DriverError
+    from sqlalchemy.exc import ProgrammingError
+    result=database_details(ProgrammingError('PRIVATE_SQL',{},DriverError('PRIVATE_ARGUMENT','PRIVATE_MESSAGE')))
+    assert result=={'database_backend':'mysql'}
+    assert database_details(RuntimeError(1146))=={}

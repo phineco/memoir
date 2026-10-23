@@ -91,6 +91,7 @@ User=memoir
 WorkingDirectory=/opt/memoir
 EnvironmentFile=/opt/memoir/.env
 Environment=TZ=Asia/Shanghai
+ExecStartPre=/opt/memoir/.venv/bin/python tools/check_database.py
 ExecStart=/opt/memoir/.venv/bin/gunicorn -w 3 -b 127.0.0.1:8000 app:app
 Restart=always
 UMask=0077
@@ -138,10 +139,13 @@ git pull --ff-only
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python migrate.py --dry-run
 .venv/bin/python migrate.py
+.venv/bin/python tools/check_database.py
 sudo systemctl start memoir
 ```
 
 `--dry-run` 只读预演，不建数据库或迁移记录表。周报当前年周按 `APP_TIMEZONE`（默认 Asia/Shanghai），服务 `TZ` 须与之相同；旧无时区时间需核对后再调整。
+
+`tools/check_database.py` 是只读检查，使用与网站相同的 `.env`/环境变量，核对当前连接可见的模型表、列与迁移记录；成功退出 0，结构/迁移尚未就绪退出 1，配置/连接检查失败退出 2。不会创建 SQLite 文件或迁移记录，不修改已有库，不输出连接串、密码或业务资料。只按网站同一服务账号、虚拟环境、工作目录及环境执行；面板注入的环境变量优先于 `.env`，只在另一个终端检查不能证明网站连接一致。任一步失败都不要继续启动。宝塔可将此命令放在启动前检查；systemd 示例已加入 `ExecStartPre`，应用 worker 自身仍不建表。此检查不检查索引、约束、全部读写权限或备份恢复，不代替完整上线验收。
 
 迁移文件按文件名顺序执行并记录；已有库的新增表和列都由迁移文件管理，不能依赖启动时自动补表。不要改写已应用迁移，新增独立迁移文件；不要同时启动多个迁移程序。MySQL DDL 不保证事务回滚，失败时先核对实际表结构再恢复或继续，不能假设回滚 Git 就回滚了数据。
 
@@ -164,6 +168,8 @@ sudo systemctl start memoir
 - 模块找不到：检查实际 gunicorn 使用的虚拟环境，不能只在另一个 Python 中安装依赖。
 - SQLite 与 MySQL 数据互迁：本仓库不提供自动跨引擎数据转换；需另行验证迁移方案，不能在已有数据上重灌 seed。
 - 启动报 `1050 Table 'ai_turns' already exists`：旧版 worker 启动时同时执行 `create_all`，可能发生先检查后创建的竞争。保留现有表和数据，先停止本项目、备份，更新修复后的代码，单独执行 `migrate.py --dry-run` 与 `migrate.py`，确认成功后再启动。不要删除 `ai_turns`、重导全库 SQL 或运行 seed。迁移对已存在的新表使用 `CREATE TABLE IF NOT EXISTS`；如果旧启动过程留下的是不完整结构，应先核对字段和索引，不能直接删除重建。
+- 故事页在 `onboarding.touch` 报 `ProgrammingError`：先运行只读检查，重点核对 `010_family_visits.sql` 的表/列及其他未执行迁移。只凭异常类型无法断言漏迁移：新日志的 `database_error_code=1146/1054` 表示表/列不匹配，`1142` 等须核对数据库账号权限，`1064` 须核对 SQL 和数据库兼容性。缺表/列时网页返回 503 及升级提示，不自动建表或绕过家庭权限。若迁移记录显示完成而检查仍缺表/列，先核对相同数据库及实际结构；不要删除迁移记录、删表重建或运行初始化强行“修复”。
+- 生产日志 `version=development`：部署缺少 Git/`RELEASE.json` 且未配置 `APP_VERSION` 时无法识别发布版本，不代表服务器在开发模式。优先使用含版本清单的发布包，或将 `APP_VERSION` 配为实际部署提交/发布号后重启；它不能代替数据库迁移。
 
 ## 八、UI 构建与版本发布（推荐更新方式）
 

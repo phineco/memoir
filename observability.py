@@ -12,6 +12,8 @@ from flask import current_app, g, has_request_context, jsonify, render_template,
 from sqlalchemy import event
 from werkzeug.exceptions import HTTPException
 
+from database_diagnostics import database_details
+
 
 def release_version(root, configured=''):
     candidate=configured
@@ -33,6 +35,7 @@ def record_error(error, kind='request'):
     current_app.logger.error(json.dumps(dict(
         event='failure',kind=kind,request_id=g.get('request_id'),version=current_app.config['RELEASE_VERSION'],
         endpoint=request.endpoint,method=request.method,error_type=type(error).__name__,
+        **database_details(error),
         stack=[dict(file=Path(frame.filename).name,line=frame.lineno,function=frame.name) for frame in frames]),ensure_ascii=False))
 
 
@@ -88,7 +91,11 @@ def install(app, engine):
         message={400:'填写内容有误，请核对后重试。',401:'请先登录后重试。',403:'你没有执行此操作的权限。',404:'页面不存在或暂不可访问。',409:'内容已有新进度，请刷新后核对。',429:'操作较频繁，请稍后重试。'}.get(status,'暂时无法完成，请稍后重试。')
         if isinstance(error,HTTPException):
             if status not in (401,403,404) and re.search('[\u4e00-\u9fff]',error.description or ''):message=error.description
-        else:record_error(error)
+        else:
+            record_error(error)
+            if database_details(error).get('database_issue') == 'schema_mismatch':
+                status=503
+                message='网站升级配置尚未完成，请联系管理员检查数据库更新后再试。'
         # This template has no DB-dependent context processors or family data.
         if request.is_json or request.path.startswith('/api/'):
             return jsonify(ok=False,error=message,request_id=g.request_id),status
