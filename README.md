@@ -36,6 +36,7 @@ python app.py
 | 故事 | `/f/<family_id>/stories`；阅读、朗读、评论与追评、点赞、家人核实建议与作者版本修订 |
 | 创作 | `/f/<family_id>/write`、`/f/<family_id>/drafts`；自己写/陪家人记录、问题卡、富文本、浏览器语音输入、草稿、本机自动恢复、可见性 |
 | 文章导出 | 个人中心 `/account/exports`；家庭管理资料工具；按作者/家庭公开范围下载当前正文的离线阅读版和清单，不含媒体及历史版本 |
+| 本人声音 | 个人中心 `/account/voices`；选择本人、单独同意及运营核验后，在本页录音/上传并申请复刻；默认关闭，不替他人授权 |
 | 周报 | `/f/<family_id>/weekly`、`/f/<family_id>/weekly/<year>/<week>`；故事、金句、待核实和新人物；可生成 AI 导读 |
 | 分享 | `/f/<family_id>/shares`；管理员确认后凭 `/s/<token>` 和密码访问快照 |
 | 写作计划 | `/f/<family_id>/plans`；管理员定计划，可使用 AI 建议 |

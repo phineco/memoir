@@ -4,39 +4,6 @@
 {% block content %}
 <a href="{{ url_for('main.person_page',family_id=family.id,person_id=person.id) }}">← 返回人物</a>
 <h1>{{ person.name }}的声音</h1>
-<p>用于本家庭内朗读本站文章。这里生成的是 AI 合成声音，不能替代或证明本人曾说过这些话。</p>
-{% if not voice_enabled %}<p class="hint">声音功能目前停用，仍可撤回授权或申请删除。</p>{% endif %}
-{% if not profile or profile.status=='deleted' %}
-<p>{{ '此音色及本站样本、生成音频已删除；必要的授权与操作核查记录保留，备份另按保留安排处理。' if profile else '尚未建立音色。' }}</p>
-{% if can_manage and voice_enabled %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button name="action" value="start" type="submit" class="btn-primary">开始建立声音档案</button></form>{% endif %}
-{% else %}
-<section class="card"><h2 class="card-title">当前进度：{{ states.get(profile.status,'待核对') }}</h2>
-{% if profile.error_code %}<p class="hint">{{ '原任务或费用结果尚不明确，请联系运营核对；系统不会自动重复复刻。' if profile.uncertain or profile.error_code=='external_unknown' else '任务尚未完成。可检查样本或联系运营；删除未确认前不会显示已完成。' }}</p>{% endif %}
-<p class="hint">单独同意记录 {{ consents|length }} 份。处理进度需刷新查看。停用会立即阻止新的合成和音频访问；删除需同时核对服务商与本站文件。</p></section>
-{% if profile.status in ('consent','review') and voice_enabled %}
-<section class="card"><h2 class="card-title">单独同意 · {{ consent_version }}</h2>
-<p>服务商：阿里云百炼 CosyVoice，使用北京地域。将选定声音片段交给该服务商提取声音特征、创建复刻音色，并将另行授权的文章文字合成为音频；声音特征具有敏感性，泄露或滥用可能造成冒用。样本与生成音频在本站私有保存，服务商按其约定处理模型及相关数据。</p>
-<p>仅限当前家庭内朗读本站文章，不提供任意文本合成、音色导出或对外分享。可随时停用、撤回并申请删除；撤回不影响先前合法处理，也不能收回已经被终端接收或自行录制的音频。服务商删除失败时显示待处理，不声称已彻底删除；已有备份按独立保留安排处理。</p>
-{% if person.life_state=='deceased' %}<p>已故亲人仅在近亲属共同确认、无已知生前反对安排、服务商明确许可及运营核验后开通。至少两位不同成年近亲属分别登录确认；有异议时先停止处理。</p>{% else %}<p>须由关联的本人账号操作。管理员可协助录音上传，不能替本人同意；账号关联本身不作为身份核验。</p>{% endif %}
-<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="consent"><input type="hidden" name="version" value="{{ consent_version }}">
-{% if person.life_state=='deceased' %}<label>与逝者关系<select name="relation" class="full" required>{% for relation in relations %}<option>{{ relation }}</option>{% endfor %}</select></label><label class="check"><input type="checkbox" name="no_objection" value="yes" required>我已核对其生前安排，无已知反对或亲属争议，愿接受运营核验</label>{% endif %}
-<label class="check"><input type="checkbox" name="adult" value="yes" required>我已成年，具备作出本次确认的资格</label>
-<label class="check"><input type="checkbox" name="agree" value="yes" required>我已阅读上述专门说明，单独同意所述声音采集、复刻、家庭朗读和服务商处理</label><button type="submit" class="btn-primary">提交本人的单独同意</button></form></section>
-{% endif %}
-{% if can_sample and voice_enabled %}
-<section class="card"><h2 class="card-title">采集清晰样本</h2><p>先在安静环境、由一人自然说话。推荐选取 10–20 秒清晰片段，最多 60 秒；不要含音乐、他人声音或隐私信息。可录制约 1–3 分钟再选片段，或从本机已有讲述录音中选择；本站只保存提交的片段，原文件不长期保存。</p>
-<details class="disclosure"><summary>参考朗读短文</summary><p>每天清晨，我喜欢打开窗户，看看院子里的花草。阳光落在桌上，家人坐在一起，说说过去的故事。那些平常的日子，如今回想起来，仍然温暖而清晰。</p></details>
-<div class="form-actions"><button type="button" id="voice-record" class="btn-secondary">开始录音</button><button type="button" id="voice-stop-record" class="btn-secondary" disabled>停止录音</button></div><p id="voice-record-status" class="hint" role="status">也可直接上传已有录音。</p>
-<form id="voice-sample-form" method="post" enctype="multipart/form-data" data-permission="{{ url_for('voices.sample_permission',family_id=family.id,person_id=person.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="sample">
-<label>已有录音（最多 10 MB、5 分钟）<input type="file" name="sample" accept="audio/*" class="full"></label><audio id="voice-sample-preview" controls preload="metadata" class="full" hidden></audio>
-<div class="form-row"><label>片段起点（秒）<input type="number" name="start" min="0" max="300" step="0.1" value="0" class="full" required></label><label>片段长度（秒）<input type="number" name="length" min="10" max="60" step="0.1" value="20" class="full" required></label></div>
-<label class="check"><input type="checkbox" name="quality" value="yes" required>我已试听选定片段，只有已授权的本人清晰说话，且已获得本次使用所需权限</label><button type="submit" class="btn-primary">提交片段并申请复刻</button><p id="voice-upload-status" class="hint" role="status"></p></form></section>
-{% endif %}
-{% if profile.sample_key and can_manage and profile.status not in ('deleting','disabled') %}<details class="disclosure"><summary>试听本站保留的片段</summary><audio controls preload="none" class="full" src="{{ url_for('voices.sample',family_id=family.id,person_id=person.id) }}"></audio></details>{% endif %}
-<section class="card"><h2 class="card-title">停用、撤回与删除</h2><form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="form-actions">
-{% if can_manage and profile.status not in ('deleting','deleted','disabled') %}<button class="btn-secondary" name="action" value="disable">立即停用</button>{% endif %}
-{% if can_manage and voice_enabled and profile.status=='disabled' %}<button class="btn-secondary" name="action" value="resume">核验后恢复使用</button>{% endif %}
-<button class="btn-danger" name="action" value="delete" onclick="return confirm('停止声音使用，并排队删除本站样本、生成音频和服务商音色？')">撤回授权并删除声音</button></div></form><p class="hint">删除处理中不会继续播放或生成。服务商或存储异常时仍保留待处理状态。遇到问题可从个人中心提交隐私申请。</p></section>
-{% endif %}
+{% include '_voice_management.html' %}
 {% endblock %}
 {% block script %}<script src="{{ asset_url('family-voice.js') }}" defer></script>{% endblock %}

@@ -117,6 +117,72 @@ def test_csrf_separate_consent_and_explicit_operator_are_required(voice,app,clie
     assert get_session().query(VoiceAudit).count()>=3
 
 
+def test_personal_page_runs_the_shared_consent_upload_and_clone_flow(voice,app,client,login):
+    login()
+    path='/account/voices?family_id=a'
+    body=client.get(path).get_data(as_text=True)
+    assert '上传声音或录音克隆' in body and 'id="voice-sample-form"' not in body
+    assert get_session().query(VoiceProfile).count()==0  # Merely opening the entry never creates a model.
+    csrf=token(client,path);target='/f/a/person/pa/voice?from_account=1'
+    response=client.post(target,data={'csrf_token':csrf,'action':'start'})
+    assert response.status_code==302 and response.location.startswith('/account/voices?')
+    assert 'person_id=pa' in response.location and 'family_id=a' in response.location
+    assert client.post(target,data={'csrf_token':csrf,'action':'sample','quality':'yes'}).status_code==409
+    assert voice.creates==0
+    assert client.post(target,data=dict(csrf_token=csrf,action='consent',version=CONSENT_VERSION,adult='yes',agree='yes')).status_code==302
+    assert 'id="voice-sample-form"' not in client.get(response.location).get_data(as_text=True)
+    assert review(app).status_code==302
+    body=client.get(response.location).get_data(as_text=True)
+    assert 'id="voice-record"' in body and 'name="sample"' in body
+    assert 'from_account=1' in body and 'aria-label="家庭导航"' in body
+    uploaded=client.post(target,data=dict(csrf_token=csrf,action='sample',quality='yes',start='0',length='10',sample=(io.BytesIO(wav()),'mine.wav')))
+    assert uploaded.status_code==302 and uploaded.location.startswith('/account/voices?')
+    assert profile().status=='queued' and voice.creates==0
+    with app.app_context():assert process_one()
+    assert profile().status=='ready' and voice.creates==1
+    body=client.get(uploaded.location).get_data(as_text=True)
+    assert '已有声音档案' in body and 'id="voice-sample-form"' not in body
+
+
+def test_personal_entry_does_not_grant_admin_the_right_to_clone_other_people(voice,app,client,login):
+    login();csrf=token(client,'/account/voices?family_id=a')
+    s=get_session();s.get(Person,'pa').user_id='member-a'
+    s.get(Person,'pb').user_id='owner-a';s.get(Person,'pb').life_status='alive';s.commit()
+    assert client.get('/account/voices?person_id=pa').status_code==404
+    assert client.get('/account/voices?person_id=pb').status_code==404
+    assert client.post('/f/a/person/pa/voice?from_account=1',data={'csrf_token':csrf,'action':'start'}).status_code==403
+    assert get_session().query(VoiceProfile).count()==0 and voice.creates==0
+
+
+def test_personal_entry_shows_feature_quota_and_unconfirmed_person_blockers(voice,app,client,login):
+    login();app.config['VOICE_ENABLED']=False
+    body=client.get('/account/voices?family_id=a').get_data(as_text=True)
+    assert '声音克隆目前尚未开通' in body
+    assert 'id="voice-record"' not in body and 'id="voice-sample-form"' not in body
+    assert '开始建立声音档案' not in body
+    app.config.update(VOICE_ENABLED=True,VOICE_FAMILY_LIMITS={})
+    body=client.get('/account/voices?family_id=a').get_data(as_text=True)
+    assert '尚无可用音色名额' in body and '开始建立声音档案' not in body
+    app.config['VOICE_FAMILY_LIMITS']={'a':{'voices':2,'monthly_characters':50000}}
+    s=get_session();s.get(Person,'pa').life_status='unknown';s.commit()
+    body=client.get('/account/voices?family_id=a').get_data(as_text=True)
+    assert '核实人物状态' in body and '开始建立声音档案' not in body
+
+
+def test_personal_selector_is_explicit_across_families_and_never_lists_departed_people(voice,client,login):
+    login();s=get_session()
+    s.add(FamilyMember(id='my-second-family',family_id='b',user_id='owner-a',role='member'))
+    s.get(Person,'pb').user_id='owner-a';s.get(Person,'pb').life_status='alive';s.commit()
+    body=client.get('/account/voices').get_data(as_text=True)
+    assert 'value="pa"' in body and 'value="pb"' in body
+    assert '开始建立声音档案' not in body
+    body=client.get('/account/voices?person_id=pb').get_data(as_text=True)
+    assert 'href="/f/b/stories"' in body and 'href="/f/a/stories"' not in body
+    s=get_session();s.query(FamilyMember).filter_by(id='my-second-family').one().del_flag=1;s.commit()
+    assert client.get('/account/voices?person_id=pb').status_code==404
+    assert 'Beta Person' not in client.get('/account/voices').get_data(as_text=True)
+
+
 def test_repeated_story_play_uses_one_generation_and_no_arbitrary_text(voice,app,client,login):
     csrf=ready(app,client,login);response=request_audio(client,csrf);assert response.status_code==202
     assert request_audio(client,csrf).json['id']==response.json['id']

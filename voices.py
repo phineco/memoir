@@ -19,7 +19,7 @@ from reporting import local_now
 from search_index import plain_text
 from voice_provider import VoiceError,get_provider
 import voice_storage
-from views import _current_user,_family_or_404,_person_or_404,_can_edit_story
+from views import _current_user,_family_or_404,_person_or_404,_can_edit_story,_families_for_user
 
 bp=Blueprint('voices',__name__)
 CONSENT_VERSION='2026-10-23.1'
@@ -126,9 +126,51 @@ def my_voices():
     me=_current_user();s=get_session()
     family_id=request.args.get('family_id')
     family=_family_or_404(family_id) if family_id else None
+    families={item.id:item for item in _families_for_user(me)}
+    people=[person for person in s.query(Person).filter(Person.user_id==me.id,
+        Person.family_id.in_(families),Person.del_flag==0).order_by(Person.family_id,Person.sort,Person.id).all()
+        if person.life_state!='deceased']
+    selected_id=request.args.get('person_id')
+    selected=next((person for person in people if person.id==selected_id),None) if selected_id else None
+    if selected_id and not selected:abort(404)
+    if not selected_id:
+        defaults=[person for person in people if not family or person.family_id==family.id]
+        if len(defaults)==1:selected=defaults[0]
+    context={}
+    if selected:
+        family=families[selected.family_id]
+        profile=s.query(VoiceProfile).filter_by(person_id=selected.id,family_id=family.id).first()
+        context=management_context(family,selected,me,profile)
+        context['manage_action']=url_for('voices.manage',family_id=family.id,person_id=selected.id,from_account='1')
     rows=s.query(VoiceProfile,VoiceConsent).join(VoiceConsent,VoiceConsent.profile_id==VoiceProfile.id).filter(
         VoiceConsent.user_id==me.id,VoiceConsent.epoch==VoiceProfile.epoch).order_by(VoiceConsent.create_date.desc(),VoiceProfile.id).all()
-    return render_template('my_voices.html',rows=rows,states=STATES,family=family)
+    context.update(rows=rows,states=STATES,family=family,voice_enabled=enabled(),
+                   voice_people=people,voice_families=families,selected_person=selected)
+    return render_template('my_voices.html',**context)
+
+
+def management_context(family,person,me,profile):
+    s=get_session();can_manage=manager(family.id,person,me)
+    consents=s.query(VoiceConsent).filter_by(profile_id=profile.id,epoch=profile.epoch).all() if profile else []
+    quota,_=limits(family.id)
+    used=s.query(VoiceProfile.id).filter(VoiceProfile.family_id==family.id,VoiceProfile.status!='deleted').count()
+    can_start=person.life_state in ('alive','deceased') and bool(person.user_id or person.life_state=='deceased') and used<quota
+    unavailable='请联系管理员先核实人物生存状态，并关联本人的账号。' if person.life_state not in ('alive','deceased') or (person.life_state=='alive' and not person.user_id) else '此家庭尚无可用音色名额，请联系运营核对开通额度。'
+    if not enabled():collection_hint='声音克隆目前尚未开通；现有授权仍可撤回。'
+    elif person.life_state=='unknown':collection_hint='请先联系管理员核实人物状态，再开始声音复刻。'
+    elif not profile or profile.status=='deleted':collection_hint='请先建立声音档案、提交本人的单独同意，并等待运营核验。'
+    elif profile.status in ('ready','disabled'):collection_hint='已有声音档案。需要更换音色时，请先撤回并等待删除完成，再重新建立。'
+    elif profile.status=='deleting':collection_hint='正在删除旧音色，请等待本站与服务商删除确认后再重新建立。'
+    elif profile.status in ('queued','processing'):collection_hint='样本已经提交，正在等待处理；无需重复上传或录音。'
+    elif profile.status=='review':collection_hint='本人授权已提交，等待运营核验；通过后可在此上传或录音。'
+    elif profile.status=='consent':collection_hint='请先阅读下方说明，提交本人的单独同意。'
+    else:collection_hint='请先核对授权和原任务的处理状态；有疑问可联系运营，不要重复复刻。'
+    return dict(family=family,person=person,profile=profile,states=STATES,consents=consents,
+                can_manage=can_manage,consent_version=CONSENT_VERSION,relations=RELATIONS,voice_enabled=enabled(),
+                can_start=can_start,start_unavailable=unavailable,collection_hint=collection_hint,
+                manage_action=url_for('voices.manage',family_id=family.id,person_id=person.id),
+                can_sample=bool(enabled() and can_manage and profile and permitted(profile) and profile.status in ('collecting','failed')
+                                and not profile.uncertain and not profile.provider_voice_id and not profile.lease_token))
 
 
 @bp.post('/account/voices/<profile_id>/withdraw')
@@ -158,6 +200,13 @@ def manage(family_id,person_id):
     if request.method=='POST':
         require_csrf();action=request.form.get('action')
         s.rollback();s.query(Family).filter_by(id=family_id).with_for_update().one()
+        # Recheck the actor and subject after acquiring the family lock.
+        fam=_family_or_404(family_id)
+        person=s.query(Person).filter_by(id=person_id,family_id=family_id,del_flag=0).with_for_update().populate_existing().first()
+        if not person:abort(404)
+        can_manage=manager(family_id,person,_current_user())
+        if request.args.get('from_account')=='1' and (person.user_id!=me.id or (person.life_state!='alive' and action not in ('delete','withdraw','disable'))):
+            abort(403,'个人声音入口仅用于已关联的健在本人；请核对人物和账号')
         profile=s.query(VoiceProfile).filter_by(person_id=person_id,family_id=family_id).with_for_update().populate_existing().first()
         if action=='start':
             if not can_manage:abort(403)
@@ -213,11 +262,11 @@ def manage(family_id,person_id):
             voice_storage.save(data,key);profile.sample_key=key;profile.status='queued';profile.error_code=None;profile.lease_until=None
             audit(profile,'sample_submitted',me.id)
         else:abort(400)
-        s.commit();return redirect(url_for('voices.manage',family_id=family_id,person_id=person_id))
-    consents=s.query(VoiceConsent).filter_by(profile_id=profile.id,epoch=profile.epoch).all() if profile else []
-    return render_template('voice_manage.html',family=fam,person=person,profile=profile,states=STATES,consents=consents,
-                           can_manage=can_manage,consent_version=CONSENT_VERSION,relations=RELATIONS,voice_enabled=enabled(),
-                           can_sample=bool(profile and permitted(profile) and profile.status in ('collecting','failed') and not profile.uncertain and not profile.provider_voice_id))
+        s.commit()
+        if request.args.get('from_account')=='1':
+            return redirect(url_for('voices.my_voices',family_id=family_id,person_id=person_id))
+        return redirect(url_for('voices.manage',family_id=family_id,person_id=person_id))
+    return render_template('voice_manage.html',**management_context(fam,person,me,profile))
 
 
 @bp.errorhandler(VoiceError)

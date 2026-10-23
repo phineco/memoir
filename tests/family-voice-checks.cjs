@@ -10,7 +10,9 @@ function wav(){const frames=24000*12,b=Buffer.alloc(44+frames*2);b.write('RIFF')
   await context.addInitScript(()=>{window.__spoken=0;Object.defineProperty(window,'speechSynthesis',{value:{speak(){window.__spoken++;},cancel(){},getVoices(){return[];}}});window.SpeechSynthesisUtterance=function(text){this.text=text;};});
   const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
   async function nav(action,target=page){await Promise.all([target.waitForNavigation({waitUntil:'domcontentloaded'}),action()]);}
-  await page.goto(base+'/f/ui/person/grandma');await page.getByRole('link',{name:'管理声音与授权'}).click();
+  await page.goto(base+'/account?family_id=ui');await page.getByRole('link',{name:/我的声音授权/}).click();
+  assert(await page.getByRole('heading',{name:'上传声音或录音克隆',exact:true}).isVisible());
+  assert.equal(await page.locator('nav[aria-label="家庭导航"] a').count(),4);
   await nav(()=>page.getByRole('button',{name:'开始建立声音档案'}).click());
   assert.equal(await page.locator('#voice-sample-form').count(),0);
   await page.locator('[name=adult]').check();await page.locator('[name=agree]').check();
@@ -22,16 +24,24 @@ function wav(){const frames=24000*12,b=Buffer.alloc(44+frames*2);b.write('RIFF')
   await op.locator('[name=evidence_ref]').fill('qa-synthetic-only');await nav(()=>op.getByRole('button',{name:'记录人工核验通过'}).click(),op);
   assert(await op.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   await page.reload();await page.locator('#voice-sample-form').waitFor();
-  await page.evaluate(()=>{window.__tracksStopped=0;Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia(){return new Promise(resolve=>window.__resolveMic=resolve);}}});window.MediaRecorder=class{constructor(){this.state='inactive';this.mimeType='audio/webm';}start(){this.state='recording';}stop(){this.state='inactive';setTimeout(()=>{this.ondataavailable({data:new Blob(['synthetic'])});this.onstop();},0);}};});
+  assert.equal(new URL(page.url()).pathname,'/account/voices');
+  for(const width of [320,390,1280]){await page.setViewportSize({width,height:844});await page.evaluate(()=>document.documentElement.setAttribute('data-size','26'));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'personal capture large-text layout '+width);}
+  await page.setViewportSize({width:390,height:844});await page.evaluate(()=>document.documentElement.setAttribute('data-size','18'));
+  await page.locator('[name=sample]').setInputFiles({name:'uploaded.wav',mimeType:'audio/wav',buffer:wav()});
+  assert(await page.locator('#voice-sample-preview').isVisible());
+  await page.evaluate(recorded=>{window.__recordedAudio=Uint8Array.from(atob(recorded),c=>c.charCodeAt(0));window.__tracksStopped=0;Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia(){return new Promise(resolve=>window.__resolveMic=resolve);}}});window.MediaRecorder=class{constructor(){this.state='inactive';this.mimeType='audio/wav';}start(){this.state='recording';}stop(){this.state='inactive';setTimeout(()=>{this.ondataavailable({data:new Blob([window.__recordedAudio],{type:'audio/wav'})});this.onstop();},0);}};},wav().toString('base64'));
   await page.locator('#voice-record').click();await page.waitForFunction(()=>typeof window.__resolveMic==='function');await page.locator('#voice-stop-record').click();
   await page.evaluate(()=>window.__resolveMic({getTracks(){return[{stop(){window.__tracksStopped++;}}];}}));
   await page.waitForFunction(()=>window.__tracksStopped===1);
   await page.evaluate(()=>{navigator.mediaDevices.getUserMedia=async()=>({getTracks(){return[{stop(){window.__tracksStopped++;}}];}});});
   await page.locator('#voice-record').click();await page.waitForFunction(()=>document.getElementById('voice-record-status').textContent.includes('正在录音，最多'));await page.locator('#voice-stop-record').click();
   await page.waitForFunction(()=>document.getElementById('voice-record-status').textContent.includes('录音已停止'));
-  await page.locator('[name=sample]').setInputFiles({name:'synthetic.wav',mimeType:'audio/wav',buffer:wav()});
   await page.locator('[name=length]').fill('10');await page.locator('[name=quality]').check();
+  const sampleRequest=page.waitForRequest(r=>r.method()==='POST'&&new URL(r.url()).pathname.endsWith('/voice'));
   await nav(()=>page.getByRole('button',{name:'提交片段并申请复刻'}).click());
+  assert((await sampleRequest).postDataBuffer().includes(Buffer.from('filename="recording.webm"')),'latest recorder blob must replace the previously chosen file');
+  assert.equal(new URL(page.url()).pathname,'/account/voices');
+  assert.equal(new URL(page.url()).searchParams.get('person_id'),'grandma');
   const tick=()=>context.request.post(base+'/__voice_test_tick',{headers:{'X-Voice-Test':'local-only-synthetic'},data:{}});
   await tick();await page.goto(base+'/f/ui/story/story');
   await page.locator('#voice-authorize').check();
@@ -49,6 +59,6 @@ function wav(){const frames=24000*12,b=Buffer.alloc(44+frames*2);b.write('RIFF')
   await nav(()=>page.getByRole('button',{name:'撤回授权并删除声音'}).click());await tick();await page.reload();
   assert.match(await page.locator('body').innerText(),/此音色及本站样本、生成音频已删除/);
   assert.deepEqual(errors,[]);await operator.close();
-  console.log('Family voice UI: separate consent, operator verification, recorder cancel/stop, sample upload, clone, version cache, AI label, fallback, delete and 3 viewport layouts passed.');
+  console.log('Personal and family voice UI: account capture entry, separate consent, operator verification, recorder cancel/stop, sample upload, clone, version cache, AI label, fallback, delete and 3 viewport layouts passed.');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
