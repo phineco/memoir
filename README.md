@@ -14,11 +14,15 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 cp .env.example .env
 # 在 .env 配置随机 SECRET_KEY；默认 SQLite + 本地照片目录。
+python init_db.py
+python migrate.py
 python create_admin.py --phone 13800000000 --nickname 主持人 --family-name 我的家
 python app.py
 ```
 
 打开 `http://localhost:5000`。`python app.py` 开启调试模式，仅用于开发；生产使用 gunicorn，见 [部署说明](DEPLOY.md)。
+
+应用启动只初始化连接池，不建表或修改结构。`init_db.py` 只允许空库，已有表会拒绝；已有库更新时备份、停止服务后单独执行 `python migrate.py`，成功后再启动。初始化和迁移都只运行一个进程。
 
 如需样例，**仅在独立、可丢弃的演示数据库中**执行 `python seed.py`；它会清空多张业务表。样例家庭代号 `wang`，账号 `13800000000` / `demo123`。不要在已有数据或生产库运行。
 

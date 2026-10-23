@@ -304,6 +304,7 @@ _Session = None
 
 
 def init_db(database_url: str, *, pool_recycle_seconds: int = 1800):
+    """Configure worker connections only; schema changes run once before startup."""
     global _engine, _Session
     if pool_recycle_seconds < 1:
         raise ValueError("DB_POOL_RECYCLE_SECONDS 必须为正整数")
@@ -316,7 +317,6 @@ def init_db(database_url: str, *, pool_recycle_seconds: int = 1800):
     if _engine is not None:
         _engine.dispose()
     _engine = create_engine(database_url, **engine_options)
-    Base.metadata.create_all(_engine)
     _Session = scoped_session(sessionmaker(bind=_engine))
 
 

@@ -26,7 +26,7 @@
 
 `Interview` 同时承载人工文章和访谈故事；`Draft` 保存正文版本。`PersonLink` 保存文字提及的对应，`InterviewPerson` 保存结构化人物关联。`SourceFile` / `Transcript` 有模型与样例，不代表已交付录音上传或自动 ASR。
 
-建表 SQL 仅用于新 MySQL 库；已有库用 `migrate.py` 升级。`create_all` 创建缺失表，不会给已有表补列。
+建表 SQL 仅用于新 MySQL 库；新 SQLite 库用 `init_db.py` 显式初始化，再执行迁移。应用 worker 只配置连接池，不运行 `create_all` 或任何结构变更。已有库的新增表和列统一用 `migrate.py` 升级，停服后单进程执行，完成后再启动。
 
 ## 三、运行结构
 

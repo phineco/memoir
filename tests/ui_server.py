@@ -13,10 +13,12 @@ os.environ.update(DATABASE_URL="sqlite:///" + str(Path(_workspace.name) / "ui.db
 
 from app import app
 import ai
+import models
 from models import (AiMessage, Comment, Draft, Family, FamilyMember, Interview,
                     Person, Portrait, TimelineEvent, User, Invite, VerificationItem, get_session)
 from werkzeug.security import generate_password_hash
 
+models.Base.metadata.create_all(models._engine)
 s = get_session()
 s.add(User(id="ui-user", username="ui-test", nickname="测试家人",
            password_hash=generate_password_hash("ui-test-only")))

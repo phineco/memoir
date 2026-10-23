@@ -2,6 +2,8 @@
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 import uuid
 
 import pytest
@@ -19,6 +21,54 @@ pytestmark = pytest.mark.skipif(
     not os.environ.get("MEMOIR_TEST_MYSQL_ADMIN_URL"),
     reason="未配置独立 MySQL 测试服务；由 CI 的 MySQL 作业执行",
 )
+
+
+def test_mysql_concurrent_workers_do_not_create_missing_tables():
+    """Reproduce the ai_turns startup boundary on a disposable native MySQL DB."""
+    admin_url = make_url(os.environ["MEMOIR_TEST_MYSQL_ADMIN_URL"])
+    assert admin_url.get_backend_name() == "mysql"
+    admin = create_engine(admin_url, isolation_level="AUTOCOMMIT")
+    name = "memoir_startup_test_" + uuid.uuid4().hex[:12]
+    created = False
+    engine = None
+    workers = []
+    try:
+        with admin.connect() as conn:
+            conn.execute(text(f"CREATE DATABASE `{name}` CHARACTER SET utf8mb4"))
+            created = True
+        url = admin_url.set(database=name).render_as_string(hide_password=False)
+        engine = create_engine(url)
+        Base.metadata.create_all(engine)
+        with engine.begin() as conn:
+            conn.execute(text("INSERT INTO users (id,nickname) VALUES ('kept','Preserved')"))
+            conn.execute(text("DROP TABLE ai_turns"))
+        env = dict(os.environ, DATABASE_URL=url, DEEPSEEK_API_KEY="", PYTHONDONTWRITEBYTECODE="1")
+        root = Path(__file__).resolve().parents[1]
+        code = "from app import app; assert app.test_client().get('/login').status_code == 200"
+        for _ in range(4):
+            workers.append(subprocess.Popen([sys.executable, "-B", "-c", code], cwd=root,
+                                            env=env, stdout=subprocess.PIPE,
+                                            stderr=subprocess.PIPE, text=True))
+        for worker in workers:
+            stdout, stderr = worker.communicate(timeout=30)
+            assert worker.returncode == 0, stdout + stderr
+        assert not inspect(engine).has_table("ai_turns")
+        run_migrations(url)
+        run_migrations(url)
+        assert inspect(engine).has_table("ai_turns")
+        with engine.connect() as conn:
+            assert conn.execute(text("SELECT nickname FROM users WHERE id='kept'")).scalar_one() == "Preserved"
+    finally:
+        for worker in workers:
+            if worker.poll() is None:
+                worker.kill()
+                worker.communicate()
+        if engine is not None:
+            engine.dispose()
+        if created:
+            with admin.connect() as conn:
+                conn.execute(text(f"DROP DATABASE `{name}`"))
+        admin.dispose()
 
 
 def test_mysql_schema_migration_and_native_backup_restore(tmp_path):
@@ -110,6 +160,7 @@ def test_mysql_help_recovers_from_killed_idle_connection_and_recycles(monkeypatc
         monkeypatch.setattr(Config, 'DB_POOL_RECYCLE_SECONDS', 2)
         app = create_app()
         app.config.update(TESTING=True, SECRET_KEY='mysql-pool-test-only')
+        models.Base.metadata.create_all(models._engine)
         s = models.get_session()
         s.add_all([
             models.User(id='owner', nickname='Pool Owner'),

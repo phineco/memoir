@@ -51,7 +51,19 @@ OSS 桶设为私有。运行账号至少需要对象上传、读取和删除权�
 
 ## 三、新库初始化
 
-新 SQLite 库由应用模型创建。新 MySQL 库先建空数据库，再导入根目录 SQL；示例使用 mysql 客户端交互输入密码：
+应用启动只配置数据库连接，不执行建表或迁移，避免多个 gunicorn worker 同时建表。初始化和迁移都须在服务停止时由一个进程执行。
+
+新 SQLite 库先显式初始化，再执行迁移并创建账号：
+
+```bash
+.venv/bin/python init_db.py
+.venv/bin/python migrate.py
+.venv/bin/python create_admin.py --phone 13800000000 --nickname 主持人 --family-name 我的家
+```
+
+`init_db.py` 检测到已有表会拒绝，避免将新库初始化误用于已有资料。已有库直接走第五节增量升级。
+
+新 MySQL 库先建空数据库，再导入根目录 SQL；示例使用 mysql 客户端交互输入密码：
 
 ```sql
 CREATE DATABASE memoir CHARACTER SET utf8mb4;
@@ -117,20 +129,21 @@ server {
 
 ## 五、已有部署升级
 
-先按 [备份与恢复演练](BACKUP.md) 备份数据库和照片，记录当前 Git 提交与环境配置位置；在测试库验证迁移及恢复。维护窗口内停止写入，再依次执行：
+先按 [备份与恢复演练](BACKUP.md) 备份数据库和照片，记录当前 Git 提交与环境配置位置；在测试库验证迁移及恢复。维护窗口内停止服务（宝塔先在面板停止本项目），确认旧 worker 已退出，再依次执行：
 
 ```bash
 cd /opt/memoir
+sudo systemctl stop memoir
 git pull --ff-only
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python migrate.py --dry-run
 .venv/bin/python migrate.py
-sudo systemctl restart memoir
+sudo systemctl start memoir
 ```
 
 `--dry-run` 只读预演，不建数据库或迁移记录表。周报当前年周按 `APP_TIMEZONE`（默认 Asia/Shanghai），服务 `TZ` 须与之相同；旧无时区时间需核对后再调整。
 
-迁移文件按文件名顺序执行并记录；新表由模型初始化创建，新列由迁移文件管理。不要改写已应用迁移，新增独立迁移文件。MySQL DDL 不保证事务回滚，失败时先核对实际表结构再恢复或继续，不能假设回滚 Git 就回滚了数据。
+迁移文件按文件名顺序执行并记录；已有库的新增表和列都由迁移文件管理，不能依赖启动时自动补表。不要改写已应用迁移，新增独立迁移文件；不要同时启动多个迁移程序。MySQL DDL 不保证事务回滚，失败时先核对实际表结构再恢复或继续，不能假设回滚 Git 就回滚了数据。
 
 `.env`、SQLite 文件、本地照片及独立备份目录不受代码更新覆盖；备份必须另存，不只放同一块磁盘。生产恢复前先在隔离环境演练。
 
@@ -150,6 +163,7 @@ sudo systemctl restart memoir
 - OSS 照片打不开：核对浏览器能访问的 endpoint、URL 有效期与桶配置。
 - 模块找不到：检查实际 gunicorn 使用的虚拟环境，不能只在另一个 Python 中安装依赖。
 - SQLite 与 MySQL 数据互迁：本仓库不提供自动跨引擎数据转换；需另行验证迁移方案，不能在已有数据上重灌 seed。
+- 启动报 `1050 Table 'ai_turns' already exists`：旧版 worker 启动时同时执行 `create_all`，可能发生先检查后创建的竞争。保留现有表和数据，先停止本项目、备份，更新修复后的代码，单独执行 `migrate.py --dry-run` 与 `migrate.py`，确认成功后再启动。不要删除 `ai_turns`、重导全库 SQL 或运行 seed。迁移对已存在的新表使用 `CREATE TABLE IF NOT EXISTS`；如果旧启动过程留下的是不完整结构，应先核对字段和索引，不能直接删除重建。
 
 ## 八、UI 构建与版本发布（推荐更新方式）
 

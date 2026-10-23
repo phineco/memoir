@@ -20,7 +20,7 @@ CONFIG
 fi
 cat <<'NEXT'
 依赖与配置已准备；没有创建或清空数据库。
-新项目：核对 .env 后执行 .venv/bin/python create_admin.py 创建账号。
+新项目：核对 .env 后按 DEPLOY.md 初始化空库、执行迁移，再用 create_admin.py 创建账号。
 已有部署：先备份，再按 DEPLOY.md 执行增量迁移。
 演示 seed.py 会清空业务数据，必须手动选择独立演示库运行。
 NEXT

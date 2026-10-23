@@ -1,6 +1,7 @@
 """生产环境初始化：创建管理员账号（可选建家庭）。
 
 seed.py 会清空所有表，仅用于原型演示；生产部署用这个脚本。
+运行前须按 DEPLOY.md 初始化空库并执行迁移；本脚本不建表或改表。
 
 示例：
   python create_admin.py --phone 13800000000 --nickname 主持人 --family-name 王家

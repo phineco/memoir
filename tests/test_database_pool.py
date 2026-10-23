@@ -15,6 +15,7 @@ def persistent_app(tmp_path, monkeypatch):
     monkeypatch.setattr(Config, 'DATABASE_URL', 'sqlite:///' + str(tmp_path / 'pool.db'))
     app = create_app()
     app.config.update(TESTING=True, SECRET_KEY='pool-regression-only')
+    models.Base.metadata.create_all(models._engine)
     s = models.get_session()
     s.add_all([
         models.User(id='pool-owner', nickname='Pool Owner'),

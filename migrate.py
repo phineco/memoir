@@ -14,8 +14,8 @@
   - COMMENT '...' 只在 MySQL 生效，SQLite 下会自动去掉。
 - 语句按分号切分；迁移文件里不要写存储过程/触发器这类带分号的复杂体。
 
-服务器更新流程从此变成固定三步：
-    git pull && <venv>/bin/python migrate.py && （面板重启项目）
+服务器更新流程：先备份并在面板停止本项目，再更新代码，
+单进程执行 <venv>/bin/python migrate.py，成功后在面板启动项目。
 以后再有表结构变更，只会多一个 migrations/00N_xxx.sql 文件，不用记零散的 ALTER。
 """
 

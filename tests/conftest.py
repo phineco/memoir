@@ -22,6 +22,8 @@ def app(tmp_path, monkeypatch):
     monkeypatch.setattr(Config, "UPLOAD_DIR", str(tmp_path / "uploads"))
     application = create_app()
     application.config.update(TESTING=True, SECRET_KEY="test-only-secret")
+    # Test provisioning is explicit; application workers never perform DDL.
+    models.Base.metadata.create_all(models._engine)
     s = models.get_session()
     s.add_all([
         models.User(id="owner-a", username="owner-a", nickname="Alpha Owner"),
