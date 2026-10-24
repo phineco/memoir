@@ -277,6 +277,19 @@ def _editable_interview(s, family_id, interview_id, user_id):
     return iv
 
 
+def _set_verification(item, status, correction, user_id, now):
+    if status not in ("pending", "verified", "resolved", "corrected"):
+        raise SyncError("核实状态仅支持 pending/verified/resolved/corrected")
+    if correction is not None and not isinstance(correction, str):
+        raise SyncError("correction 必须为文字")
+    if status == "corrected" and not (correction or '').strip():
+        raise SyncError("更正核实项时必须填写 correction")
+    item.status = "pending" if status == "pending" else "resolved"
+    if correction:
+        item.correction = correction.strip()[:500]
+    item.update_by, item.update_date = user_id, now
+
+
 def _apply_verification_update(s, family_id, payload, user_id, now):
     iv_id = payload.get("interview_id") or _interview_by_client(
         s, family_id, payload.get("interview_client_id"))
@@ -290,11 +303,8 @@ def _apply_verification_update(s, family_id, payload, user_id, now):
         item = q.filter(VerificationItem.text == item_text).first()
     if not item:
         raise SyncError(f"访谈下找不到待核实项：{item_text[:30]}")
-    status = payload.get("status") or "resolved"
-    item.status = "resolved" if status in ("verified", "resolved") else status
-    if payload.get("correction"):
-        item.correction = payload["correction"][:500]
-    item.update_by, item.update_date = user_id, now
+    _set_verification(item, payload.get("status") or "resolved",
+                      payload.get("correction"), user_id, now)
     return iv_id, f"核实更新：《{item.text[:20]}…》→ {item.status}"
 
 
@@ -347,12 +357,11 @@ def _apply_revision_sync(s, family_id, payload, user_id, now):
                 notes.append(f"跳过：找不到核实项（{rv.get('item_text', '')[:15]}）")
                 continue
             if action == "confirm":
-                item.status = "resolved"
+                _set_verification(item, "verified", None, user_id, now)
             elif action == "correct":
-                item.status = "resolved"
-                item.correction = (rv.get("correction") or "")[:500]
+                _set_verification(item, "corrected", rv.get("correction"), user_id, now)
             elif action == "skip":
-                item.status = "pending"
+                _set_verification(item, "pending", None, user_id, now)
                 item.remarks = ((item.remarks or "") + "；转下周追问").strip("；")
             else:
                 notes.append(f"跳过：未知动作 {action}")

@@ -89,3 +89,5 @@
 人物绑定：tree_upsert.persons[] 支持显式 site_person_id（同家庭真实人物），id 保持 skill 命名空间；plan_progress.items[] 支持 site_person_id。未匹配树包仅创建候选，添加真实人物后须新包建映射；故事中显式未匹配主角/关联人物及不属于计划的人物整包拒绝，映射不可跨人复用。
 
 姓名与别名解析必须唯一；同名或相同别名拒绝自动绑定。tree_upsert、plan_progress、person_status 和 revision_sync 的 person 修订可用 site_person_id 明确选择网站人物；稳定 skill 映射仍可使用，不能把两种 ID 混放。
+
+核实状态：verified/resolved/corrected 统一保存为 resolved；corrected 必须有非空 correction，pending 可重新打开。上线执行 015 数据迁移归一旧 corrected 状态，不为旧记录回填未知 resolved_at；未来真实解决时间仍由模型记录。

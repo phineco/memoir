@@ -128,7 +128,7 @@
 ```
 
 - 也可用 `interview_id`（网站侧 id）代替 `interview_client_id`，用 `item_id` 代替 `item_text`。
-- `status`：`verified`（已确认）/ `corrected`（已修正，填 correction）。
+- `status`：`verified`（已确认）/ `corrected`（已修正，必须填非空 correction），两者在网站统一存为 resolved 并显示已解决；pending 表示重新待核实。未知状态或空更正会整包拒绝。
 
 ### 4. new_person（新人物）
 
