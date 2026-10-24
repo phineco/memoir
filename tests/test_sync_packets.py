@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from models import NewPerson, get_session
+from models import Interview, NewPerson, get_session
 from test_sync_people import sync
 
 
@@ -45,3 +45,11 @@ def test_unsupported_protocol_version_is_rejected(client, login, version):
 def test_single_legacy_packet_without_version_remains_compatible(client, login):
     login()
     assert sync(client, 'new_person', {'name': 'Legacy candidate'}).json['applied']
+
+
+@pytest.mark.parametrize('unsupported', [{'visibility': 'private'}, {'publish_status': 'draft'}, {'viewer_ids': ['owner-a']}])
+def test_unsupported_privacy_request_is_rejected_instead_of_published(client, login, unsupported):
+    login()
+    payload = dict(topic='Intended private draft', draft='<p>Synthetic private text</p>', **unsupported)
+    assert sync(client, 'interview_upsert', payload).status_code == 400
+    assert not get_session().query(Interview).filter_by(topic='Intended private draft').count()

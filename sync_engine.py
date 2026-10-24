@@ -177,6 +177,8 @@ def _parse_tl_date(ds):
 
 
 def _apply_interview_upsert(s, family_id, payload, user_id, now):
+    if any(field in payload for field in ("visibility", "publish_status", "viewer_ids")):
+        raise SyncError("同步仅支持家庭可见的已发布故事，不支持私密/草稿/指定人参数；本包未入库，请改用网页保存")
     topic = (payload.get("topic") or "未命名访谈").strip()
     subject = _resolve_person(s, family_id,
                               skill_id=payload.get("subject_person_id"))
