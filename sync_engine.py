@@ -290,19 +290,26 @@ def _set_verification(item, status, correction, user_id, now):
     item.update_by, item.update_date = user_id, now
 
 
+def _verification_item(s, interview_id, payload):
+    query = s.query(VerificationItem).filter_by(interview_id=interview_id, del_flag=0)
+    if payload.get("item_id"):
+        item = query.filter_by(id=payload["item_id"]).first()
+        if item:
+            return item
+    else:
+        matches = query.filter_by(text=(payload.get("item_text") or '').strip()).all()
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise SyncError("待核实原文重复，请用 item_id 明确选择，不得猜测目标")
+    raise SyncError("找不到目标故事下的待核实项，请核对 item_id 或未改写的原文")
+
+
 def _apply_verification_update(s, family_id, payload, user_id, now):
     iv_id = payload.get("interview_id") or _interview_by_client(
         s, family_id, payload.get("interview_client_id"))
     _editable_interview(s, family_id, iv_id, user_id)
-    item_text = (payload.get("item_text") or "").strip()
-    q = s.query(VerificationItem).filter_by(interview_id=iv_id, del_flag=0)
-    item = None
-    if payload.get("item_id"):
-        item = q.filter_by(id=payload["item_id"]).first()
-    if not item and item_text:
-        item = q.filter(VerificationItem.text == item_text).first()
-    if not item:
-        raise SyncError(f"访谈下找不到待核实项：{item_text[:30]}")
+    item = _verification_item(s, iv_id, payload)
     _set_verification(item, payload.get("status") or "resolved",
                       payload.get("correction"), user_id, now)
     return iv_id, f"核实更新：《{item.text[:20]}…》→ {item.status}"
@@ -337,25 +344,18 @@ def _apply_revision_sync(s, family_id, payload, user_id, now):
     """修订清单应用：verify 确认/修正/转下周；draft 全文修订（新版本）；person 正名。"""
     from models import PersonLink
     n_ok, notes = 0, []
-    for rv in payload.get("revisions") or []:
+    revisions = payload.get("revisions")
+    if not isinstance(revisions, list) or not revisions:
+        raise SyncError("revisions 必须为至少包含一项的数组")
+    for rv in revisions:
         kind, action = rv.get("kind"), rv.get("action")
         if kind == "verify":
             iv_id = rv.get("interview_id") or _interview_by_client(
                 s, family_id, rv.get("interview_client_id"))
             if not iv_id:
-                notes.append(f"跳过：找不到访谈（{rv.get('item_text', '')[:15]}）")
-                continue
+                raise SyncError("找不到待修订故事，请核对原始入库 clientId；本包全部未生效")
             _editable_interview(s, family_id, iv_id, user_id)
-            item = s.query(VerificationItem).filter_by(
-                interview_id=iv_id, del_flag=0)
-            if rv.get("item_id"):
-                item = item.filter_by(id=rv["item_id"]).first()
-            else:
-                item = item.filter(
-                    VerificationItem.text == (rv.get("item_text") or "")).first()
-            if not item:
-                notes.append(f"跳过：找不到核实项（{rv.get('item_text', '')[:15]}）")
-                continue
+            item = _verification_item(s, iv_id, rv)
             if action == "confirm":
                 _set_verification(item, "verified", None, user_id, now)
             elif action == "correct":
@@ -364,21 +364,18 @@ def _apply_revision_sync(s, family_id, payload, user_id, now):
                 _set_verification(item, "pending", None, user_id, now)
                 item.remarks = ((item.remarks or "") + "；转下周追问").strip("；")
             else:
-                notes.append(f"跳过：未知动作 {action}")
-                continue
+                raise SyncError("未知核实动作，请使用 confirm/correct/skip；本包全部未生效")
             item.update_by, item.update_date = user_id, now
             n_ok += 1
         elif kind == "draft":
             iv_id = rv.get("interview_id") or _interview_by_client(
                 s, family_id, rv.get("interview_client_id"))
             if not iv_id:
-                notes.append("跳过：修订找不到访谈")
-                continue
+                raise SyncError("找不到待修订故事，请核对原始入库 clientId；本包全部未生效")
             iv = _editable_interview(s, family_id, iv_id, user_id)
             new_text = sanitize_html(rv.get("draft") or "", family_id)
             if not new_text:
-                notes.append("跳过：修订正文为空")
-                continue
+                raise SyncError("修订正文不能为空；本包全部未生效")
             from story_revisions import append_revision
             try:
                 append_revision(s, iv, user_id, new_text, rv.get("base_version"),
@@ -390,7 +387,9 @@ def _apply_revision_sync(s, family_id, payload, user_id, now):
             p = _resolve_person(s, family_id, skill_id=rv.get("person_id"),
                                 site_id=rv.get("site_person_id"), name=rv.get("name"))
             full = (rv.get("full_name") or "").strip()
-            if p and full and p.name != full:
+            if not p or not full:
+                raise SyncError("正名缺少明确人物或新姓名；本包全部未生效")
+            if p.name != full:
                 old = p.name
                 p.notes = list(p.notes or []) + [f"曾用名：{old}"]
                 p.name = full
@@ -398,9 +397,9 @@ def _apply_revision_sync(s, family_id, payload, user_id, now):
                 notes.append(f"正名：{old} → {full}")
                 n_ok += 1
             else:
-                notes.append(f"跳过：人物 {rv.get('name')} 未找到或无需正名")
+                notes.append("人物姓名已一致，无需正名")
         else:
-            notes.append(f"跳过：未知修订类型 {kind}")
+            raise SyncError("未知修订类型，请使用 verify/draft/person；本包全部未生效")
     summary = f"修订应用：{n_ok} 条生效" + (f"；{ '；'.join(notes[:5])}" if notes else "")
     return None, summary
 
@@ -424,10 +423,13 @@ def _apply_plan_progress(s, family_id, payload, user_id, now):
     except ValueError:
         items = []
     wanted = {}
-    for it in payload.get("items", []):
+    progress_items = payload.get("items")
+    if not isinstance(progress_items, list) or not progress_items:
+        raise SyncError("计划进度 items 必须为至少包含一项的数组")
+    for it in progress_items:
         st = it.get("status")
         if st not in ("pending", "doing", "done"):
-            continue
+            raise SyncError("计划状态仅支持 pending/doing/done；本包全部未生效")
         p = _resolve_person(s, family_id,
                             skill_id=it.get("person_id"),
                             name=it.get("person_name"), site_id=it.get("site_person_id"))
