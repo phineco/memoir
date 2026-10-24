@@ -148,7 +148,7 @@
 }
 ```
 
-- 也可用 `name` 代替 `person_id`（姓名精确匹配）。
+- 也可用 `site_person_id` 明确指定网站人物，或用唯一 `name` 回退；姓名或别名对应多人时拒绝，不能取第一位。
 
 ### 6. revision_sync（修订清单应用结果）
 
@@ -170,7 +170,7 @@
 - `action`：`confirm` 确认 / `correct` 修正（填 correction）/ `skip` 转下周追问。
 - `kind=draft`：全文修订，必须提供核对过的当前正文 `base_version` 和 `revision_reason`；网站生成新版本并保留旧版。缺少版本、版本过期或原因为空时整包拒绝，请打开故事编辑/历史页核对，不得猜版本或自动增加版本重试。协议外壳 `version` 不是正文版本。
 - 正文图片仅允许当前家庭的合法相册引用；不要重写图片 URL。外部/跨家庭/不存在的引用整包拒绝，已删除照片按网页规则显示占位并保留文字。
-- `kind=person`：正名（如"三叔→王建军"），旧名记入人物备注。
+- `kind=person`：正名（如"三叔→王建军"），旧名记入人物备注。可提供已映射 `person_id` 或 `site_person_id` 明确身份，仅用姓名/别名时必须唯一。
 
 ### 7. plan_progress（写作计划进度回写）
 
@@ -187,7 +187,7 @@
 }
 ```
 
-- 人物匹配：**优先用 `person_name`**（最稳）；可带 skill 侧 `person_id`（如 p01），或用 `site_person_id` 明确携带计划返回的网站人物 ID。人物不在计划/无法对应时整包拒绝。
+- 人物匹配：优先使用核对后的稳定 skill 映射；计划 API 返回 ID 时用 `site_person_id`。姓名仅在唯一匹配时回退，同名或别名多候选会整包拒绝；可带 skill 侧 `person_id`（如 p01），或用 `site_person_id` 明确携带计划返回的网站人物 ID。人物不在计划/无法对应时整包拒绝。
 - `status` 只能是 `pending` / `doing` / `done`；只更新计划条目状态，不改顺序和备注。
 - 触发：某计划人物的故事线本次有进展时，随本次同步节点一起输出。详细见 `references/writing-plan-guide.md`。
 

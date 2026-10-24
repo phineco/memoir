@@ -56,15 +56,13 @@ def _resolve_person(s, family_id, skill_id=None, name=None, site_id=None):
     if site_person:
         return site_person
     if name:
-        p = s.query(Person).filter_by(
-            family_id=family_id, name=name, del_flag=0).first()
-        if p:
-            return p
-        # 别名匹配
-        for cand in s.query(Person).filter_by(family_id=family_id,
-                                               del_flag=0).all():
-            if name in (cand.aliases or []):
-                return cand
+        candidates = [p for p in s.query(Person).filter_by(
+            family_id=family_id, del_flag=0).all()
+            if p.name == name or name in (p.aliases or [])]
+        if len(candidates) > 1:
+            raise SyncError("姓名或别名对应多个人物，请核对网站人物 ID，使用 site_person_id 明确身份")
+        if candidates:
+            return candidates[0]
     return None
 
 
@@ -316,7 +314,7 @@ def _apply_new_person(s, family_id, payload, user_id, now):
 
 def _apply_person_status(s, family_id, payload, user_id, now):
     p = _resolve_person(s, family_id, skill_id=payload.get("person_id"),
-                        name=payload.get("name"))
+                        name=payload.get("name"), site_id=payload.get("site_person_id"))
     if not p:
         raise SyncError(f"找不到人物：{payload.get('name') or payload.get('person_id')}")
     p.status = payload.get("status") or p.status
@@ -380,7 +378,8 @@ def _apply_revision_sync(s, family_id, payload, user_id, now):
                 raise SyncError(str(exc)) from None
             n_ok += 1
         elif kind == "person":
-            p = _resolve_person(s, family_id, name=rv.get("name"))
+            p = _resolve_person(s, family_id, skill_id=rv.get("person_id"),
+                                site_id=rv.get("site_person_id"), name=rv.get("name"))
             full = (rv.get("full_name") or "").strip()
             if p and full and p.name != full:
                 old = p.name

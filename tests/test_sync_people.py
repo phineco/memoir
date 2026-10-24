@@ -77,3 +77,42 @@ def test_explicit_site_mapping_is_family_scoped_and_immutable(client, login):
     s.commit()
     assert sync(client, 'tree_upsert', tree('other-site')).status_code == 400
     assert s.query(PersonIdMap).filter_by(skill_id='p01').one().person_id == 'pa'
+
+
+@pytest.mark.parametrize('duplicate', ['name', 'alias', 'name-and-alias'])
+def test_ambiguous_name_or_alias_does_not_bind_or_update(client, login, duplicate):
+    s = get_session()
+    name = 'Alpha Person' if duplicate != 'alias' else 'Shared Alias'
+    if duplicate == 'alias':
+        s.get(Person, 'pa').aliases = [name]
+    s.add(Person(id='same-name', family_id='a', name=name if duplicate == 'name' else 'Second Person',
+                 aliases=[name] if duplicate != 'name' else []))
+    s.commit()
+    login()
+    response = sync(client, 'tree_upsert', {'persons': [
+        {'id': 'ambiguous', 'fullName': name, 'notes': ['Must not change either person']} ]})
+    assert response.status_code == 400 and '多个人物' in response.json['error']
+    assert not s.query(PersonIdMap).filter_by(skill_id='ambiguous').count()
+    assert 'Must not change either person' not in (s.get(Person, 'pa').notes or [])
+
+
+def test_same_name_plan_requires_identity_and_updates_selected_person_only(client, login):
+    s = get_session()
+    s.add(Person(id='same-name', family_id='a', name='Alpha Person'))
+    s.add(WritingPlan(id='same-name-plan', family_id='a', title='Two relatives', status='active',
+                     items=json.dumps([{'person_id': pid, 'person_name': 'Alpha Person', 'status': 'pending'}
+                                       for pid in ['pa', 'same-name']])))
+    s.commit()
+    login()
+    payload = {'plan_id': 'same-name-plan', 'items': [{'person_name': 'Alpha Person', 'status': 'done'}]}
+    assert sync(client, 'plan_progress', payload, 'ambiguous-plan').status_code == 400
+    assert all(row['status'] == 'pending' for row in json.loads(s.get(WritingPlan, 'same-name-plan').items))
+    payload['items'][0]['site_person_id'] = 'same-name'
+    assert sync(client, 'plan_progress', payload, 'ambiguous-plan').json['applied']
+    rows = json.loads(s.get(WritingPlan, 'same-name-plan').items)
+    assert [row['status'] for row in rows] == ['pending', 'done']
+    assert sync(client, 'tree_upsert', {'persons': [
+        {'id': 'p-selected', 'fullName': 'Alpha Person', 'site_person_id': 'same-name'}]}).json['applied']
+    assert sync(client, 'person_status', {'person_id': 'p-selected', 'status': 'doing'}).json['applied']
+    assert s.get(Person, 'same-name').status == 'doing'
+    assert s.get(Person, 'pa').status != 'doing'

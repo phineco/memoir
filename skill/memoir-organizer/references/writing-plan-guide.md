@@ -22,7 +22,7 @@ skill 每次会话开始时拉取当前计划，按计划引导用户补故事�
 
 - `plan` 为 null 表示没有当前计划 → 走正常流程（家族树前置模式给采访顺序建议）。
 - 返回 items 里的 `person_id` 是**网站侧**人物 id，与 skill 侧 id（如 p01）不是一套，
-  匹配人物一律以 `person_name` 为准。
+  回写优先把该 ID 填入独立字段 `site_person_id`；不要将它当成 skill 的 `person_id`。姓名仅在全家庭唯一对应时可作回退，同名或别名冲突时先核对身份，不能任选一位。
 
 ## 二、匹配到当前用户
 
@@ -46,11 +46,11 @@ skill 每次会话开始时拉取当前计划，按计划引导用户补故事�
 ```sync-json
 {"type": "plan_progress", "clientId": "<新uuid>",
  "payload": {"plan_id": "<计划id，可空=当前计划>",
-   "items": [{"person_name": "王建军", "status": "doing"},
+   "items": [{"site_person_id": "从计划返回复制的网站人物id", "status": "doing"},
              {"person_name": "王德顺", "status": "done"}]}}
 ```
 
-- 人物匹配：**优先用 person_name**（最稳）；skill 侧 person_id（如 p01）也可带，
+- 人物匹配优先使用计划返回的 ID 填入 `site_person_id`，或已经核对的 skill `person_id`；仅有唯一姓名时可用 `person_name`，同名/别名多候选会拒绝。
   网站走映射表解析；计划返回的网站 `person_id` 必须放入回写字段 `site_person_id`，不可当作 skill ID。无法对应到该计划时整包拒绝。
 - status 只能是 pending / doing / done。
 - 触发时机：某人物的故事线本次有进展（开始做 → doing；初稿完成/已核实 → done）时，

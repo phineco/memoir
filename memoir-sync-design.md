@@ -87,3 +87,5 @@
 全文修订现要求 `base_version`（当前正文版本整数）和 `revision_reason`。缺失或过期时整包拒绝，不自动覆盖；网页与同步共用版本声明及原子写入。旧 skill 全文修订包须重新核对后生成，不能只递增版本号绕过冲突。
 
 人物绑定：tree_upsert.persons[] 支持显式 site_person_id（同家庭真实人物），id 保持 skill 命名空间；plan_progress.items[] 支持 site_person_id。未匹配树包仅创建候选，添加真实人物后须新包建映射；故事中显式未匹配主角/关联人物及不属于计划的人物整包拒绝，映射不可跨人复用。
+
+姓名与别名解析必须唯一；同名或相同别名拒绝自动绑定。tree_upsert、plan_progress、person_status 和 revision_sync 的 person 修订可用 site_person_id 明确选择网站人物；稳定 skill 映射仍可使用，不能把两种 ID 混放。
