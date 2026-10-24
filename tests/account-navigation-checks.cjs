@@ -8,6 +8,7 @@ const assert=require('node:assert/strict');
   await context.request.post(base+'/login',{form:{phone:'ui-test',password:'ui-test-only'}});
   await context.route('**/*',route=>new URL(route.request().url()).origin===new URL(base).origin?route.continue():route.abort());
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  async function nav(action){await Promise.all([page.waitForNavigation({waitUntil:'domcontentloaded'}),action()]);}
   async function openMenu() {
    const toggle=page.locator('#site-menu-toggle');
    if(await toggle.isVisible() && await toggle.getAttribute('aria-expanded')==='false')await toggle.click();
@@ -27,20 +28,20 @@ const assert=require('node:assert/strict');
   for(const width of [320,390,1280]) {
    await page.setViewportSize({width,height:844});
    await page.goto(base+'/account?family_id=ui');
-   await page.getByRole('link',{name:/我的声音授权/}).click();
+   await nav(()=>page.getByRole('link',{name:/我的声音/}).click());
    assert.equal(new URL(page.url()).searchParams.get('family_id'),'ui');
    await checkMenu('ui');
-   await page.locator('main').getByRole('link',{name:'← 个人中心',exact:true}).click();
+   await nav(()=>page.locator('main').getByRole('link',{name:'← 个人中心',exact:true}).click());
    assert.equal(new URL(page.url()).searchParams.get('family_id'),'ui');
-   await page.getByRole('link',{name:/我的家庭/}).click();
+   await nav(()=>page.getByRole('link',{name:/我的家庭/}).click());
    assert.equal(new URL(page.url()).searchParams.get('switch'),'1');
    assert.equal(await page.locator('a[data-family-choice]').count(),2);
    await checkMenu('ui');
-   await page.locator('a[data-family-choice="empty"]').click();
+   await nav(()=>page.locator('a[data-family-choice="empty"]').click());
    await checkMenu('empty');
    await openMenu();
-   await page.getByRole('link',{name:'个人中心：测试家人',exact:true}).click();
-   await page.getByRole('link',{name:/我的声音授权/}).click();
+   await nav(()=>page.getByRole('link',{name:'个人中心：测试家人',exact:true}).click());
+   await nav(()=>page.getByRole('link',{name:/我的声音/}).click());
    assert.equal(new URL(page.url()).searchParams.get('family_id'),'empty');
    await checkMenu('empty');
   }

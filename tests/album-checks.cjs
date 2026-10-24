@@ -11,7 +11,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAZElEQVR4n
   const errors=[];const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
   await context.route('**/*',r=>new URL(r.request().url()).origin===new URL(base).origin?r.continue():r.abort());
   async function nav(action){await Promise.all([page.waitForNavigation({waitUntil:'domcontentloaded'}),action()]);}
-  async function add(title,place,precision,year,month,day){
+  async function add(title,place,precision,year,month,day,person){
    await page.goto(base+'/f/ui/album/upload');
    await page.locator('[name=photo]').setInputFiles({name:'photo.png',mimeType:'image/png',buffer:png});
    await page.locator('[name=title]').fill(title);await page.locator('[name=location]').fill(place);
@@ -19,20 +19,25 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAZElEQVR4n
    if(year)await page.locator('[name=photo_year]').fill(year);
    if(month)await page.locator('[name=photo_month]').fill(month);
    if(day)await page.locator('[name=photo_day]').fill(day);
+   if(person)await page.locator('[name=person_id]').selectOption(person);
    await nav(()=>page.getByRole('button',{name:'保存到家庭相册'}).click());
    assert.match(new URL(page.url()).pathname,/\/album\/[a-f0-9]{32}$/);
    assert(await page.locator('.album-preview').evaluate(img=>img.complete&&img.naturalWidth>0));
    return new URL(page.url()).pathname.split('/').at(-1);
   }
-  await page.goto(base+'/f/ui/more');await nav(()=>page.getByRole('link',{name:/家庭相册/}).click());
+  await page.goto(base+'/f/ui/more');await nav(()=>page.getByRole('navigation',{name:'家庭导航'}).getByRole('link',{name:'相册',exact:true}).click());
   assert(await page.getByRole('heading',{name:'家庭相册',exact:true}).isVisible());
-  const first=await add('老院子的合影','合肥老家','year','1985');
+  const first=await add('老院子的合影','合肥老家','year','1985',null,null,'grandma');
   assert.match(await page.locator('#photo-uploader').innerText(),/测试家人/);
   const second=await add('西湖散步','杭州西湖','day','2002','6','15');
   const unknown=await add('未记年份的照片','地点不详','unknown');
+  await page.goto(base+'/f/ui/album?person=grandma&date_from=1985-06-01&date_to=1985-06-30&view=grid');
+  assert.equal(await page.locator('.album-card').count(),1);assert.equal(await page.locator('.album-year').count(),0);
+  await nav(()=>page.locator('.album-card').click());await nav(()=>page.getByRole('link',{name:'← 返回家庭相册',exact:true}).click());
+  assert.equal(new URL(page.url()).searchParams.get('person'),'grandma');assert.equal(new URL(page.url()).searchParams.get('view'),'grid');
   await page.goto(base+'/f/ui/album');
   assert.deepEqual(await page.locator('.album-year').allTextContents(),['2002年','1985年','拍摄时间不详']);
-  await page.locator('#album-location').fill('合肥');await nav(()=>page.getByRole('button',{name:'筛选照片',exact:true}).click());
+  await page.locator('.album-filters summary').click();await page.locator('#album-location').fill('合肥');await nav(()=>page.getByRole('button',{name:'筛选照片',exact:true}).click());
   assert.equal(await page.locator('.album-card').count(),1);
   await page.locator('#album-uploader').selectOption('user:ui-user');await nav(()=>page.getByRole('button',{name:'筛选照片',exact:true}).click());
   assert.equal(new URL(page.url()).searchParams.get('uploader'),'user:ui-user');assert.match(await page.locator('.album-card').innerText(),/上传人：测试家人/);

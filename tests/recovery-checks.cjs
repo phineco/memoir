@@ -15,7 +15,7 @@ module.exports = async function(browser, signedIn, base) {
   await second.locator('.ql-editor').fill('另一个窗口的独立正文。');
   await second.waitForFunction(()=>document.getElementById('recovery-status').textContent.includes('已自动保留'));
   assert((await second.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('memoir:writer:v1:ui-user:ui:new:')).length))>=3);
-  await page.locator('button[name=action][value=draft]').click();await page.waitForURL('**/drafts');
+  await page.locator('button[name=action][value=draft]').click();await page.waitForURL(url=>url.pathname==='/account/drafts');
   assert((await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('memoir:writer:v1:ui-user:ui:new:')).length))>=2,'saving must not delete other windows');
   await second.goto(base+'/f/empty/write'); assert.equal(await second.locator('#recovery-list button').count(),0);
   await second.goto(base+'/f/ui/write');await second.locator('#recovery-clear').click();

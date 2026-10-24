@@ -1,15 +1,8 @@
 {% extends "base.html" %}
 {% block title %}更多 · {{ family.name }}{% endblock %}
-{% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
-<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>更多</h1><p class="hint">继续整理回忆，或邀请家人一起加入。</p></div>
-<div class="cards menu-cards">
-<a class="card" href="{{ url_for('album.index',family_id=family.id) }}"><h2 class="card-title">家庭相册</h2><p class="card-sub">按时间看老照片，按地点寻找回忆</p></a>
-{% for endpoint, title, description in [('weekly_current','本周周报','看看这一周的新回忆'),('plan_list','写作计划','想想下一次和谁聊聊'),('ai_ask','问 AI','从可见的回忆摘录中寻找线索')] %}
-<a class="card" href="{{ url_for('main.'+endpoint, family_id=family.id) }}"><h2 class="card-title">{{ title }}</h2><p class="card-sub">{{ description }}</p></a>
-{% endfor %}
-<a class="card" href="{{ url_for('main.ebook_preview',family_id=family.id) }}"><h2 class="card-title">生成电子书</h2><p class="card-sub">选取文章，让 AI 整理成家庭电子书</p><p class="card-sub"><strong>付费功能 · 尚未开放</strong></p></a>
-{% if is_admin %}<a class="card" href="{{ url_for('main.family_manage',family_id=family.id) }}"><h2 class="card-title">家庭管理</h2><p class="card-sub">人物、成员、账号、邀请与分享</p></a>{% endif %}
-<a class="card" href="{{ url_for('main.index', switch=1, family_id=family.id) }}"><h2 class="card-title">切换家庭</h2><p class="card-sub">回到你的家庭列表</p></a>
-</div>
+<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>更多</h1><p class="hint">安排下一次记录，寻找回忆线索，整理和保存已有故事。</p></div>
+<section class="content-section"><h2>回忆工具</h2><div class="cards menu-cards">{% for endpoint,title,description in [('ai_ask','问 AI','从家庭公开故事中寻找线索，查看原文依据'),('plan_list','写作计划','安排下一次聊谁、记录哪些线索'),('weekly_current','周报','阅读本周和往期新增回忆与修订动态')] %}<a class="card" href="{{ url_for('main.'+endpoint,family_id=family.id) }}"><h3 class="card-title">{{ title }}</h3><p class="card-sub">{{ description }}</p></a>{% endfor %}</div></section>
+<section class="content-section"><h2>整理与保存</h2><div class="cards menu-cards"><a class="card" href="{{ url_for('main.article_export',family_id=family.id,scope='own') }}"><h3 class="card-title">导出我的文章</h3><p class="card-sub">离线阅读本人记录的文章与草稿，当前不含照片和录音</p></a>{% if is_admin %}<a class="card" href="{{ url_for('main.article_export',family_id=family.id,scope='family') }}"><h3 class="card-title">导出家庭可见文章</h3><p class="card-sub">全家可见的已发布文章，不含他人的受限稿或媒体</p></a>{% endif %}<a class="card" href="{{ url_for('main.ebook_preview',family_id=family.id) }}"><h3 class="card-title">生成电子书</h3><p class="card-sub">计划将选定文章整理成书</p><p class="hint"><strong>付费功能 · 尚未开放</strong></p></a></div></section>
+<section class="content-section"><h2>帮助与管理</h2><div class="cards menu-cards"><a class="card" href="{{ url_for('main.guide',family_id=family.id) }}"><h3 class="card-title">使用帮助</h3><p class="card-sub">阅读、写作、相册、声音与常见问题</p></a>{% if is_admin %}<a class="card" href="{{ url_for('main.family_manage',family_id=family.id) }}"><h3 class="card-title">家庭管理</h3><p class="card-sub">成员与权限、邀请家人、账号协助及资料工具</p></a>{% endif %}</div></section>
 {% endblock %}

@@ -57,7 +57,12 @@ def context(family=None):
         title = '隐私申请'
     if request.endpoint and request.endpoint.startswith('metrics.'):
         title = '运营工作区'
-    return dict(group=group, title=title, families=families,
+    help_anchor = ('voice' if request.endpoint=='voices.manage' else
+                   'members' if request.endpoint=='main.family_manage' else
+                   'writing' if request.endpoint in ('main.write_article','main.edit_article') else
+                   'export' if request.endpoint=='main.article_export' else
+                   {'people':'people','stories':'reading','album':'photos'}.get(group,'troubleshooting'))
+    return dict(group=group, title=title, families=families, help_anchor=help_anchor,
                 admin=bool(family and _is_admin(family, me)),
                 links=[dict(key=key, label=label, href=url_for(endpoint, family_id=family.id))
                        for key, (label, endpoint) in GROUPS.items()] if family else [])
@@ -82,7 +87,13 @@ def safe_return(value, family_id=None):
     # Foreign navigation context must not be restored from a personal list either.
     for key, val in parse_qsl(parts.query):
         if key == 'family_id' and val != str(family_id):
-            return None
+            from flask import has_request_context
+            if not has_request_context():return None
+            from views import _current_user
+            from models import get_session
+            from access import family_role
+            user=_current_user()
+            if not user or not family_role(get_session(),val,user.id):return None
     return value
 
 
@@ -91,13 +102,23 @@ def back_url(default):
     return safe_return(request.args.get('return_to', ''), fid) or default
 
 
+def return_label(default):
+    fid=(request.view_args or {}).get('family_id') or request.args.get('family_id')
+    target=safe_return(request.args.get('return_to',''),fid)
+    if not target:return default
+    path=urlsplit(target).path
+    if path.startswith('/account/'):return '返回我的内容'
+    if '/album' in path:return '返回家庭相册'
+    if '/person/' in path:return '返回人物'
+    if '/story/' in path or path.endswith('/stories'):return '返回故事'
+    return '返回家人'
+
+
 def context_link(target):
     parts = urlsplit(target)
     fid = (request.view_args or {}).get('family_id') or request.args.get('family_id')
     source = request.full_path.rstrip('?')
-    # Strip older returns to prevent unbounded nested URLs.
-    src = urlsplit(source)
-    source = src.path + ('?' + urlencode([(k, v) for k, v in parse_qsl(src.query) if k != 'return_to']) if src.query else '')
+    # Preserve the parent detail's own return path; safe_return bounds nesting length.
     if not safe_return(source, fid):
         return target
     query = [(k, v) for k, v in parse_qsl(parts.query) if k != 'return_to']

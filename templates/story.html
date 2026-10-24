@@ -2,7 +2,7 @@
 {% block title %}《{{ iv.topic or '未命名' }}》 · {{ family.name }}{% endblock %}
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
-<div class="page-return"><a data-restore-list href="{{ back_url(url_for('main.stories',family_id=family.id)) }}">← 返回故事</a></div>
+<div class="page-return"><a data-restore-list href="{{ back_url(url_for('main.stories',family_id=family.id)) }}">← {{ return_label('返回故事') }}</a></div>
 <h1>《{{ iv.topic or '未命名' }}》</h1>
 {% if me and iv.author_id == me.id and (iv.publish_status or 'published') == 'draft' %}
 <p><span class="badge-draft">草稿 · 仅你可见</span> <a href="{{ url_for('main.edit_article', family_id=family.id, interview_id=iv.id) }}" class="btn-small btn-secondary">✏️ 继续编辑</a></p>

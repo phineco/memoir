@@ -2,7 +2,7 @@
 {% block title %}运营：周度指标 · 家音{% endblock %}
 {% macro percent(value) %}{{ (value|string)+'%' if value is not none else '暂无样本' }}{% endmacro %}
 {% block content %}
-<div class="nav"><a href="{{ url_for('main.account') }}">← 个人中心</a></div>
+<div class="page-return"><a href="{{ url_for('main.account') }}">← 个人中心</a></div>
 <h1>运营：周度指标</h1><p class="hint">站点受限汇总，不向家庭管理员开放个人行为明细。统计截至 {{ report.as_of.strftime('%Y-%m-%d %H:%M') }}，按站点时区和 ISO 年周。</p>
 <form method="get" class="form-row"><label>周年<input type="number" name="year" value="{{ report.year }}" min="1" max="9999" class="full" required></label><label>周数<input type="number" name="week" value="{{ report.week }}" min="1" max="53" class="full" required></label><div class="form-actions"><button class="btn-primary" type="submit">查看本周</button></div></form>
 <div class="cards">

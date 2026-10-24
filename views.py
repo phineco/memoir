@@ -559,10 +559,21 @@ def account_drafts():
     family_id = request.args.get("family_id")
     fam = _family_or_404(family_id) if family_id else None
     families = {f.id:f.name for f in _families_for_user(me)}
-    rows = _s().query(Interview).filter(
-        Interview.family_id.in_(families), Interview.author_id == me.id,
-        Interview.publish_status == "draft", Interview.del_flag == 0)        .order_by(Interview.create_date.desc()).all()
-    return render_template("drafts.html", family=fam, rows=rows, draft_families=families)
+    from account_content import listing
+    return render_template('account_content.html',family=fam,
+        **listing(_s(),me,families,request.args,_visible_filter,drafts=True))
+
+
+@bp.route('/account/stories')
+def account_stories():
+    me=_current_user()
+    if not me:return redirect(url_for('main.login',next=request.full_path.rstrip('?')))
+    fid=request.args.get('family_id')
+    fam=_family_or_404(fid) if fid else None
+    families={f.id:f.name for f in _families_for_user(me)}
+    from account_content import listing
+    return render_template('account_content.html',family=fam,
+        **listing(_s(),me,families,request.args,_visible_filter))
 
 
 @bp.route('/account/ai-memory',methods=['GET','POST'])
@@ -812,6 +823,7 @@ def _person_page_ctx(family_id, p, me):
 
 @bp.route("/f/<family_id>/person/<person_id>")
 def person_page(family_id, person_id):
+    if request.args.get('section','overview') not in ('overview','stories','photos','timeline'):abort(400, '人物内容分类无效')
     fam = _family_or_404(family_id)
     p = _person_or_404(family_id, person_id)
     me = _current_user()
@@ -1247,9 +1259,11 @@ def write_article(family_id):
         if action == "publish":
             return redirect(url_for("main.story_detail", family_id=family_id,
                                     interview_id=iv.id))
-        return redirect(url_for("main.my_drafts", family_id=family_id))
+        return redirect(url_for("main.account_drafts", family_id=family_id, scope_family=family_id))
+    prefill_subject = request.args.get('subject_id', '')
+    if prefill_subject and not any(p.id==prefill_subject for p in persons):abort(400, '故事人物必须属于本家庭')
     return render_template("write.html", family=fam, persons=persons, me=me,
-                           form=request.form,
+                           form={'subject_id':prefill_subject},
                            members=_family_member_users(s, family_id),
                            self_narrator_id=self_narrator_id,
                            narrator_default_id=narrator_default_id)
@@ -1260,13 +1274,8 @@ def my_drafts(family_id):
     me = _current_user()
     if not me:
         return redirect(url_for("main.login", next=request.path))
-    fam = _family_or_404(family_id)
-    s = _s()
-    rows = s.query(Interview).filter(
-        Interview.family_id == family_id, Interview.author_id == me.id,
-        Interview.publish_status == "draft", Interview.del_flag == 0)\
-        .order_by(Interview.create_date.desc()).all()
-    return render_template("drafts.html", family=fam, rows=rows, me=me)
+    _family_or_404(family_id)
+    return redirect(url_for('main.account_drafts',family_id=family_id,scope_family=family_id))
 
 
 @bp.route("/f/<family_id>/story/<interview_id>/publish", methods=["POST"])
@@ -1414,7 +1423,7 @@ def edit_article(family_id, interview_id):
         if action == "publish":
             return redirect(url_for("main.story_detail", family_id=family_id,
                                     interview_id=iv.id))
-        return redirect(url_for("main.my_drafts", family_id=family_id))
+        return redirect(url_for("main.account_drafts", family_id=family_id, scope_family=family_id))
     selected_correction = None
     if request.args.get("correction"):
         selected_correction = s.query(StoryCorrection).filter_by(id=request.args["correction"], interview_id=iv.id, status="pending", del_flag=0).first()

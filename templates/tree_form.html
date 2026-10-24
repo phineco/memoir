@@ -2,8 +2,8 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block title %}{% if mode == 'edit' %}编辑人物{% else %}添加人物{% endif %} - {{ family.name }}{% endblock %}
 {% block content %}
-<div class="nav"><a href="{% if mode == 'edit' %}{{ url_for('main.person_page', family_id=family.id, person_id=person.id) }}{% else %}{{ url_for('main.family_home', family_id=family.id) }}{% endif %}">← 返回</a></div>
-<h2>{% if mode == 'edit' %}✏️ 编辑人物{% else %}➕ 添加人物{% endif %}</h2>
+<div class="page-return"><a href="{% if mode == 'edit' %}{{ url_for('main.person_page', family_id=family.id, person_id=person.id) }}{% else %}{{ url_for('main.family_home', family_id=family.id) }}{% endif %}">← 返回</a></div>
+<h1>{% if mode == 'edit' %}✏️ 编辑人物{% else %}➕ 添加人物{% endif %}</h1>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="post">
   <label>姓名 *<br><input name="name" class="full" value="{{ form.get('name','') if form else '' }}" required></label>
@@ -68,12 +68,13 @@
   {% endif %}
   <div class="form-actions">
     <button type="submit" class="btn-primary">{% if mode == 'edit' %}保存修改{% else %}添加{% endif %}</button>
+    <a class="btn-secondary" href="{{ url_for('main.person_page',family_id=family.id,person_id=person.id) if mode=='edit' else url_for('main.family_home',family_id=family.id) }}">取消</a>
   </div>
 </form>
 {% if mode == 'edit' %}
-<hr>
+<details class="disclosure"><summary>删除人物</summary>
 <form method="post" action="{{ url_for('main.tree_delete', family_id=family.id, person_id=person.id) }}" onsubmit="return confirm('确定删除「{{ person.name }}」吗？此操作可恢复（软删除），但名下有人物时不允许删除。')">
   <button type="submit" class="btn-danger">🗑️ 删除此人</button>
-</form>
+</form></details>
 {% endif %}
 {% endblock %}

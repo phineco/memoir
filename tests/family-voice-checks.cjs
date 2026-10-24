@@ -10,7 +10,7 @@ function wav(){const frames=24000*12,b=Buffer.alloc(44+frames*2);b.write('RIFF')
   await context.addInitScript(()=>{window.__spoken=0;Object.defineProperty(window,'speechSynthesis',{value:{speak(){window.__spoken++;},cancel(){},getVoices(){return[];}}});window.SpeechSynthesisUtterance=function(text){this.text=text;};});
   const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
   async function nav(action,target=page){await Promise.all([target.waitForNavigation({waitUntil:'domcontentloaded'}),action()]);}
-  await page.goto(base+'/account?family_id=ui');await nav(()=>page.getByRole('link',{name:/我的声音授权/}).click());
+  await page.goto(base+'/account?family_id=ui');await nav(()=>page.getByRole('link',{name:/我的声音/}).click());
   assert(await page.getByRole('heading',{name:'上传声音或录音克隆',exact:true}).isVisible());
   assert.equal(await page.locator('nav[aria-label="家庭导航"] a').count(),4);
   await nav(()=>page.getByRole('button',{name:'开始建立声音档案'}).click());

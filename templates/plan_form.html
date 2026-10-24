@@ -2,7 +2,7 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block title %}{{ '新建' if not plan else '编辑' }}写作计划 · {{ family.name }}{% endblock %}
 {% block content %}
-<div class="nav"><a href="{{ url_for('main.plan_list', family_id=family.id) }}">← 返回计划列表</a></div>
+<div class="page-return"><a href="{{ url_for('main.plan_list', family_id=family.id) }}">← 返回计划列表</a></div>
 <h2>📋 {{ '新建写作计划' if not plan else '编辑写作计划' }}</h2>
 {% if not plan and ai_enabled %}
 <form method="post" action="{{ url_for('main.plan_ai_suggest', family_id=family.id) }}" style="margin-bottom:16px">

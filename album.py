@@ -3,10 +3,14 @@ import calendar
 import io
 import re
 import warnings
+import datetime
 from html.parser import HTMLParser
+from urllib.parse import parse_qsl, urlsplit
 
 from flask import Blueprint,abort,current_app,redirect,render_template,request,send_file,url_for
-from sqlalchemy import case,func,or_
+from sqlalchemy import case,func,or_,and_
+from werkzeug.datastructures import MultiDict
+from werkzeug.exceptions import HTTPException
 
 from forms import require_csrf
 from models import Photo,Person,User,get_session,new_id
@@ -112,45 +116,70 @@ def uploader_info(family_id,selected=""):
     return options,labels
 
 
-def uploader_filter():
-    value=request.args.get('uploader','')
+def uploader_filter(args=None):
+    args=request.args if args is None else args
+    value=args.get('uploader','')
     if value not in ('','unknown') and not (value.startswith('user:') and 1<=len(value[5:])<=64):
         abort(400,'上传人筛选无效，请重新选择。')
     return value
 
 
-def query_photos(family_id):
-    location=request.args.get('location','').strip()
+def query_photos(family_id,args=None):
+    args=request.args if args is None else args
+    location=args.get('location','').strip()
     if len(location)>255:abort(400,'地点搜索最多 255 字')
     query=get_session().query(Photo).filter_by(family_id=family_id,del_flag=0)
     if location:query=query.filter(Photo.location.contains(location,autoescape=True))
-    uploader=uploader_filter()
+    uploader=uploader_filter(args)
     if uploader=='unknown':
         query=query.filter(or_(Photo.uploaded_by.is_(None),Photo.uploaded_by=='',~Photo.uploaded_by.in_(get_session().query(User.id))))
     elif uploader:query=query.filter(Photo.uploaded_by==uploader[5:])
-    if request.endpoint=='album.choices' and request.args.get('photo_id'):
-        selected=photo_or_404(family_id,request.args['photo_id']);query=query.filter(Photo.id==selected.id)
+    values={name:args.get(name,'').strip() for name in ('person','date_from','date_to','include_unknown','view','sort')}
+    values['view']=values['view'] or 'timeline';values['sort']=values['sort'] or 'newest'
+    if values['view'] not in ('timeline','grid') or values['sort'] not in ('newest','oldest'):
+        abort(400,'相册视图或排序无效')
+    if values['include_unknown'] not in ('','1'):abort(400,'时间不详选项无效')
+    if values['person']:
+        if not get_session().query(Person.id).filter_by(id=values['person'],family_id=family_id,del_flag=0).first():abort(400,'照片人物筛选无效')
+        query=query.filter(Photo.person_id==values['person'])
+    dates={}
+    for name in ('date_from','date_to'):
+        try:dates[name]=datetime.date.fromisoformat(values[name]) if values[name] else None
+        except ValueError:abort(400,'拍摄日期格式应为年-月-日')
+    if dates['date_from'] and dates['date_to'] and dates['date_from']>dates['date_to']:abort(400,'开始日期不能晚于结束日期')
+    if any(dates.values()):
+        lower=Photo.photo_year*10000+func.coalesce(Photo.photo_month,1)*100+func.coalesce(Photo.photo_day,1)
+        upper=Photo.photo_year*10000+func.coalesce(Photo.photo_month,12)*100+func.coalesce(Photo.photo_day,31)
+        terms=[Photo.photo_year.isnot(None)]
+        if dates['date_from']:terms.append(upper>=int(dates['date_from'].strftime('%Y%m%d')))
+        if dates['date_to']:terms.append(lower<=int(dates['date_to'].strftime('%Y%m%d')))
+        query=query.filter(or_(and_(*terms),Photo.photo_year.is_(None)) if values['include_unknown']=='1' else and_(*terms))
+    if request.endpoint=='album.choices' and args.get('photo_id'):
+        selected=photo_or_404(family_id,args['photo_id']);query=query.filter(Photo.id==selected.id)
     # Unknown capture dates remain a separate last group, never substitute upload time.
-    query=query.order_by(case((Photo.photo_year.is_(None),1),else_=0),Photo.photo_year.desc(),
-                         func.coalesce(Photo.photo_month,0).desc(),func.coalesce(Photo.photo_day,0).desc(),Photo.id)
-    page=request.args.get('page','1')
+    parts=[Photo.photo_year,func.coalesce(Photo.photo_month,0),func.coalesce(Photo.photo_day,0)]
+    query=query.order_by(case((Photo.photo_year.is_(None),1),else_=0),
+                         *(part.desc() if values['sort']=='newest' else part.asc() for part in parts),Photo.id)
+    page=args.get('page','1')
     if not re.fullmatch(r'[1-9][0-9]{0,5}',page):abort(400,'页码无效')
     page=int(page);total=query.count();pages=max(1,(total+PAGE_SIZE-1)//PAGE_SIZE)
     if page>pages:abort(404)
-    return query.offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE).all(),location,page,pages,total,uploader
+    return query.offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE).all(),location,page,pages,total,uploader,values
 
 
 @bp.get('/f/<family_id>/album')
 def index(family_id):
-    family=_family_or_404(family_id);photos,location,page,pages,total,uploader=query_photos(family_id)
+    family=_family_or_404(family_id);photos,location,page,pages,total,uploader,filters=query_photos(family_id)
     options,labels=uploader_info(family_id,uploader)
     return render_template('album.html',family=family,photos=photos,location=location,page=page,pages=pages,total=total,date_label=date_label,
-                           uploader=uploader,uploader_options=options,uploader_names=labels)
+                           uploader=uploader,uploader_options=options,uploader_names=labels,filters=filters,
+                           people=get_session().query(Person).filter_by(family_id=family_id,del_flag=0).order_by(Person.sort,Person.id).all(),
+                           album_page_url=lambda number,**extra:url_for('album.index',family_id=family_id,location=location,uploader=uploader,page=number,**dict(filters,**extra)))
 
 
 @bp.get('/f/<family_id>/album/choices')
 def choices(family_id):
-    photos,location,page,pages,total,uploader=query_photos(family_id)
+    photos,location,page,pages,total,uploader,filters=query_photos(family_id)
     options,labels=uploader_info(family_id,uploader)
     return dict(photos=[dict(id=p.id,title=p.title or p.caption or '家庭照片',caption=p.caption or '',date=date_label(p),
                             uploader=labels.get(p.uploaded_by,'上传人未记录'),
@@ -204,7 +233,30 @@ def upload(family_id,person_id=None):
 def detail(family_id,photo_id):
     family=_family_or_404(family_id);photo=photo_or_404(family_id,photo_id)
     user=get_session().query(User.id,User.nickname,User.del_flag).filter_by(id=photo.uploaded_by).first() if photo.uploaded_by else None
-    return render_template('album_detail.html',family=family,photo=photo,date_label=date_label,
+    person=get_session().query(Person).filter_by(id=photo.person_id,family_id=family_id,del_flag=0).first() if photo.person_id else None
+    from navigation import safe_return
+    source=safe_return(request.args.get('return_to',''),family_id)
+    neighbors=[]
+    if source and urlsplit(source).path==url_for('album.index',family_id=family_id):
+        args=MultiDict(parse_qsl(urlsplit(source).query))
+        try:
+            photos,location,page,pages,total,uploader,filters=query_photos(family_id,args)
+            positions=[i for i,p in enumerate(photos) if p.id==photo_id]
+            if positions:
+                position=positions[0]
+                for offset,label in [(-1,'上一张'),(1,'下一张')]:
+                    next_page=page;neighbor=None
+                    if 0<=position+offset<len(photos):neighbor=photos[position+offset]
+                    elif 1<=page+offset<=pages:
+                        next_page=page+offset;other=MultiDict(args);other['page']=str(next_page)
+                        chunk=query_photos(family_id,other)[0]
+                        if chunk:neighbor=chunk[-1] if offset<0 else chunk[0]
+                    if neighbor:
+                        target=url_for('album.index',family_id=family_id,page=next_page,location=location,uploader=uploader,**filters)
+                        neighbors.append((label,url_for('album.detail',family_id=family_id,photo_id=neighbor.id,return_to=target)))
+        except HTTPException:
+            source=None
+    return render_template('album_detail.html',family=family,photo=photo,date_label=date_label,photo_person=person,neighbors=neighbors,
                            uploader_name=uploader_label(user),
                            can_manage=photo.uploaded_by==_current_user().id or _is_admin(family,_current_user()))
 

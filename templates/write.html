@@ -3,8 +3,8 @@
 {% block title %}{% if edit_iv %}编辑故事{% else %}写文章{% endif %} - {{ family.name }}{% endblock %}
 {% block content %}
 <link href="{{ asset_url('vendor/quill-2.0.3.snow.css') }}" rel="stylesheet">
-<div class="nav"><a href="{% if edit_iv %}{{ url_for('main.story_detail', family_id=family.id, interview_id=edit_iv.id) }}{% else %}{{ url_for('main.stories', family_id=family.id) }}{% endif %}">← 返回</a></div>
-<h2>{% if edit_iv %}✏️ 编辑故事{% else %}✍️ 写文章{% endif %}</h2>
+<div class="page-return"><a data-restore-list href="{{ back_url(url_for('main.story_detail',family_id=family.id,interview_id=edit_iv.id) if edit_iv else url_for('main.stories',family_id=family.id)) }}">← 返回</a></div>
+<h1>{% if edit_iv %}编辑故事{% else %}写故事{% endif %}</h1>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="post" id="write-form" action="{% if edit_iv %}{{ url_for('main.edit_article', family_id=family.id, interview_id=edit_iv.id) }}{% endif %}">
   {% if not edit_iv %}

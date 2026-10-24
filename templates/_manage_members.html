@@ -1,4 +1,4 @@
-<div class="management-section-heading"><h2>家庭成员 <span class="muted">{{ member_rows|length }} 人</span></h2><p class="hint">成员是能登录本家庭的账号。家族树上的人物请到“资料工具”维护。</p></div>
+<div class="management-section-heading"><h2>家庭成员 <span class="muted">{{ member_rows|length }} 人</span></h2><p class="hint">成员是能登录本家庭的账号。人物档案与登录账号分开管理；人物资料请到“家人”页维护。</p></div>
 {% if reset_error %}<p class="error" role="alert">{{ reset_error.message }}</p>{% endif %}
 {% if reset_notice %}<p class="success" role="status">密码已重置（仅显示一次，请转告家人）：<strong>{{ reset_notice.nickname }}</strong>，登录名 <code>{{ reset_notice.login }}</code>，新密码 <code>{{ reset_notice.password }}</code></p>{% endif %}
 <ul class="card-list member-list">

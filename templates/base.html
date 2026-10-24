@@ -32,7 +32,7 @@
 </div>
 </header>
 <main class="container" id="main-content" tabindex="-1">
-{% if family and site_nav.title and request.endpoint != 'main.family_home' %}<nav class="page-path" aria-label="当前位置"><a href="{{ url_for('main.family_home',family_id=family.id) }}">{{ family.name }}</a><span aria-hidden="true"> / </span>{% if site_nav.group and site_nav.group != 'people' %}{% for item in site_nav.links %}{% if item.key==site_nav.group %}<a href="{{ item.href }}">{{ item.label }}</a><span aria-hidden="true"> / </span>{% endif %}{% endfor %}{% endif %}<span>{{ site_nav.title }}</span></nav>{% endif %}
+{% if family and site_nav.title and request.endpoint != 'main.family_home' %}<nav class="page-path" aria-label="当前位置"><a href="{{ url_for('main.family_home',family_id=family.id) }}">{{ family.name }}</a><span aria-hidden="true"> / </span>{% if site_nav.group and site_nav.group != 'people' %}{% for item in site_nav.links %}{% if item.key==site_nav.group %}<a href="{{ item.href }}">{{ item.label }}</a><span aria-hidden="true"> / </span>{% endif %}{% endfor %}{% endif %}<span>{{ site_nav.title }}</span>{% if request.endpoint!='main.guide' %}<a class="context-help" href="{{ context_link(url_for('main.guide',family_id=family.id,_anchor=site_nav.help_anchor)) }}" {% if request.endpoint in ['main.write_article','main.edit_article'] %}target="_blank" rel="noopener"{% endif %}>{{ '写作帮助（新窗口）' if request.endpoint in ['main.write_article','main.edit_article'] else '功能帮助' }}</a>{% endif %}</nav>{% endif %}
 {% block content %}{% endblock %}
 </main>
 <footer class="footer"><nav class="footer-links" aria-label="服务条款">

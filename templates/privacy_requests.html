@@ -2,7 +2,7 @@
 {% block title %}我的隐私申请 · 家音{% endblock %}
 {% block nav %}{% if family %}{% include '_family_nav.html' %}{% endif %}{% endblock %}
 {% block content %}
-<div class="nav"><a href="{{ url_for('main.account',family_id=family.id if family else None) }}">← 个人中心</a></div>
+<div class="page-return"><a href="{{ url_for('main.account',family_id=family.id if family else None) }}">← 个人中心</a></div>
 <h1>我的隐私申请</h1><p>运营人员将在 3 个工作日内首次人工反馈；完成时间依核验与申请范围确定。提交申请不会自动注销账号或删除资料。</p>
 <p class="hint">无法登录时可通过隐私政策中的邮箱联系。请勿填写密码、验证码、身份证件或大段家庭正文，只需说明资料位置与诉求。</p>
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}

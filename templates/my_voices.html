@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}我的声音授权 · 家音{% endblock %}
 {% block content %}
-<div class="nav"><a href="{{ url_for('main.account',family_id=family.id if family else None) }}">← 个人中心</a></div>
+<div class="page-return"><a href="{{ url_for('main.account',family_id=family.id if family else None) }}">← 个人中心</a></div>
 <h1>我的声音授权</h1>
 <section class="card" id="my-voice-create" aria-labelledby="my-voice-create-title">
 <h2 id="my-voice-create-title" class="card-title">上传声音或录音克隆</h2>

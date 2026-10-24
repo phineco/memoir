@@ -28,7 +28,7 @@
   </ol>
   {% else %}<p class="hint">暂无条目。</p>{% endif %}
   {% if is_admin and plan.status != 'archived' %}
-  <div class="form-row">
+  <div class="form-actions">
     <a href="{{ url_for('main.plan_edit', family_id=family.id, plan_id=plan.id) }}" class="btn-small btn-secondary">编辑</a>
     {% if plan.status != 'active' %}
     <form method="post" action="{{ url_for('main.plan_activate', family_id=family.id, plan_id=plan.id) }}" style="display:inline">

@@ -98,7 +98,7 @@ async function checkVoice(browser, signedIn, base, screenshots) {
         await page.getByRole('button',{name:'保存草稿',exact:true}).click();await idle();
         assert(new URL(page.url()).pathname==='/f/ui/write');
         await page.getByRole('button',{name:'保存草稿',exact:true}).click();
-        await page.waitForURL('**/drafts');
+        await page.waitForURL(url=>url.pathname==='/account/drafts');
         await page.locator('li.card').filter({hasText:'语音生命周期回归草稿'}).getByRole('link',{name:'继续编辑',exact:true}).click();
         assert.match(await page.locator('.ql-editor').innerText(),/继续补充。/);
       }

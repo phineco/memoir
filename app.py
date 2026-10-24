@@ -32,8 +32,8 @@ def create_app():
     app.jinja_env.globals.update(lunar_months=LUNAR_MONTHS, lunar_days=LUNAR_DAYS)
     from writing_aids import QUESTIONS
     app.jinja_env.globals['writing_questions'] = QUESTIONS
-    from navigation import context as site_navigation, back_url, context_link
-    app.jinja_env.globals.update(site_navigation=site_navigation, back_url=back_url, context_link=context_link)
+    from navigation import context as site_navigation, back_url, context_link, return_label
+    app.jinja_env.globals.update(site_navigation=site_navigation, back_url=back_url, context_link=context_link, return_label=return_label)
     from forms import csrf_token
     app.jinja_env.globals['csrf_token']=csrf_token
     from assets import asset_resolver

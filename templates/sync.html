@@ -2,7 +2,7 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block title %}同步入库 · {{ family.name }}{% endblock %}
 {% block content %}
-<div class="nav"><a href="{{ url_for('main.family_home', family_id=family.id) }}">← 返回家族树</a></div>
+<div class="page-return"><a href="{{ url_for('main.family_home', family_id=family.id) }}">← 返回家人</a></div>
 <h2>🔄 同步入库</h2>
 <p class="hint">在 skill 里完成整理/采访后，它会输出 <code>sync-json</code> 数据包（含 <code>"type"</code> 字段）。
 复制整段 JSON（可直接粘贴 <code>```sync-json</code> 代码块）→ 点"导入入库"。</p>

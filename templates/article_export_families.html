@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}导出文章 · 家音{% endblock %}
 {% block content %}
-<div class="nav"><a href="{{ url_for('main.account') }}">← 个人中心</a></div>
+<div class="page-return"><a href="{{ url_for('main.account') }}">← 个人中心</a></div>
 <h1>导出我的文章</h1><p class="hint">选择家庭，将你记录的文章与草稿下载为可离线阅读的文件。只列出你目前有权访问的家庭。</p>
 <div class="cards">{% for item in families %}<a class="card" href="{{ url_for('main.article_export',family_id=item.id) }}"><h2 class="card-title">{{ item.name }}</h2><p class="card-sub">查看导出范围</p></a>{% else %}<p class="hint">当前没有可导出的家庭，请先加入或选择家庭。</p>{% endfor %}</div>
 {% endblock %}

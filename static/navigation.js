@@ -23,6 +23,7 @@
     measure();
   }
   toggle.addEventListener('click', function () {
+    document.querySelectorAll('.family-switch[open]').forEach(function(item){item.open=false;});
     var expanded = toggle.getAttribute('aria-expanded') !== 'true';
     toggle.setAttribute('aria-expanded', String(expanded));
     toggle.textContent = expanded ? '收起菜单' : '菜单';
@@ -38,6 +39,7 @@
     if (!header.contains(event.target)) close(false);
   });
   document.documentElement.classList.add('navigation-ready');
+  document.querySelectorAll('.family-switch').forEach(function(item){item.addEventListener('toggle',function(){if(item.open)close(false);});});
   sync();
   if (mobile.addEventListener) mobile.addEventListener('change', sync);
   else mobile.addListener(sync);
@@ -47,7 +49,7 @@
 
 /* Return to the same list position without relying on browser history. */
 (function(){
- var body=document.body,prefix='memoir.navigation.v1.'+body.dataset.userId+'.'+body.dataset.familyId+'.';
+ var body=document.body,prefix='memoir.navigation.v2.'+body.dataset.userId+'.';
  function key(path){return prefix+path;}
  window.addEventListener('pagehide',function(){try{sessionStorage.setItem(key(location.pathname+location.search),String(scrollY));}catch(e){}});
  document.addEventListener('click',function(event){

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}隐私申请进度 · 家音{% endblock %}
 {% block content %}
-<div class="nav"><a href="{{ url_for('privacy.operations_list') if operator else url_for('privacy.requests_list') }}">← {{ '运营申请队列' if operator else '我的隐私申请' }}</a></div>
+<div class="page-return"><a href="{{ url_for('privacy.operations_list') if operator else url_for('privacy.requests_list') }}">← {{ '运营申请队列' if operator else '我的隐私申请' }}</a></div>
 <h1>{{ kinds.get(item.kind,item.kind) }}</h1><p>编号 {{ item.id[:12] }} · {{ statuses.get(item.status,item.status) }}</p>
 {% if operator %}<p class="hint">账号标识 <code class="break-all">{{ item.user_id }}</code> · 请按运营流程核验，不索要密码或短信验证码。</p>{% endif %}
 <section class="card"><h2>本人申请</h2><p class="prose break-words">{{ item.details }}</p><p class="hint">提交：{{ item.create_date.strftime('%Y-%m-%d %H:%M') }}</p></section>

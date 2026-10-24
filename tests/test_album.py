@@ -86,7 +86,7 @@ def test_timeline_null_last_pagination_and_legacy_person_photos(store,client,log
     assert (data['total'],data['pages'],data['photos'][0]['id'])==(26,2,'p24')
     tail=client.get('/f/a/album/choices?page=2').json['photos']
     assert tail[-1]['id']=='p25' and tail[-1]['date']=='拍摄时间不详'
-    assert '家庭相册' in client.get('/f/a/more').get_data(as_text=True)
+    assert 'href="/f/a/album"' in client.get('/f/a/more').get_data(as_text=True)
     assert client.get('/f/a/album?page=0').status_code==400
     assert client.get('/f/a/album?page=3').status_code==404
     assert client.get('/f/a/album/choices?photo_id=foreign').status_code==404

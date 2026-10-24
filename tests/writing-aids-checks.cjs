@@ -29,7 +29,7 @@ const assert=require('node:assert/strict');
   assert(await page.locator('[name=recording_mode][value=accompany]').isChecked());
   assert.match(await page.locator('#writing-question-status').innerText(),/小时候住的家/);
   assert.match(await page.locator('.ql-editor').innerText(),/不能被问题卡替换/);
-  await page.locator('button[name=action][value=draft]').click();await page.waitForURL('**/drafts');
+  await page.locator('button[name=action][value=draft]').click();await page.waitForURL(url=>url.pathname==='/account/drafts');
   await page.getByRole('link',{name:'继续编辑',exact:true}).click();
   assert.match(await page.locator('.ql-editor').innerText(),/不能被问题卡替换/);
   assert.equal(await page.locator('[name=narrator_person_id]').inputValue(),'');

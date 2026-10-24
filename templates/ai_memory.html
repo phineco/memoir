@@ -2,7 +2,7 @@
 {% block title %}我的 AI 记忆 · 家音{% endblock %}
 {% block nav %}{% if family %}{% include "_family_nav.html" %}{% endif %}{% endblock %}
 {% block content %}
-<div class="nav"><a href="{{ url_for('main.account',family_id=family.id if family else None) }}">← 个人中心</a></div>
+<div class="page-return"><a href="{{ url_for('main.account',family_id=family.id if family else None) }}">← 个人中心</a></div>
 <h1>我的 AI 记忆</h1><p class="hint">AI 从你在各家庭的对话中提炼偏好摘要。可能存在错误，可查看并重置；其他家人的记忆不受影响。</p>
 {% if family %}
 <h2>{{ family.name }}</h2>

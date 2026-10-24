@@ -2,7 +2,7 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block title %}分享管理 · {{ family.name }}{% endblock %}
 {% block content %}
-<div class="nav"><a href="{{ url_for('main.family_home', family_id=family.id) }}">← 返回家族树</a></div>
+<div class="page-return"><a href="{{ url_for('main.family_home', family_id=family.id) }}">← 返回家人</a></div>
 <h2>🔗 本周故事摘要分享</h2>
 <p class="hint">范围：本周首次发布且全家人可见的故事，每篇最多 120 字摘要及本周金句。私密、指定人文章和草稿不参与。</p>
 <p class="hint">流程：生成摘要 → 预览核对 → 确认发布。快照不会随原文修订自动更新；需要新摘要时重新生成并核对，旧链接可下线。未确认的快照不能对外访问。</p>

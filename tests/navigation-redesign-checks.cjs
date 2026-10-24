@@ -14,11 +14,12 @@ const fs=require('node:fs');
    await page.goto(base+'/display?family_id=ui');
    await page.locator('[name=size][value="26"]').check();
    await page.locator('[name=mode][value=simple]').check();
-   for(const [path,active] of [['/f/ui?view=list','家人'],['/f/ui?view=tree','家人'],['/f/ui/stories','故事'],['/f/ui/album','相册'],['/f/ui/more','更多'],['/account?family_id=ui',null],['/guide?family_id=ui',null]]){
+   for(const [path,active] of [['/f/ui?view=list','家人'],['/f/ui?view=tree','家人'],['/f/ui/stories','故事'],['/f/ui/album','相册'],['/f/ui/more','更多'],['/account?family_id=ui',null],['/account/stories?kind=own&family_id=ui',null],['/account/stories?kind=about&family_id=ui',null],['/account/drafts?family_id=ui',null],['/f/ui/person/grandma?section=photos','家人'],['/f/ui/person/grandma?section=stories','家人'],['/f/ui/person/grandma?section=timeline','家人'],['/f/ui/album?view=grid','相册'],['/guide?family_id=ui',null]]){
     await page.goto(base+path);
     assert.deepEqual(await page.locator('.navlinks a').allTextContents(),['家人','故事','相册','更多']);
     assert.deepEqual(await page.locator('.navlinks [aria-current=page]').allTextContents(),active?[active]:[]);
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),width+' '+path);
+    if(process.env.UI_SCREENSHOTS && path==='/account?family_id=ui'){fs.mkdirSync(process.env.UI_SCREENSHOTS,{recursive:true});await page.screenshot({path:process.env.UI_SCREENSHOTS+'/account-'+width+'.png',fullPage:true});}
     if(path.includes('view=tree')){
      await page.waitForFunction(()=>document.querySelector('#tree canvas')?.width>0);
      assert(await page.getByRole('link',{name:/林奶奶/}).isVisible());
@@ -36,6 +37,10 @@ const fs=require('node:fs');
    await page.locator('.family-switch-panel').getByRole('link',{name:'等待第一段故事的家',exact:true}).click();
    assert.equal(new URL(page.url()).pathname,'/f/empty');
    assert.equal(await page.locator('.navlinks [aria-current=page]').innerText(),'家人');
+   await page.goto(base+'/f/ui/person/grandma');await page.getByRole('link',{name:'写 TA 的故事',exact:true}).click();
+   assert.equal(await page.locator('[name=subject_id]').inputValue(),'grandma');assert.equal(await page.locator('[name=narrator_person_id]').inputValue(),'');
+   await page.goto(base+'/account/stories?kind=own&family_id=ui');await page.getByRole('link',{name:'阅读故事',exact:true}).first().click();
+   await page.getByRole('link',{name:'← 返回我的内容',exact:true}).click();assert.equal(new URL(page.url()).pathname,'/account/stories');
   }
   await context.route('**/echarts-*.js',r=>r.abort());
   await page.goto(base+'/f/ui?view=tree');

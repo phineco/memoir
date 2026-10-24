@@ -2,8 +2,8 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block title %}{% if mode == 'edit' %}编辑事件{% else %}添加事件{% endif %} - {{ person.name }}{% endblock %}
 {% block content %}
-<div class="nav"><a href="{{ url_for('main.person_page', family_id=family.id, person_id=person.id) }}">← 返回人物页</a></div>
-<h2>{% if mode == 'edit' %}✏️ 编辑时间轴事件{% else %}➕ 添加时间轴事件{% endif %}</h2>
+<div class="page-return"><a href="{{ url_for('main.person_page', family_id=family.id, person_id=person.id) }}">← 返回人物页</a></div>
+<h1>{% if mode == 'edit' %}✏️ 编辑时间轴事件{% else %}➕ 添加时间轴事件{% endif %}</h1>
 <p class="hint">管理员可手动维护人生事件，也可导入站外整理的资料。</p>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="post">
@@ -22,12 +22,13 @@
   <label>事件描述<br><textarea name="description" rows="4" class="full">{{ form.get('description','') if form else '' }}</textarea></label>
   <div class="form-actions">
     <button type="submit" class="btn-primary">{% if mode == 'edit' %}保存{% else %}添加{% endif %}</button>
+    <a class="btn-secondary" href="{{ url_for('main.person_page',family_id=family.id,person_id=person.id) }}">取消</a>
   </div>
 </form>
 {% if mode == 'edit' %}
-<hr>
+<details class="disclosure"><summary>删除事件</summary>
 <form method="post" action="{{ url_for('main.timeline_delete', family_id=family.id, person_id=person.id, event_id=event.id) }}" onsubmit="return confirm('确定删除该事件吗？')">
   <button type="submit" class="btn-danger">🗑️ 删除该事件</button>
-</form>
+</form></details>
 {% endif %}
 {% endblock %}
