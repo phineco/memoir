@@ -1304,7 +1304,6 @@ def publish_article(family_id, interview_id):
 
 @bp.route("/f/<family_id>/story/<interview_id>/edit", methods=["GET", "POST"])
 def edit_article(family_id, interview_id):
-    from sqlalchemy import func
     me = _current_user()
     if not me:
         return redirect(url_for("main.login", next=request.path))

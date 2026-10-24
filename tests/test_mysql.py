@@ -23,6 +23,69 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def test_mysql_sync_revisions_serialize_between_independent_workers():
+    """Two workers editing base v1 must produce one v2 and one controlled conflict."""
+    import threading
+    from models import FamilyMember, SyncLog
+    from sync_engine import SyncError, apply_sync
+
+    admin_url = make_url(os.environ['MEMOIR_TEST_MYSQL_ADMIN_URL'])
+    assert admin_url.get_backend_name() == 'mysql'
+    admin = create_engine(admin_url, isolation_level='AUTOCOMMIT')
+    name = 'memoir_sync_test_' + uuid.uuid4().hex[:12]
+    created, engine, threads = False, None, []
+    results, errors, barrier = [], [], threading.Barrier(2)
+    try:
+        with admin.connect() as conn:
+            conn.execute(text(f'CREATE DATABASE `{name}` CHARACTER SET utf8mb4'))
+            created = True
+        engine = create_engine(admin_url.set(database=name))
+        Base.metadata.create_all(engine)
+        sessions = sessionmaker(bind=engine)
+        with sessions() as s:
+            s.add_all([User(id='owner'), Family(id='family', owner_user_id='owner'),
+                       FamilyMember(id='member', family_id='family', user_id='owner', role='owner'),
+                       Interview(id='story', family_id='family', author_id='owner', visibility='public', publish_status='published'),
+                       Draft(id='v1', interview_id='story', version=1, is_current=True, content='Original')])
+            s.commit()
+
+        def revise():
+            try:
+                with sessions() as s:
+                    barrier.wait(timeout=10)
+                    try:
+                        apply_sync(s, 'family', {'type': 'revision_sync', 'clientId': uuid.uuid4().hex,
+                            'payload': {'revisions': [{'kind': 'draft', 'interview_id': 'story',
+                                'draft': '<p>Checked</p>', 'base_version': 1, 'revision_reason': 'Checked source'}]}}, 'owner')
+                        results.append('applied')
+                    except SyncError as exc:
+                        assert '已更新' in str(exc)
+                        results.append('conflict')
+            except Exception as exc:
+                errors.append(type(exc).__name__)
+
+        threads = [threading.Thread(target=revise) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+        assert not any(thread.is_alive() for thread in threads) and not errors
+        assert sorted(results) == ['applied', 'conflict']
+        with sessions() as s:
+            assert s.query(Draft).filter_by(interview_id='story').count() == 2
+            assert s.query(Draft).filter_by(interview_id='story', is_current=True).one().version == 2
+            assert s.query(SyncLog).count() == 1
+    finally:
+        for thread in threads:
+            thread.join(timeout=20)
+        if engine is not None:
+            engine.dispose()
+        if created:
+            with admin.connect() as conn:
+                conn.execute(text(f'DROP DATABASE `{name}`'))
+        admin.dispose()
+
+
 def test_mysql_voice_cache_reservation_is_atomic_across_workers(monkeypatch):
     import threading
     import models

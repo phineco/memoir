@@ -1,6 +1,6 @@
 """sync-json 入库引擎：把 skill 输出的数据包写入本站 DB。
 
-数据包格式见 memoir-sync-design.md（网站侧实现补充见文末注释）。
+数据包格式见 memoir-sync-design.md。
 
 匹配原则（诚实优先）：
 - 人物只按「映射表 skill_id → person_id」或「姓名精确匹配」对应，对不上绝不硬挂；
@@ -48,7 +48,7 @@ def sanitize_html(content, family_id):
 
 
 def _resolve_person(s, family_id, skill_id=None, name=None, site_id=None):
-    """skill 人物 → 本站 Person：先查映射表，再姓名精确匹配，再别名匹配。"""
+    """Resolve a stable map or explicit site ID; name/alias fallback must be unique."""
     for identifier in (skill_id, site_id):
         if identifier is not None and (not isinstance(identifier, str) or len(identifier) > 64):
             raise SyncError("人物 ID 必须为不超过 64 字符的字符串，不能把网站 ID 与 skill ID 混用")
@@ -92,7 +92,7 @@ def _remember_map(s, family_id, skill_id, person_id, user_id, now):
 
 def _apply_tree_upsert(s, family_id, payload, user_id, now):
     persons = payload.get("persons") or []
-    updated, to_new, mapped = [], [], []
+    updated, to_new = [], []
     for sp in persons:
         name = (sp.get("fullName") or "").strip()
         if not name or name.endswith("（待核实）"):
@@ -358,7 +358,6 @@ def _apply_person_status(s, family_id, payload, user_id, now):
 
 def _apply_revision_sync(s, family_id, payload, user_id, now):
     """修订清单应用：verify 确认/修正/转下周；draft 全文修订（新版本）；person 正名。"""
-    from models import PersonLink
     n_ok, notes = 0, []
     revisions = payload.get("revisions")
     if not isinstance(revisions, list) or not revisions:
