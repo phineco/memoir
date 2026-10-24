@@ -1,8 +1,36 @@
 {% extends "base.html" %}
 {% block title %}更多 · {{ family.name }}{% endblock %}
 {% block content %}
-<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>更多</h1><p class="hint">安排下一次记录，寻找回忆线索，整理和保存已有故事。</p></div>
-<section class="content-section"><h2>回忆工具</h2><div class="cards menu-cards">{% for endpoint,title,description in [('ai_ask','问 AI','从家庭公开故事中寻找线索，查看原文依据'),('plan_list','写作计划','安排下一次聊谁、记录哪些线索'),('weekly_current','周报','阅读本周和往期新增回忆与修订动态')] %}<a class="card" href="{{ url_for('main.'+endpoint,family_id=family.id) }}"><h3 class="card-title">{{ title }}</h3><p class="card-sub">{{ description }}</p></a>{% endfor %}</div></section>
-<section class="content-section"><h2>整理与保存</h2><div class="cards menu-cards">{% if is_admin %}<a class="card" href="{{ url_for('main.article_export',family_id=family.id,scope='family') }}"><h3 class="card-title">导出家庭可见文章</h3><p class="card-sub">全家可见的已发布文章，不含他人的受限稿或媒体</p></a>{% endif %}<a class="card" href="{{ url_for('main.ebook_preview',family_id=family.id) }}"><h3 class="card-title">生成电子书</h3><p class="card-sub">计划将选定文章整理成书</p><p class="hint"><strong>付费功能 · 尚未开放</strong></p></a></div></section>
-<section class="content-section"><h2>帮助与管理</h2><div class="cards menu-cards"><a class="card" href="{{ url_for('main.guide',family_id=family.id) }}"><h3 class="card-title">使用帮助</h3><p class="card-sub">阅读、写作、相册、声音与常见问题</p></a>{% if is_admin %}<a class="card" href="{{ url_for('main.family_manage',family_id=family.id) }}"><h3 class="card-title">家庭管理</h3><p class="card-sub">成员与权限、邀请家人、账号协助及资料工具</p></a>{% endif %}</div></section>
+<div class="compact-menu">
+<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>更多</h1></div>
+<section class="menu-section" aria-labelledby="memory-tools-heading">
+<h2 id="memory-tools-heading">回忆工具</h2>
+<div class="menu-buttons">
+{% for endpoint,title in [('ai_ask','问 AI'),('plan_list','写作计划'),('weekly_current','周报')] %}
+<a class="btn-primary menu-button" href="{{ url_for('main.'+endpoint,family_id=family.id) }}">{{ title }}</a>
+{% endfor %}
+</div>
+</section>
+<section class="menu-section" aria-labelledby="preserve-heading">
+<h2 id="preserve-heading">整理与保存</h2>
+<div class="menu-buttons">
+{% if is_admin %}<a class="btn-primary menu-button" href="{{ url_for('main.article_export',family_id=family.id,scope='family') }}">导出家庭可见文章</a>{% endif %}
+<a class="btn-primary menu-button" href="{{ url_for('main.ebook_preview',family_id=family.id) }}" aria-describedby="ebook-availability">生成电子书</a>
+</div>
+<p class="hint menu-note" id="ebook-availability">电子书：付费功能 · 尚未开放</p>
+</section>
+<section class="menu-section" aria-labelledby="help-manage-heading">
+<h2 id="help-manage-heading">帮助与管理</h2>
+<div class="menu-buttons">
+<a class="btn-primary menu-button" href="{{ url_for('main.guide',family_id=family.id) }}">使用帮助</a>
+{% if is_admin %}<a class="btn-primary menu-button" href="{{ url_for('main.family_manage',family_id=family.id) }}">家庭管理</a>{% endif %}
+</div>
+</section>
+<details class="menu-notes"><summary>功能说明</summary><dl>
+<dt>问 AI</dt><dd>从家庭公开故事寻找线索，答案请结合原文核实。</dd>
+<dt>写作计划与周报</dt><dd>安排下次记录，查看本周和往期新增回忆与修订动态。</dd>
+{% if is_admin %}<dt>家庭文章导出</dt><dd>仅含全家可见的已发布文章，不含他人的受限稿或媒体；个人文章从个人中心导出。</dd>{% endif %}
+<dt>电子书</dt><dd>计划将选定文章整理成书，目前仅提供功能预告。</dd>
+</dl></details>
+</div>
 {% endblock %}

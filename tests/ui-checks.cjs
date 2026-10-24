@@ -193,7 +193,7 @@ const fs = require('node:fs');
     await openMenu(page);
     await page.locator('.auth a[aria-label^="个人中心"]').click();
     await page.waitForURL('**/account?family_id=ui');
-    assert(await page.locator('.menu-cards a[href^="/display"]').isVisible());
+    assert(await page.locator('.menu-buttons a[href^="/display"]').isVisible());
     await openMenu(page);
     await page.locator('footer').getByRole('link',{name:'帮助',exact:true}).click();
     await page.waitForURL('**/guide?family_id=ui');

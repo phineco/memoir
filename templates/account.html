@@ -1,12 +1,31 @@
 {% extends "base.html" %}
 {% block title %}个人中心 · 家音{% endblock %}
 {% block content %}
-<div class="page-heading"><p class="eyebrow">{{ me.nickname }}，欢迎回来</p><h1>个人中心</h1><p class="hint">找到你记录的回忆，继续草稿，管理声音与显示偏好。</p></div>
+<div class="compact-menu">
+<div class="page-heading"><p class="eyebrow">{{ me.nickname }}，欢迎回来</p><h1>个人中心</h1></div>
 {% for title,items in [
- ('我的内容',[('main.account_stories','关于我的故事','家人写下的、与你有关的回忆','about'),('main.account_stories','我记录的故事','自己记录并发布的内容，包括替家人记录','own'),('main.account_drafts','我的草稿','继续编辑尚未发布的故事',''),('main.account_article_exports','导出我的文章','下载本人文章与草稿，离线阅读','')]),
- ('声音与显示',[('voices.my_voices','我的声音','声音授权、上传或录音、音色状态与撤回',''),('main.display_preferences','显示设置','字体、大字、高对比和简洁模式','')]),
- ('账号与隐私',[('main.account_ai_memory','我的 AI 记忆','查看与重置本人在各家庭中的 AI 摘要',''),('privacy.requests_list','隐私申请','更正、删除、注销申请及人工处理进度','')])
-] %}<section class="content-section"><h2>{{ title }}</h2><div class="cards menu-cards">{% for endpoint,label,description,kind in items %}<a class="card" href="{{ url_for(endpoint,family_id=family.id if family else none,kind=kind or none) }}"><h3 class="card-title">{{ label }}</h3><p class="card-sub">{{ description }}</p></a>{% endfor %}</div></section>{% endfor %}
-<section class="content-section"><h2>家庭与账号</h2><div class="cards menu-cards"><a class="card" href="{{ url_for('main.index',switch=1,family_id=family.id if family else none) }}"><h3 class="card-title">我的家庭</h3><p class="card-sub">选择或切换家庭，也可点击顶部家庭名称</p></a></div><div class="form-actions"><a class="btn-secondary" href="{{ url_for('main.guide',family_id=family.id if family else none) }}">使用帮助</a><a class="btn-secondary" href="{{ url_for('main.terms',family_id=family.id if family else none) }}">用户服务协议</a><a class="btn-secondary" href="{{ url_for('main.privacy',family_id=family.id if family else none) }}">隐私政策</a><a class="btn-secondary" href="{{ url_for('main.logout') }}">退出登录</a></div></section>
-{% if is_operator %}<section class="content-section"><h2>运营工作区</h2><p class="hint">以下入口仅向已授权的站点运营人员开放。</p><div class="cards menu-cards"><a class="card" href="{{ url_for('privacy.operations_list') }}"><h3 class="card-title">隐私申请处理</h3><p class="card-sub">人工反馈与处理记录</p></a><a class="card" href="{{ url_for('metrics.dashboard') }}"><h3 class="card-title">周度指标</h3><p class="card-sub">受限汇总与人工样本记录</p></a>{% if voice_feature_enabled %}<a class="card" href="{{ url_for('voices.operations') }}"><h3 class="card-title">声音授权与删除</h3><p class="card-sub">运营核验及异常处理</p></a>{% endif %}</div></section>{% endif %}
+ ('我的内容',[('main.account_stories','关于我的故事','about'),('main.account_stories','我记录的故事','own'),('main.account_drafts','我的草稿',''),('main.account_article_exports','导出我的文章','')]),
+ ('声音与显示',[('voices.my_voices','我的声音',''),('main.display_preferences','显示设置','')]),
+ ('家庭与隐私',[('main.index','我的家庭',''),('main.account_ai_memory','我的 AI 记忆',''),('privacy.requests_list','隐私申请',''),('main.guide','使用帮助','')])
+] %}
+<section class="menu-section" aria-labelledby="account-group-{{ loop.index }}">
+<h2 id="account-group-{{ loop.index }}">{{ title }}</h2>
+<div class="menu-buttons">
+{% for endpoint,label,kind in items %}
+<a class="btn-primary menu-button" href="{{ url_for(endpoint,family_id=family.id if family else none,kind=kind or none,switch=1 if endpoint=='main.index' else none) }}">{{ label }}</a>
+{% endfor %}
+</div>
+</section>
+{% endfor %}
+<details class="menu-notes"><summary>功能说明与服务协议</summary><dl>
+<dt>关于我的故事</dt><dd>与已关联的本人有关、且你有权阅读的故事。</dd>
+<dt>我记录的故事与草稿</dt><dd>按记录账号归集，也包括替家人记录的内容；未发布内容在“我的草稿”。</dd>
+<dt>我的声音与显示设置</dt><dd>查看声音授权、上传或录音、处理状态及撤回；字体、大字和高对比偏好只在当前浏览器保存。</dd>
+<dt>导出与隐私</dt><dd>个人导出包含本人文章与草稿，当前不含照片和录音。隐私申请可提交更正、删除或注销并查看人工处理进度。</dd>
+</dl><div class="menu-buttons"><a class="btn-secondary menu-button" href="{{ url_for('main.terms',family_id=family.id if family else none) }}">用户服务协议</a><a class="btn-secondary menu-button" href="{{ url_for('main.privacy',family_id=family.id if family else none) }}">隐私政策</a></div></details>
+{% if is_operator %}
+<section class="menu-section" aria-labelledby="operations-heading"><h2 id="operations-heading">运营工作区</h2><div class="menu-buttons"><a class="btn-primary menu-button" href="{{ url_for('privacy.operations_list') }}">隐私申请处理</a><a class="btn-primary menu-button" href="{{ url_for('metrics.dashboard') }}">周度指标</a>{% if voice_feature_enabled %}<a class="btn-primary menu-button" href="{{ url_for('voices.operations') }}">声音授权与删除</a>{% endif %}</div></section>
+{% endif %}
+<div class="menu-exit"><a class="btn-secondary menu-button" href="{{ url_for('main.logout') }}">退出登录</a></div>
+</div>
 {% endblock %}
