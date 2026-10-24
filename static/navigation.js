@@ -44,3 +44,24 @@
   if (window.ResizeObserver) new ResizeObserver(measure).observe(header);
   else window.addEventListener('resize', measure);
 })();
+
+/* Return to the same list position without relying on browser history. */
+(function(){
+ var body=document.body,prefix='memoir.navigation.v1.'+body.dataset.userId+'.'+body.dataset.familyId+'.';
+ function key(path){return prefix+path;}
+ window.addEventListener('pagehide',function(){try{sessionStorage.setItem(key(location.pathname+location.search),String(scrollY));}catch(e){}});
+ document.addEventListener('click',function(event){
+  var link=event.target.closest('a[data-restore-list]');
+  if(link && new URL(link.href).origin===location.origin){try{sessionStorage.setItem(prefix+'restore',new URL(link.href).pathname+new URL(link.href).search);}catch(e){}}
+  document.querySelectorAll('.family-switch[open]').forEach(function(item){if(!item.contains(event.target))item.open=false;});
+ });
+ document.addEventListener('keydown',function(event){if(event.key==='Escape')document.querySelectorAll('.family-switch[open]').forEach(function(item){item.open=false;item.querySelector('summary').focus();});});
+ try{
+  var path=location.pathname+location.search;
+  if(sessionStorage.getItem(prefix+'restore')===path){
+   sessionStorage.removeItem(prefix+'restore');
+   var position=Number(sessionStorage.getItem(key(path)))||0;
+   requestAnimationFrame(function(){requestAnimationFrame(function(){scrollTo(0,position);});});
+  }
+ }catch(e){}
+})();

@@ -11,7 +11,7 @@
 {% for value,label in options %}<label class="setting-choice"><input type="radio" name="{{ name }}" value="{{ value }}" data-display-setting> <span>{{ label }}</span></label>{% endfor %}
 </div></fieldset>
 {% endfor %}
-<p class="hint">使用设备自带字体，圆体缺失时自动使用黑体。简洁模式增大按钮与间距，并收起家族树和快捷管理入口；完整功能可从“更多”进入。</p>
+<p class="hint">使用设备自带字体，圆体缺失时自动使用黑体。简洁模式增大按钮与间距；人物名单、家族树和主要功能始终可用。</p>
 <div class="form-actions"><button id="display-reset" class="btn-secondary" type="button">恢复默认显示</button>{% if family %}<a class="btn-primary" href="{{ url_for('main.stories',family_id=family.id) }}">返回家庭故事</a>{% else %}<a class="btn-primary" href="{{ url_for('main.index') }}">返回首页</a>{% endif %}</div>
 <p id="display-status" class="hint" role="status" aria-live="polite"></p>
 </form>

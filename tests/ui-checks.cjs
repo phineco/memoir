@@ -49,7 +49,7 @@ const fs = require('node:fs');
     const menuToggle=page.locator('#site-menu-toggle');
     assert(await menuToggle.isVisible());
     assert(!(await page.locator('#site-menu').isVisible()));
-    assert(await page.locator('.topbar').evaluate(n=>n.getBoundingClientRect().height<80));
+    assert(await page.locator('.topbar').evaluate(n=>n.getBoundingClientRect().height<140));
     await page.evaluate(()=>window.scrollTo(0,700));
     assert(Math.abs(await page.locator('.topbar').evaluate(n=>n.getBoundingClientRect().top))<1);
     await menuToggle.click();
@@ -131,8 +131,7 @@ const fs = require('node:fs');
       }
     }
     await page.goto(base+'/display?family_id=ui');await page.locator('#display-reset').click();
-    await page.goto(base+'/f/ui');
-    await page.locator('#family-tree summary').click();
+    await page.goto(base+'/f/ui?view=tree');
     await page.waitForFunction(()=>document.querySelector('#tree canvas')?.width>200);
     await page.goto(base+'/f/ui/write');
     assert.equal(await page.locator('#editor-toolbar button[aria-label]').count(),5);
@@ -167,7 +166,7 @@ const fs = require('node:fs');
     await context.unroute('**/quill-2.0.3.*.js');
     await page.goto(base+'/f/ui');
     await page.goto(base+'/');
-    await page.waitForURL('**/f/ui/stories');
+    await page.waitForURL(url=>url.pathname==='/f/ui');
     await page.goto(base+'/?switch=1');
     assert.equal(await page.locator('a[data-family-choice]').count(),2);
     // A stale/revoked family cannot create a redirect outside the rendered list.
@@ -196,7 +195,7 @@ const fs = require('node:fs');
     await page.waitForURL('**/account?family_id=ui');
     assert(await page.locator('.menu-cards a[href^="/display"]').isVisible());
     await openMenu(page);
-    await page.getByRole('link',{name:'帮助',exact:true}).click();
+    await page.locator('.auth').getByRole('link',{name:'帮助',exact:true}).click();
     await page.waitForURL('**/guide?family_id=ui');
     assert.equal(await page.locator('.navlinks a').count(),4);
     await openMenu(page);

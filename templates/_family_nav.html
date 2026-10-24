@@ -1,6 +1,5 @@
-{% set endpoint = request.endpoint or '' %}
 <nav class="navlinks" aria-label="家庭导航">
-{% for endpoint_name, label, active in [('stories','故事',endpoint in ['main.stories','main.story_detail']),('family_home','家人',endpoint in ['main.family_home','main.person_page']),('write_article','记录',endpoint in ['main.write_article','main.edit_article']),('family_more','更多',endpoint not in ['main.stories','main.story_detail','main.family_home','main.person_page','main.write_article','main.edit_article'])] %}
-<a href="{{ url_for('main.' + endpoint_name, family_id=family.id) }}" {% if active %}aria-current="page"{% endif %}>{{ label }}</a>
+{% for item in site_nav.links %}
+<a href="{{ item.href }}" {% if site_nav.group==item.key %}aria-current="page"{% endif %}>{{ item.label }}</a>
 {% endfor %}
 </nav>

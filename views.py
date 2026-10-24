@@ -500,14 +500,24 @@ def _build_tree(family_id, viewer_id=None):
             "itemStyle": {"color": "#b7d7a8" if p.life_state == "alive" else "#d9d9d9" if p.life_state == "deceased" else "#d8e5ef"},
             "children": [],
         }
-    root = None
+    roots = []
     for p in persons:
         node = nodes[p.id]
-        if p.parent_id == "0" or p.parent_id not in nodes:
-            root = node
+        # Broken or cyclic ancestry stays visible as a separate branch.
+        seen = {p.id}
+        ancestor = p.parent_id
+        cycle = False
+        while ancestor in by_id:
+            if ancestor in seen:
+                cycle = True
+                break
+            seen.add(ancestor)
+            ancestor = by_id[ancestor].parent_id
+        if p.parent_id == "0" or p.parent_id not in nodes or cycle:
+            roots.append(node)
         else:
             nodes[p.parent_id]["children"].append(node)
-    return root or {"name": "（空）", "children": []}
+    return {"name": "家庭分支", "children": roots} if len(roots) != 1 else roots[0]
 
 
 def _families_for_user(me):
@@ -655,9 +665,16 @@ def family_home(family_id):
     viewer = s.query(Person).filter_by(family_id=family_id, user_id=me.id,
                                        del_flag=0).first() if me else None
     from onboarding import guide as onboarding_guide
-    return render_template("family.html", family=fam,
+    view = request.args.get('view', 'list')
+    if view not in ('list', 'tree'):abort(400, '人物视图无效')
+    keyword = request.args.get('q', '').strip()
+    if len(keyword)>100:abort(400, '姓名关键词最多 100 字')
+    persons = _tree_persons(family_id)
+    if keyword:
+        persons = [p for p in persons if keyword.casefold() in (p.name+' '+(' '.join(p.aliases or []))).casefold()]
+    return render_template("family.html", family=fam, people_view=view, people_query=keyword,
                            tree=_build_tree(family_id, viewer.id if viewer else None),
-                           persons=_tree_persons(family_id), n_person=n_person,
+                           persons=persons, n_person=n_person,
                            n_story=n_story, n_pending=n_pending,
                            onboarding=onboarding_guide(family_id,me.id,_is_admin(fam,me)),
                            is_admin=_is_admin(fam, me))

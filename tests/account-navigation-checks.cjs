@@ -15,7 +15,7 @@ const assert=require('node:assert/strict');
   async function checkMenu(fid) {
    await openMenu();
    assert.equal(await page.locator('nav[aria-label="家庭导航"] a').count(),4);
-   for(const [title,tail] of [['故事','stories'],['家人',''],['记录','write'],['更多','more']]) {
+   for(const [title,tail] of [['家人',''],['故事','stories'],['相册','album'],['更多','more']]) {
     const link=page.locator('nav[aria-label="家庭导航"]').getByRole('link',{name:title,exact:true});
     assert(await link.isVisible());assert.equal(await link.getAttribute('href'),'/f/'+fid+(tail?'/'+tail:''));
    }

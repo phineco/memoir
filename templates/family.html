@@ -3,51 +3,18 @@
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
 <aside id="large-text-hint" class="disclosure" hidden aria-label="大字阅读提示"><p>字太小？可以一键调大，仅改变当前浏览器的显示。</p><div class="form-actions"><button id="large-text-enable" class="btn-primary" type="button">一键大字</button><button id="large-text-dismiss" class="btn-secondary" type="button">不再提示</button><a href="{{ url_for('main.display_preferences',family_id=family.id) }}">更多显示设置</a></div><p data-display-status class="hint" role="status"></p></aside>
-<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>让每一位家人，都被记住</h1><p class="hint">从一个名字、一张照片，走进家人的一生。</p></div>
+<div class="page-heading page-heading-actions"><div><p class="eyebrow">{{ family.name }}</p><h1>家人</h1><p class="hint">从一个名字、一张照片，走进家人的一生。</p></div><div class="form-actions"><a class="btn-primary" href="{{ url_for('main.write_article',family_id=family.id) }}">写故事</a>{% if is_admin %}<a class="btn-secondary" href="{{ url_for('main.tree_add',family_id=family.id) }}">添加人物</a><a class="btn-secondary" href="{{ url_for('main.family_manage',family_id=family.id) }}">家庭管理</a>{% endif %}</div></div>
 <div class="stats"><span>{{ n_person }} 位家人</span><span>{{ n_story }} 篇故事</span><span>{{ n_pending }} 条待核实</span></div>
 {% include '_onboarding.html' %}
-{% if persons %}
+<nav class="section-tabs" aria-label="家人显示方式"><a href="{{ url_for('main.family_home',family_id=family.id,view='list',q=people_query or none) }}" {% if people_view=='list' %}aria-current="page"{% endif %}>人物名单</a><a href="{{ url_for('main.family_home',family_id=family.id,view='tree') }}" {% if people_view=='tree' %}aria-current="page"{% endif %}>家族树</a></nav>
+{% if people_view=='list' %}<form method="get" class="filter-panel"><input type="hidden" name="view" value="list"><label for="people-search">按姓名或别名找家人</label><div class="search-actions"><input id="people-search" name="q" value="{{ people_query }}" maxlength="100" type="search" placeholder="输入家人姓名"><button class="btn-secondary" type="submit">查找家人</button>{% if people_query %}<a class="btn-secondary" href="{{ url_for('main.family_home',family_id=family.id,view='list') }}">清除筛选</a>{% endif %}</div></form>{% endif %}
+{% if people_view=='tree' and n_person %}<section id="family-tree" class="content-section" data-tree-url="{{ url_for('main.family_home',family_id=family.id,view='tree') }}"><p class="hint">点击人物进入详情；可拖动、缩放和展开分支。“家庭分支”只是显示容器，不代表共同祖先。</p><div class="form-actions"><button class="btn-secondary" type="button" id="tree-reset" hidden>重置视图</button><a class="btn-secondary" href="{{ url_for('main.family_home',family_id=family.id,view='list') }}">改用人物名单</a></div><p id="tree-status" class="hint" role="status">正在准备家族树；下方人物名单始终可用。</p><div id="tree" class="tree-box" role="img" aria-label="家族关系树，可使用下方人物名单进入详情" hidden></div></section>{% endif %}
 <div class="cards person-cards" id="family-people">
-{% for p in persons %}<a class="card person-card" href="{{ url_for('main.person_page', family_id=family.id, person_id=p.id) }}"><span class="avatar" aria-hidden="true">{{ p.name[:1] }}</span><div><div class="card-title">{{ p.name }}</div><div class="card-sub">{{ p.relation or '家人' }}{% if p.birth_date_label %} · 出生：{{ p.birth_date_label }}{% endif %}</div></div><span aria-hidden="true">→</span></a>{% endfor %}
+{% for p in persons %}<a class="card person-card" href="{{ context_link(url_for('main.person_page',family_id=family.id,person_id=p.id)) }}"><span class="avatar" aria-hidden="true">{{ p.name[:1] }}</span><div><div class="card-title">{{ p.name }}</div><div class="card-sub">{{ p.relation or '家人' }}{% if p.birth_date_label %} · 出生：{{ p.birth_date_label }}{% endif %}</div></div><span aria-hidden="true">→</span></a>
+{% else %}<section class="empty-state"><span class="empty-symbol" aria-hidden="true">家</span><h2>{{ '没有找到这位家人' if people_query else '先记下一段回忆' }}</h2><p>{{ '试试姓名中的几个字，或清除筛选。' if people_query else '人物资料可以以后再补，不必先添加或认领家人。' }}</p>{% if not people_query %}<a class="btn-primary" href="{{ url_for('main.write_article',family_id=family.id) }}">记录第一段回忆</a>{% endif %}</section>{% endfor %}
 </div>
-<details id="family-tree" class="disclosure advanced-section"><summary>查看家族关系树</summary><p class="hint">点击节点查看人物。也可使用上方的家人列表。</p><div id="tree" class="tree-box" role="img" aria-label="家族关系树；上方家人列表提供可访问的文字入口"></div></details>
-{% else %}
-<section class="empty-state"><span class="empty-symbol" aria-hidden="true">家</span><h2>先记下一段回忆</h2><p>从一件记得的小事开始，人物资料可以以后再补。不必先添加或认领家人。</p><div class="form-actions"><a class="btn-primary" href="{{ url_for('main.write_article', family_id=family.id) }}">记录第一段回忆</a>{% if is_admin %}<a class="btn-secondary" href="{{ url_for('main.tree_add', family_id=family.id) }}">添加家人（选填）</a>{% endif %}</div>{% if not is_admin %}<p class="hint">需要添加人物时，可请家庭管理员帮忙。</p>{% endif %}</section>
-{% endif %}
-{% if is_admin %}<div class="form-actions advanced-section"><a class="btn-secondary" href="{{ url_for('main.tree_add', family_id=family.id) }}">添加家人</a><a class="btn-secondary" href="{{ url_for('main.family_manage', family_id=family.id) }}">家庭管理</a></div>{% endif %}
 {% endblock %}
 {% block script %}
-{% if persons %}
-<script src="{{ asset_url('vendor/echarts-5.5.0.min.js') }}"></script>
-<script>
-const treeData = {{ tree | tojson }};
-const fid = "{{ family.id }}";
-if (typeof echarts !== 'undefined') {
-  const disclosure = document.getElementById('family-tree');
-  let chart;
-  function drawTree() {
-    if (!disclosure.open) return;
-    if (!chart) {
-      chart = echarts.init(document.getElementById('tree'));
-      chart.on('click', function(params) {
-        if (params.data && params.data.person_id) location.href = '/f/' + encodeURIComponent(fid) + '/person/' + encodeURIComponent(params.data.person_id);
-      });
-    }
-    const style = getComputedStyle(document.documentElement);
-    const size = Math.max(18, Number(document.documentElement.dataset.size) || 18);
-    chart.setOption({
-      tooltip: {trigger:'item'},
-      series:[{type:'tree',data:[treeData],top:'8%',bottom:'8%',left:'14%',right:'14%',symbolSize:18,orient:'vertical',
-        label:{fontSize:size,color:style.getPropertyValue('--ink').trim(),fontFamily:style.getPropertyValue('--font-ui').trim()},
-        leaves:{label:{fontSize:size}},lineStyle:{color:style.getPropertyValue('--muted').trim()},
-        expandAndCollapse:true,initialTreeDepth:-1,animation:!matchMedia('(prefers-reduced-motion: reduce)').matches}]
-    });
-    chart.resize();
-  }
-  disclosure.addEventListener('toggle',drawTree);
-  window.addEventListener('resize',()=>{if(chart)chart.resize();});
-  document.addEventListener('memoir:display-change',drawTree);
-}
-</script>
-{% endif %}
+{% if people_view=='tree' %}<script src="{{ asset_url('vendor/echarts-5.5.0.min.js') }}"></script><script type="application/json" id="family-tree-data">{{ tree|tojson }}</script>{% endif %}
+<script src="{{ asset_url('family-people.js') }}"></script>
 {% endblock %}

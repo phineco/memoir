@@ -2,7 +2,7 @@
 {% block title %}故事 · {{ family.name }}{% endblock %}
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
-<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>一家人的故事</h1><p class="hint">记住那些平凡、珍贵、值得再讲一遍的日子。</p><div class="form-actions"><a class="btn-primary" href="{{ url_for('main.write_article', family_id=family.id) }}">记录一段回忆</a></div></div>
+<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>一家人的故事</h1><p class="hint">记住那些平凡、珍贵、值得再讲一遍的日子。</p><div class="form-actions"><a class="btn-primary" href="{{ url_for('main.write_article', family_id=family.id) }}">写故事</a></div></div>
 <form method="get" class="disclosure" aria-label="查找故事">
   <label>关键词<input class="full" type="search" name="q" maxlength="200" value="{{ filters.q }}" placeholder="搜索标题、正文或金句"></label>
   <details {% if filters.subject or filters.narrator or filters.period_from or filters.period_to or filters.published_from or filters.published_to or filters.sort != 'published_desc' %}open{% endif %}><summary>按人物与时间筛选</summary><div class="form-row">
@@ -15,7 +15,7 @@
 <p class="hint" role="status">共 {{ total }} 篇 · 第 {{ page }} / {{ pages }} 页</p>
 <div class="cards story-results">
 {% for iv, person in rows %}
-  <a class="card" href="{{ url_for('main.story_detail', family_id=family.id, interview_id=iv.id) }}">
+  <a class="card" href="{{ context_link(url_for('main.story_detail', family_id=family.id, interview_id=iv.id)) }}">
     <div class="card-title">《{{ iv.topic or '未命名' }}》{% if iv.publish_status == 'draft' %} <span class="badge-draft">草稿</span>{% endif %}</div>
     <div class="card-sub">{{ person.name if person else '—' }} · {{ iv.publication_time.strftime('%Y-%m-%d') if iv.publication_time else '' }}{% if iv.publish_status == 'draft' %} · 草稿创建{% elif iv.publication_time_inferred %} · 录入时间推定{% else %} · 首次发布{% endif %} </div>
     {% if iv.period_start or iv.period_end %}<div class="card-sub">📅 {{ iv.period_start.strftime('%Y') if iv.period_start else '?' }} → {{ iv.period_end.strftime('%Y') if iv.period_end else '?' }}</div>{% endif %}

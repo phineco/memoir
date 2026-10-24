@@ -12,7 +12,7 @@ from tests.test_migrations import old_database
 
 def ids(response):
     assert response.status_code==200
-    return re.findall(r'class="card" href="/f/a/story/([^"#?]+)"',response.get_data(as_text=True))
+    return re.findall(r'class="card" href="/f/a/story/([^"#?]+)(?:\?[^"]*)?"',response.get_data(as_text=True))
 
 
 def test_search_permissions_apply_to_results_and_counts(client,login):

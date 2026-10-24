@@ -290,3 +290,54 @@ html {scroll-padding-top:calc(var(--site-header-height,5rem) + 1rem);}
 .album-preview {display:block;max-height:70vh;max-width:100%;width:auto;margin:1rem auto;object-fit:contain;}
 .album-search .form-actions input {flex:1 1 14rem;width:auto;}
 .article-body img,.ql-editor img {display:block;max-width:100%;height:auto;margin:1rem auto;}
+
+/* Navigation and actions share one layout vocabulary across all sections. */
+.topbar-inner {gap:.75rem;}
+.family-switch {flex:1 1 12rem;min-width:0;max-width:26rem;}
+.family-switch summary {display:block;min-height:48px;max-width:100%;padding:.5rem .75rem;border:1px solid var(--line);border-radius:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.family-switch-panel {position:absolute;z-index:55;top:100%;left:max(1rem,calc((100% - 1100px)/2));width:min(30rem,calc(100% - 2rem));max-height:65vh;overflow:auto;padding:1rem;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 20px #0002;}
+.family-switch-panel a {display:block;min-height:48px;padding:.65rem .75rem;border-radius:8px;}
+.family-switch-panel a:hover,.family-switch-panel a[aria-current=page] {background:var(--surface-soft);font-weight:700;}
+.family-navigation-row {flex:1 0 100%;min-width:0;}
+.family-navigation-row:empty {display:none;}
+.navlinks {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;width:100%;}
+.navlinks a {justify-content:center;min-width:0;}
+.auth a[aria-current=page] {font-weight:700;text-decoration:underline;text-underline-offset:.3em;}
+.page-path {display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;color:var(--muted);font-size:.9rem;margin-bottom:1.25rem;}
+.page-path a,.page-return a {display:inline-flex;align-items:center;min-height:44px;}
+.page-return {margin-bottom:1rem;}
+.page-heading-actions {display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;}
+.page-heading-actions>div:first-child {flex:1 1 17rem;min-width:0;}
+.page-heading-actions .form-actions {margin:0;align-items:stretch;}
+.form-actions {align-items:stretch;}
+.form-actions>form {display:flex;align-items:stretch;margin:0;}
+.form-actions>:is(a,button),.form-actions>form>button {min-height:48px;}
+.section-tabs {display:flex;flex-wrap:wrap;gap:.5rem;padding:.5rem;margin:1.25rem 0;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);}
+.section-tabs a {flex:1 1 8rem;display:flex;align-items:center;justify-content:center;min-height:48px;padding:.65rem .75rem;border:1px solid transparent;border-radius:12px;text-align:center;line-height:1.5;}
+.section-tabs a[aria-current=page] {background:var(--accent);color:var(--on-accent);font-weight:700;}
+.content-section {margin-block:2rem;scroll-margin-top:calc(var(--site-header-height,7rem) + 1rem);}
+.filter-panel {margin-block:1.25rem;padding:1.25rem;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);}
+.search-actions {display:flex;flex-wrap:wrap;align-items:stretch;gap:.75rem;margin-top:.5rem;}
+.search-actions input {flex:1 1 12rem;min-width:0;}
+.menu-cards>.card {display:flex;flex-direction:column;align-items:flex-start;}
+.menu-cards>.card .card-sub {flex:1;}
+.card:not(a):hover {transform:none;}
+.record-card .form-actions {margin-bottom:0;}
+:root[data-mode=simple] .section-tabs a {min-height:56px;}
+@media(max-width:768px) {
+ .navigation-ready .topbar-inner {flex-wrap:wrap;gap:.25rem .5rem;padding:.25rem .75rem;}
+ .navigation-ready .brand-name {display:none;}
+ .navigation-ready .family-switch {flex:1 1 0;max-width:none;}
+ .navigation-ready .family-navigation-row {flex:1 0 100%;}
+ .navigation-ready .family-navigation-row .navlinks {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.25rem;}
+ .navigation-ready .navlinks a {padding:.35rem .25rem;flex:none;min-height:44px;}
+ .navigation-ready .topright {z-index:60;}
+ .container {padding:1.5rem 1rem;}
+ .page-heading {margin-bottom:1.5rem;padding-top:.25rem;}
+ .page-heading-actions>.form-actions {width:100%;}
+ .page-heading-actions .form-actions>* {flex:1 1 8rem;}
+ .form-actions>form {flex:1 1 8rem;}
+ .form-actions>form>button {width:100%;}
+ .search-actions>button {flex:1 1 7rem;}
+ .tree-box {height:28rem;}
+}

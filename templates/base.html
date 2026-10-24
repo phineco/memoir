@@ -9,28 +9,34 @@
 <link rel="stylesheet" href="{{ asset_url('app.css') }}">
 </head>
 <body data-user-id="{{ me.id if me else '' }}" data-family-id="{{ family.id if family else '' }}" {% if request.endpoint == 'main.index' and me %}data-family-picker{% endif %}>
+{% set site_nav = site_navigation(family if family else none) %}
 <a class="skip-link" href="#main-content">跳到正文</a>
 <header class="topbar">
 <div class="topbar-inner">
-  <a class="brand" href="{{ url_for('main.index', switch=1, family_id=family.id if family else None) }}"><span class="brand-mark" aria-hidden="true">家</span> 家音</a>
+  <a class="brand" aria-label="家音 · 选择家庭" href="{{ url_for('main.index', switch=1, family_id=family.id if family else None) }}"><span class="brand-mark" aria-hidden="true">家</span><span class="brand-name">家音</span></a>
+  {% if me %}<details class="family-switch"><summary>{{ family.name if family else '选择家庭' }}<span aria-hidden="true"> ▾</span></summary><div class="family-switch-panel"><p class="hint">切换后进入该家庭的家人页</p>{% for choice in site_nav.families %}<a href="{{ url_for('main.family_home',family_id=choice.id) }}" {% if family and choice.id==family.id %}aria-current="page"{% endif %}>{{ choice.name }}</a>{% endfor %}<a href="{{ url_for('main.index',switch=1,family_id=family.id if family else none) }}">我的家庭</a><a href="{{ url_for('main.family_new') }}">创建家庭</a></div></details>{% endif %}
   <button type="button" id="site-menu-toggle" class="btn-secondary" aria-controls="site-menu" aria-expanded="false" hidden>菜单</button>
   <div class="topright" id="site-menu">
-    {% block nav %}{% if family %}{% include '_family_nav.html' %}{% endif %}{% endblock %}
     <span class="auth">
+    {% if family and request.endpoint not in ['main.write_article','main.edit_article'] %}<a href="{{ url_for('main.write_article',family_id=family.id) }}">写故事</a>{% endif %}
     <a href="{{ url_for('main.guide', family_id=family.id if family else None) }}">帮助</a>
     {% if me %}
-      <a href="{{ url_for('main.account', family_id=family.id if family else None) }}" aria-label="个人中心：{{ me.nickname }}">👤 {{ me.nickname }}</a> <a href="{{ url_for('main.logout') }}">退出</a>
+      <a href="{{ url_for('main.account', family_id=family.id if family else None) }}" {% if request.endpoint in ['main.account','main.account_stories','main.account_drafts','main.account_ai_memory','main.account_article_exports','main.display_preferences','voices.my_voices'] %}aria-current="page"{% endif %} aria-label="个人中心：{{ me.nickname }}">👤 {{ me.nickname }}</a>
+      <a href="{{ url_for('main.logout') }}">退出</a>
     {% else %}
       <a href="{{ url_for('main.login') }}">登录</a> <a href="{{ url_for('main.register') }}">注册</a>
     {% endif %}
     </span>
   </div>
+  <div class="family-navigation-row">{% block nav %}{% if family %}{% include '_family_nav.html' %}{% endif %}{% endblock %}</div>
 </div>
 </header>
 <main class="container" id="main-content" tabindex="-1">
+{% if family and site_nav.title and request.endpoint != 'main.family_home' %}<nav class="page-path" aria-label="当前位置"><a href="{{ url_for('main.family_home',family_id=family.id) }}">{{ family.name }}</a><span aria-hidden="true"> / </span>{% if site_nav.group and site_nav.group != 'people' %}{% for item in site_nav.links %}{% if item.key==site_nav.group %}<a href="{{ item.href }}">{{ item.label }}</a><span aria-hidden="true"> / </span>{% endif %}{% endfor %}{% endif %}<span>{{ site_nav.title }}</span></nav>{% endif %}
 {% block content %}{% endblock %}
 </main>
 <footer class="footer"><nav class="footer-links" aria-label="服务条款">
+<a href="{{ url_for('main.guide',family_id=family.id if family else none) }}">帮助</a>
 <a href="{{ url_for('main.terms',family_id=family.id if family else None) }}">用户服务协议</a>
 <a href="{{ url_for('main.privacy',family_id=family.id if family else None) }}">隐私政策</a>
 </nav><span>© 2026 安徽锡拉科技有限公司</span> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">皖ICP备17001829号-1</a> · <span>版本 {{ app_version }}</span></footer>
