@@ -57,12 +57,7 @@ def context(family=None):
         title = '隐私申请'
     if request.endpoint and request.endpoint.startswith('metrics.'):
         title = '运营工作区'
-    help_anchor = ('voice' if request.endpoint=='voices.manage' else
-                   'members' if request.endpoint=='main.family_manage' else
-                   'writing' if request.endpoint in ('main.write_article','main.edit_article') else
-                   'export' if request.endpoint=='main.article_export' else
-                   {'people':'people','stories':'reading','album':'photos'}.get(group,'troubleshooting'))
-    return dict(group=group, title=title, families=families, help_anchor=help_anchor,
+    return dict(group=group, title=title, families=families,
                 admin=bool(family and _is_admin(family, me)),
                 links=[dict(key=key, label=label, href=url_for(endpoint, family_id=family.id))
                        for key, (label, endpoint) in GROUPS.items()] if family else [])

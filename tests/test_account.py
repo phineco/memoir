@@ -58,7 +58,7 @@ def test_personal_voice_and_family_picker_preserve_authorized_navigation(client,
         assert response.status_code==200
         body=response.get_data(as_text=True)
         assert 'aria-label="家庭导航"' in body
-        for link in ['/f/a/stories','/f/a/write','/f/a/more','/f/a','/account?family_id=a','/guide?family_id=a']:
+        for link in ['/f/a/stories','/f/a/album','/f/a/more','/f/a','/account?family_id=a','/guide?family_id=a']:
             assert f'href="{link}"' in body
         assert 'Beta Secret Family' not in body
     assert 'href="/account?family_id=a"' in client.get('/account/voices?family_id=a').get_data(as_text=True)

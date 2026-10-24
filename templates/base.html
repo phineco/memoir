@@ -18,8 +18,6 @@
   <button type="button" id="site-menu-toggle" class="btn-secondary" aria-controls="site-menu" aria-expanded="false" hidden>菜单</button>
   <div class="topright" id="site-menu">
     <span class="auth">
-    {% if family and request.endpoint not in ['main.write_article','main.edit_article'] %}<a href="{{ url_for('main.write_article',family_id=family.id) }}">写故事</a>{% endif %}
-    <a href="{{ url_for('main.guide', family_id=family.id if family else None) }}">帮助</a>
     {% if me %}
       <a href="{{ url_for('main.account', family_id=family.id if family else None) }}" {% if request.endpoint in ['main.account','main.account_stories','main.account_drafts','main.account_ai_memory','main.account_article_exports','main.display_preferences','voices.my_voices'] %}aria-current="page"{% endif %} aria-label="个人中心：{{ me.nickname }}">👤 {{ me.nickname }}</a>
       <a href="{{ url_for('main.logout') }}">退出</a>
@@ -32,7 +30,6 @@
 </div>
 </header>
 <main class="container" id="main-content" tabindex="-1">
-{% if family and site_nav.title and request.endpoint != 'main.family_home' %}<nav class="page-path" aria-label="当前位置"><a href="{{ url_for('main.family_home',family_id=family.id) }}">{{ family.name }}</a><span aria-hidden="true"> / </span>{% if site_nav.group and site_nav.group != 'people' %}{% for item in site_nav.links %}{% if item.key==site_nav.group %}<a href="{{ item.href }}">{{ item.label }}</a><span aria-hidden="true"> / </span>{% endif %}{% endfor %}{% endif %}<span>{{ site_nav.title }}</span>{% if request.endpoint!='main.guide' %}<a class="context-help" href="{{ context_link(url_for('main.guide',family_id=family.id,_anchor=site_nav.help_anchor)) }}" {% if request.endpoint in ['main.write_article','main.edit_article'] %}target="_blank" rel="noopener"{% endif %}>{{ '写作帮助（新窗口）' if request.endpoint in ['main.write_article','main.edit_article'] else '功能帮助' }}</a>{% endif %}</nav>{% endif %}
 {% block content %}{% endblock %}
 </main>
 <footer class="footer"><nav class="footer-links" aria-label="服务条款">
