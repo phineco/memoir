@@ -9,6 +9,7 @@
 - 所有写操作幂等：client_id 已入库则整包跳过。
 """
 import datetime
+import json
 import re
 
 from models import (Draft, Interview, InterviewPerson, NewPerson, Person,
@@ -22,6 +23,19 @@ SUPPORTED = ("tree_upsert", "interview_upsert", "verification_update",
 
 class SyncError(Exception):
     pass
+
+
+def parse_sync_packet(raw):
+    if len(re.findall(r"```sync-json\b", raw)) > 1:
+        raise SyncError("一次只能导入一个同步包，请将多个代码块分开导入并逐个检查结果")
+    block = re.search(r"```sync-json\s*(\{.*?\})\s*```", raw, re.S)
+    try:
+        packet = json.loads(block.group(1) if block else raw)
+    except (ValueError, TypeError):
+        raise SyncError("JSON 解析失败，请只粘贴一个 JSON 对象或 sync-json 代码块") from None
+    if not isinstance(packet, dict):
+        raise SyncError("一次只能导入一个 JSON 对象，不支持数组批量导入")
+    return packet
 
 
 def sanitize_html(content, family_id):
@@ -462,6 +476,9 @@ def apply_sync(s, family_id, packet, user_id):
     """应用一个 sync-json 数据包。返回 (ok, summary)。幂等，失败抛 SyncError。"""
     if not isinstance(packet, dict) or not isinstance(packet.get("payload", {}), dict):
         raise SyncError("数据包及 payload 必须是 JSON 对象")
+    version = packet.get("version", 1)
+    if type(version) is not int or version != 1:
+        raise SyncError("不支持的数据包协议版本，请使用 version=1；它不是文章基础版本")
     ptype = (packet or {}).get("type")
     client_id = (packet or {}).get("clientId")
     payload = (packet or {}).get("payload") or {}

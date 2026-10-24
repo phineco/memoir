@@ -17,6 +17,8 @@
 ```
 
 - `type` 枚举：`tree_upsert` / `interview_upsert` / `verification_update` / `new_person` / `person_status` / `revision_sync` / `plan_progress`。
+- 网站一次只接收一个 JSON 对象；多个代码块或数组会拒绝，请逐个导入并检查结果。
+- `version` 仅支持整数 1；省略兼容旧 v1 包。`updatedAt` 不是正文版本，也不能防止覆盖。
 - 输出时用 ```` ```sync-json ```` 代码块包裹，方便用户整段复制。
 - 同一 `clientId` 重复导入会被网站自动跳过（返回"已入库"），所以**新包必须换新 uuid**，不要复用。
 

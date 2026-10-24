@@ -5,8 +5,9 @@
 <div class="page-return"><a href="{{ url_for('main.family_home', family_id=family.id) }}">← 返回家人</a></div>
 <h2>🔄 同步入库</h2>
 <p class="hint">在 skill 里完成整理/采访后，它会输出 <code>sync-json</code> 数据包（含 <code>"type"</code> 字段）。
-复制整段 JSON（可直接粘贴 <code>```sync-json</code> 代码块）→ 点"导入入库"。</p>
-<p class="hint">支持：<code>tree_upsert</code>（树更新）· <code>interview_upsert</code>（初稿包）· <code>verification_update</code>（核实）· <code>new_person</code>（新人物）· <code>person_status</code>（状态）· <code>revision_sync</code>（修订）。同一数据包重复导入会自动跳过。</p>
+每次只复制一个 JSON 对象（可直接粘贴 <code>```sync-json</code> 代码块）→ 点"导入入库"。</p>
+<p class="hint">支持：<code>tree_upsert</code>（树更新）· <code>interview_upsert</code>（初稿包）· <code>verification_update</code>（核实）· <code>new_person</code>（新人物）· <code>person_status</code>（状态）· <code>revision_sync</code>（修订）· <code>plan_progress</code>（计划进度）。同一数据包重复导入会自动跳过。</p>
+<p class="hint">故事导入后立即发布给本家庭成员，不是私人草稿。请先核对人物映射和发布范围；修订须提供当前版本与修订原因。多个包请逐个导入并检查结果。</p>
 {% if result %}
   {% if result[0] %}<p class="success">✅ {{ result[1] }}</p>
   {% else %}<p class="error">❌ {{ result[1] }}</p>{% endif %}

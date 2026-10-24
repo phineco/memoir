@@ -2092,19 +2092,15 @@ def sync_import(family_id):
     fam = _family_or_404(family_id)
     if not _is_admin(fam, me):
         abort(403)
-    from sync_engine import SyncError, apply_sync, log_sync_failure
+    from sync_engine import SyncError, apply_sync, log_sync_failure, parse_sync_packet
     s = _s()
     result = None
     if request.method == "POST":
         raw = request.form.get("sync_json", "").strip()
-        # 兼容直接粘贴 ```sync-json ... ``` 代码块
-        m = re.search(r"```sync-json\s*(\{.*?\})\s*```", raw, re.S)
-        if m:
-            raw = m.group(1)
         try:
-            packet = json.loads(raw)
-        except Exception:
-            result = (False, "JSON 解析失败，请检查格式（可直接粘贴 ```sync-json 代码块）")
+            packet = parse_sync_packet(raw)
+        except SyncError as exc:
+            result = (False, str(exc))
         else:
             try:
                 result = apply_sync(s, family_id, packet, me.id)
