@@ -12,7 +12,7 @@
   - 树上没有这个人 → 走 🆕 新人物流程，问是否入树；用户说先不入树 → `narrator_name` 记原文称谓，`narrator_person_id` 留空，并在待核实清单里记一笔；
   - 实在无法确认 → `narrator_name` 记原文，`narrator_person_id` 空，进待核实。
 - 绝不虚构讲述人身份；不确定就空着 + 标记，不编一个名字填上。
-- 讲述人信息随初稿包进入 sync-json（`interview_upsert.payload.narrator_person_id` / `narrator_name` / `narrator_relation`），同步到云端后网页自动显示"讲述者"。
+- 讲述人信息随初稿包进入 sync-json（`interview_upsert.payload.narrator_person_id` / `narrator_name`），同步到云端后网页自动显示"讲述者"。
 
 - 文字稿即原文，可能含口头禅（"那个""然后""就是说"）、重复、语序混乱。先在心里做"保真清洗"：只顺语句，不动事实。
 - 若文字稿来自 ASR 且有明显乱码段，标记 `[转写存疑]`，不要猜测还原。

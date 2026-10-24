@@ -3,21 +3,26 @@
 管理员在网站「📋 写作计划」页定好"先写谁"（可让 AI 先给建议再手动改），
 skill 每次会话开始时拉取当前计划，按计划引导用户补故事、跟进未完成项。
 
-## 一、拉取计划
+## 一、获取计划
 
-网站接口（开放）：`GET /api/writing-plan?family_id=<家庭代号>`
+接口：`GET /api/writing-plan?family_id=<家庭 id>`（家庭 id 是网站自动生成的标识，
+在家庭页地址 `/f/<家庭 id>` 里，**没有"家庭代号"这种东西，不要向用户索要代号**）。
 
-返回：
+**该接口需要登录且必须是该家庭成员，skill 在外部环境没有网站会话，不能直连拉取。**
+获取计划的唯一主路径：请管理员在登录状态下，把计划内容粘贴到对话里
+（标题 + 人名 + 状态即可）；管理员若能打开上面接口，把返回的 JSON 整段粘贴回来更好。
+
+返回结构（供管理员粘贴 JSON 时对照）：
 ```json
-{"family_id": "wang", "plan": {
+{"family_id": "2daab4ad", "plan": {
   "id": "xxx", "title": "王家·冬季采访计划",
-  "items": [{"person_id": "p01", "person_name": "王德顺", "order": 1,
+  "items": [{"person_id": "网站侧人物id", "person_name": "王德顺", "order": 1,
              "status": "pending|doing|done", "note": "备注"}]}}
 ```
 
 - `plan` 为 null 表示没有当前计划 → 走正常流程（家族树前置模式给采访顺序建议）。
-- 网站地址（base URL）由用户提供；Muse 环境可直接 curl 拉取；其他模型 App 若不能联网，
-  请管理员把计划内容粘贴到对话里（标题 + 人名 + 状态即可）。
+- 返回 items 里的 `person_id` 是**网站侧**人物 id，与 skill 侧 id（如 p01）不是一套，
+  匹配人物一律以 `person_name` 为准。
 
 ## 二、匹配到当前用户
 
