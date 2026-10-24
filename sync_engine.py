@@ -246,12 +246,19 @@ def _interview_by_client(s, family_id, client_id):
     return None
 
 
+def _editable_interview(s, family_id, interview_id, user_id):
+    from access import story_editable
+    iv = s.query(Interview).filter_by(
+        id=interview_id, family_id=family_id, del_flag=0).with_for_update().first()
+    if not iv or not story_editable(s, iv, user_id):
+        raise SyncError("找不到可整理的故事，请使用有权限的账号在网页核对")
+    return iv
+
+
 def _apply_verification_update(s, family_id, payload, user_id, now):
     iv_id = payload.get("interview_id") or _interview_by_client(
         s, family_id, payload.get("interview_client_id"))
-    if not iv_id or not s.query(Interview).filter_by(
-            id=iv_id, family_id=family_id, del_flag=0).first():
-        raise SyncError("找不到本家庭对应访谈")
+    _editable_interview(s, family_id, iv_id, user_id)
     item_text = (payload.get("item_text") or "").strip()
     q = s.query(VerificationItem).filter_by(interview_id=iv_id, del_flag=0)
     item = None
@@ -303,12 +310,10 @@ def _apply_revision_sync(s, family_id, payload, user_id, now):
         if kind == "verify":
             iv_id = rv.get("interview_id") or _interview_by_client(
                 s, family_id, rv.get("interview_client_id"))
-            if iv_id and not s.query(Interview).filter_by(
-                    id=iv_id, family_id=family_id, del_flag=0).first():
-                raise SyncError("修订目标不属于本家庭")
             if not iv_id:
                 notes.append(f"跳过：找不到访谈（{rv.get('item_text', '')[:15]}）")
                 continue
+            _editable_interview(s, family_id, iv_id, user_id)
             item = s.query(VerificationItem).filter_by(
                 interview_id=iv_id, del_flag=0)
             if rv.get("item_id"):
@@ -335,12 +340,10 @@ def _apply_revision_sync(s, family_id, payload, user_id, now):
         elif kind == "draft":
             iv_id = rv.get("interview_id") or _interview_by_client(
                 s, family_id, rv.get("interview_client_id"))
-            if iv_id and not s.query(Interview).filter_by(
-                    id=iv_id, family_id=family_id, del_flag=0).first():
-                raise SyncError("修订目标不属于本家庭")
             if not iv_id:
                 notes.append("跳过：修订找不到访谈")
                 continue
+            _editable_interview(s, family_id, iv_id, user_id)
             new_text = sanitize_html(rv.get("draft") or "")
             if not new_text:
                 notes.append("跳过：修订正文为空")

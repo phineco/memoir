@@ -28,3 +28,11 @@ def story_visible(s, story, user_id, include_drafts=True):
         return s.query(InterviewViewer).filter_by(
             interview_id=story.id, user_id=user_id, del_flag=0).first() is not None
     return False
+
+
+def story_editable(s, story, user_id):
+    """Authors curate their own stories; admins only curate authorless public imports."""
+    return bool(story_visible(s, story, user_id) and (
+        story.author_id == user_id or (
+            not story.author_id and (story.visibility or "public") == "public"
+            and family_role(s, story.family_id, user_id) in ("owner", "admin"))))

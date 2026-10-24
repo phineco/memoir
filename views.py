@@ -844,8 +844,8 @@ def stories(family_id):
 
 
 def _can_edit_story(iv, me, fam):
-    return bool(me and _can_view(iv, me) and (iv.author_id == me.id or (
-        not iv.author_id and (iv.visibility or "public") == "public" and _is_admin(fam, me))))
+    from access import story_editable
+    return bool(me and iv.family_id == fam.id and story_editable(_s(), iv, me.id))
 
 
 @bp.route("/f/<family_id>/story/<interview_id>")
