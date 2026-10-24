@@ -24,10 +24,13 @@ class SyncError(Exception):
     pass
 
 
-def sanitize_html(content):
-    # 仅在写入正文时加载清洗器；所有正文入口仍使用同一白名单。
-    from sanitize import sanitize_html as clean
-    return clean(content)
+def sanitize_html(content, family_id):
+    from album import clean_story_images
+    from werkzeug.exceptions import BadRequest
+    try:
+        return clean_story_images(content, family_id)
+    except BadRequest as exc:
+        raise SyncError(exc.description) from None
 
 
 def _resolve_person(s, family_id, skill_id=None, name=None):
@@ -174,7 +177,7 @@ def _apply_interview_upsert(s, family_id, payload, user_id, now):
     s.add(iv)
     s.flush()
 
-    draft_text = sanitize_html(payload.get("draft") or "")
+    draft_text = sanitize_html(payload.get("draft") or "", family_id)
     s.add(Draft(id=new_id(), interview_id=iv.id, version=1, is_current=True,
                 content=draft_text, create_by=user_id, create_date=now))
 
@@ -344,7 +347,7 @@ def _apply_revision_sync(s, family_id, payload, user_id, now):
                 notes.append("跳过：修订找不到访谈")
                 continue
             iv = _editable_interview(s, family_id, iv_id, user_id)
-            new_text = sanitize_html(rv.get("draft") or "")
+            new_text = sanitize_html(rv.get("draft") or "", family_id)
             if not new_text:
                 notes.append("跳过：修订正文为空")
                 continue
