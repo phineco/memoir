@@ -1,93 +1,89 @@
 # sync-json 同步协议
 
-更新日期：2026-10-20，以 `sync_engine.py` 为执行实现。外部采访助手不随本仓库交付。
+更新日期：2026-10-25。以 sync_engine.py 为执行实现，skill/memoir-organizer 为仓库附带的手动整理指南，不是 HTTP 客户端。
 
-## 一、入口与包格式
+## 入口、鉴权与包格式
 
-家庭管理员在 `/f/<family_id>/sync` 粘贴 JSON 或 `sync-json` Markdown 代码块。程序调用 `POST /api/sync` 须携带已登录管理员会话，没有独立 API key 或 MCP 服务。
+管理员从“家人 → 家庭管理 → 资料工具 → 同步入库”逐包导入；网页只接受一个 JSON 对象或一个 sync-json 代码块，多包或数组拒绝。
+
+受控程序接入须另有已授权的管理员登录会话，POST /api/sync 请求体如下；无独立 API key/Bearer 接入，不让用户把 Cookie/密码交给外部助手。
 
 ```json
 {
-  "family_id": "family-id",
+  "family_id": "website-family-id",
   "packet": {
-    "type": "interview_upsert",
+    "type": "interview_upsert", "version": 1,
     "clientId": "globally-unique-packet-id",
     "payload": {"topic": "童年的河", "draft": "<p>故事初稿。</p>"}
   }
 }
 ```
 
-`clientId` 为协议字段，数据库字段为 `client_id`，不能混用。建议 UUID hex（32 字符）；同一包重试保持不变，新修订生成新 id。现有唯一约束为全站范围，不同家庭也不能复用。
+version 只接受整数 1，缺省兼容旧 v1；不是文章基础版本。updatedAt 不提供冲突控制。clientId 为全站唯一字符串（建议 UUID hex，最长 64 字符）；新操作用新 ID，同一操作重试保留原 ID。接口也兼容 family_id 与 type 同层格式。
 
-## 二、人物对应
+## 权限与发布范围
 
-先查本家庭外部 `skill_id → person_id` 映射，再全名精确匹配，最后匹配别名。外部 id 与网站 id 不天然相同，通过 `tree_upsert` 建立映射。对应不上则记为待定或留空，不猜测挂靠。
+- public 表示有效家庭成员可见，不是互联网公开。
+- interview_upsert 新建已发布、家庭可见的故事；导入前须明确告知发布范围并获得用户同意。当前不提供草稿/私密导入，不能自行添加字段假定会生效。
+- 已有故事正文及核实写入与网页共用整理权限：本人可整理；管理员只可额外整理无作者的家庭公开导入稿。指定读者或其他作者不因此获得写权限。
+- 所有写入仍受家庭边界限制；文章有权限不代表普通成员可使用管理员同步入口。
 
-`tree_upsert` 不新增树节点、不改挂靠；新人物由管理员确认后手动入树。同名或同别名可能有歧义，须人工消歧。
+## 人物身份与建树顺序
 
-## 三、七类数据包
+网站 Person.id 与外部 skill ID 是两个命名空间。映射只属于当前家庭，已有映射不能重绑其他人，删除人物后不能复用旧 skill ID。
 
-下列字段放入 `payload`：
+1. 管理员先在家人页添加/核对真实人物；未匹配树包仅登记候选，不创建 Person 或亲属结构。
+2. 用新的 tree_upsert 建立映射。persons[].id 为 skill ID，可加 site_person_id 明确选择网站人物，fullName 须与网站姓名/别名一致。
+3. 核对结果后导入故事与进度。成功的候选包已占用 clientId，补齐人物后的绑定是新操作，须新包；不会自动补改旧故事。
+
+姓名/别名仅在唯一匹配时回退，多候选整包拒绝。主角及关联人物只认映射，明确给出但未对应时拒绝；讲述者可凭唯一姓名回退，确实不明且未填 ID 时原称谓保存在备注。
+
+## 七类 payload
 
 | type | 字段与行为 |
 |---|---|
-| `tree_upsert` | `persons: [{id, fullName, aliases, birthYear, deathYear, alive, status, relation, notes}]`；更新已有资料与映射，对不上则记待定人物 |
-| `interview_upsert` | `topic, draft, subject_person_id, narrator_person_id, narrator_name, period_start, period_end, period_precision, quotes, verification_items, timeline, related_persons`；新建已发布故事及相关资料 |
-| `verification_update` | `interview_id` 或 `interview_client_id`；`item_id` 或 `item_text`；`status, correction`；修改本家庭故事的核实项 |
-| `new_person` | `name` 必需，`context` 可选；记录待定人物，不自动入树 |
-| `person_status` | 外部 `person_id` 或 `name`，以及 `status`；更新人物采访状态 |
-| `revision_sync` | `revisions: [...]`；核实、全文或正名修订，详见下一节 |
-| `plan_progress` | 可选 `plan_id`（不填取当前 active 计划），`items: [{person_id, person_name, status}]`；更新已在计划中的人物，进度支持 `pending/doing/done` |
+| tree_upsert | persons: [{id, site_person_id?, fullName, aliases, birthYear, deathYear, alive, status, relation, notes}]；更新已有资料/映射，未知人物记候选 |
+| interview_upsert | topic, draft, subject_person_id, narrator_person_id, narrator_name, period_start/end/precision, quotes, verification_items, timeline, related_persons；新包新建故事 |
+| verification_update | interview_id 或 interview_client_id；item_id 或唯一 item_text；status, correction；更新有整理权限故事的核实项 |
+| new_person | name 必需、context 可选；记录候选，不自动入树 |
+| person_status | person_id（skill）/site_person_id（网站）/唯一 name，及 status；只改采访状态 |
+| revision_sync | 非空 revisions 数组；核实、全文或正名，任一无效目标/动作整包回滚 |
+| plan_progress | plan_id（null/省略取当前 active），非空 items: [{person_id 或 site_person_id 或唯一 person_name, status}]；无法对应到计划时整包拒绝 |
 
-人物采访状态约定 `pending/doing/drafted/verified`。`interview_upsert` 实际按包新建：相同包跳过，不同包会新建故事；修改旧故事用修订包。
+人物采访状态 pending/doing/drafted/verified；计划状态 pending/doing/done。计划 API 返回的网站 person_id 回写时放入 site_person_id，不能直接塞回 skill person_id。
 
-附属字段示例：
+alive=true 健在、false 已故，未知省略并保留旧状态。旧年份更新保护详细双历月日，冲突整包拒绝；完整日期走人物表单。treeId 不存储、不创建树，没有 generation 或 narrator_relation 字段。
+
+故事日期用 YYYY-MM-DD，精度 year/month/day。时间轴 date 支持 YYYY/YYYY-MM/YYYY-MM-DD；未知时省略，把原始标签保留在 event/正文。金句、核实文字/原因最多保存 500 字，时间轴标题最多 128 字；超长资料生成前拆分并核对原文引用。
+
+## 修订、图片与核实
 
 ```json
 {
-  "quotes": ["长辈的原话"],
-  "verification_items": [{"text": "年份待确认", "reason": "两次口述不一致"}],
-  "timeline": [{"date": "1978-05", "event": "搬入新家"}],
-  "related_persons": [{"person_id": "external-person-id", "role": "related"}]
+  "revisions": [
+    {"kind":"verify","interview_id":"site-story-id","item_id":"verification-id","action":"correct","correction":"应为1979年"},
+    {"kind":"draft","interview_client_id":"original-import-id","draft":"<p>修订全文。</p>","base_version":1,"revision_reason":"核对原始资料"},
+    {"kind":"person","site_person_id":"site-person-id","full_name":"正确姓名"}
+  ]
 }
 ```
 
-故事起止日期为 `YYYY-MM-DD`，`period_precision` 为 `year/month/day`。时间轴日期接受 `YYYY`、`YYYY-MM`、`YYYY-MM-DD` 并保留精度。讲述者未对应时保存名字到备注，不强行绑定。
+全文修订须有当前 base_version 和非空 revision_reason，与网页共用原子正文占用及历史保存。缺失或过期整包拒绝，不能猜版本或自动加版本重试。原始 clientId 引用当前家庭最初的故事入库包，不是本次修订包 ID。
 
-## 四、修订与读取计划
+初稿与全文修订共用网页家庭图片规则：保留合法相册引用；外部、跨家庭或不存在的图片拒绝。已删除照片显示占位并保留说明文字，不上传图片文件。
 
-`revision_sync.payload.revisions` 支持：
+核实 verified/resolved/corrected 均保存 resolved；corrected/action=correct 必须有非空 correction，pending/action=skip 重新待核实。重复原文必须用 item_id 消歧，显式无效 ID 不回退到另一项。真正新解决时间由模型记录，重新打开时清除。
 
-```json
-[
-  {"kind": "verify", "interview_id": "site-story-id", "item_id": "verification-id", "action": "correct", "correction": "应为1979年"},
-  {"kind": "draft", "interview_client_id": "original-import-packet-id", "draft": "<p>修订后的全文。</p>", "base_version": 1, "revision_reason": "根据原始资料核对"},
-  {"kind": "person", "name": "旧名", "full_name": "正确姓名"}
-]
-```
+上线执行 015 数据迁移归一旧 corrected 状态，保留未知 resolved_at，不把迁移时间伪造为核实时间。旧图片损失、空人物关联和部分成功记录须人工核对，不自动改写历史故事。
 
-核实动作：`confirm` 确认，`correct` 修正，`skip` 保持待核实并记为下周追问。全文修订保留旧版本，正名把旧名记入备注。`interview_client_id` 指最初故事入库包的 `clientId`，只允许引用当前家庭故事。
+## 结果与重试
 
-带家庭成员会话调用 `GET /api/writing-plan?family_id=<id>` 读取当前计划，调用 `GET /api/weekly-report?family_id=<id>&year=<iso-year>&week=<week>` 读取周报。周报 API 仅导出家庭内 public 已发布故事，不导出私有或指定人故事。
+- 成功：ok=true, applied=true，核对 summary；候选成功不等于已创建人物/关系。
+- 重复：ok=true, applied=false，整包不重复执行。
+- 协议、无效目标、无权整理或版本冲突：API HTTP 400，整包回滚并记录失败，核对后可用原 clientId 修正重试。
+- 未登录 401，管理员不足 403，无家庭权限 404；不是“没有计划/没有资料”。
+- 新版修订不再部分生效。升级前摘要包含“部分/跳过”的旧包需逐项人工对账，只对未生效部分生成新操作，不能整包换 UUID 重放。
 
-## 五、结果、幂等与事务
+GET /api/writing-plan?family_id=<id> 和 GET /api/weekly-report?family_id=<id>&year=<iso-year>&week=<week> 需有效成员会话，周报仅导出家庭 public 已发布故事。周报编号不是故事/核实项 ID，外部整理须保留对应关系。
 
-- 成功：`{"ok": true, "applied": true, "summary": "..."}`。
-- 重复包：`ok=true, applied=false`，不再次写入。
-- 协议或跨家庭目标错误：HTTP 400；未登录 401，管理员不足 403，无家庭权限 404。
-- 修改在事务内执行，失败回滚；可识别的同步错误记入失败日志，修正后可复用原 `clientId`。
-- 当前有基础结构与类型错误处理，不是完整 JSON Schema 校验；无法解析或写入的包返回可识别错误并回滚。
-- `sync_log` 记录结果；管理员应阅读摘要核对，不把 HTTP 成功视为所有条目都已对应。
-
-
-### 人物双历日期兼容（2026-10-21）
-
-网站人物表单可维护出生、去世的独立公历/农历年、月、日及闰月标记，不自动换算。现有 `tree_upsert` 协议仍采用 `birthYear/deathYear`：仅有年份的旧记录可继续更新；若与已有月日或另一套历法日期冲突，整包拒绝并提示到人物编辑页核实，避免年份导入覆盖更精细的家庭资料。相同年份不会清掉月日或闰月。健在标记与去世日期冲突同样需先核实。
-
-全文修订现要求 `base_version`（当前正文版本整数）和 `revision_reason`。缺失或过期时整包拒绝，不自动覆盖；网页与同步共用版本声明及原子写入。旧 skill 全文修订包须重新核对后生成，不能只递增版本号绕过冲突。
-
-人物绑定：tree_upsert.persons[] 支持显式 site_person_id（同家庭真实人物），id 保持 skill 命名空间；plan_progress.items[] 支持 site_person_id。未匹配树包仅创建候选，添加真实人物后须新包建映射；故事中显式未匹配主角/关联人物及不属于计划的人物整包拒绝，映射不可跨人复用。
-
-姓名与别名解析必须唯一；同名或相同别名拒绝自动绑定。tree_upsert、plan_progress、person_status 和 revision_sync 的 person 修订可用 site_person_id 明确选择网站人物；稳定 skill 映射仍可使用，不能把两种 ID 混放。
-
-核实状态：verified/resolved/corrected 统一保存为 resolved；corrected 必须有非空 correction，pending 可重新打开。上线执行 015 数据迁移归一旧 corrected 状态，不为旧记录回填未知 resolved_at；未来真实解决时间仍由模型记录。
+同步不提供媒体/目录镜像、亲属结构自动创建、完整双历日期导入、人物小传写入或对外分享发布。

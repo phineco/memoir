@@ -1,8 +1,8 @@
 # sync-json 同步指南
 
 > 目标：把 skill 产出的数据（家族树、初稿包、核实结果、修订）同步到网站后台入库。
-> 网站侧已实现入库（`memoir-prototype/sync_engine.py` + `/f/<家庭>/sync` 页面 + `POST /api/sync`）。
-> 契约原文见 `memoir-sync-design.md`；本文件是 skill 侧的**生成规则**，字段必须与网站解析逻辑一致。
+> 网站侧已实现入库（`sync_engine.py` + `/f/<家庭>/sync` 页面 + `POST /api/sync`）。
+> 本文件完整描述 skill 的手动导入契约，不依赖包外的文件。仓库中的 `memoir-sync-design.md` 是维护者参考；独立安装本 skill 无需该文件。
 
 ## 一、数据包外壳（7 种 type 共用）
 
@@ -12,7 +12,7 @@
   "version": 1,
   "clientId": "uuid（每次新包重新生成，幂等去重用）",
   "updatedAt": "2026-10-17T16:05:00+08:00",
-  "payload": { "...见下..." }
+  "payload": {}
 }
 ```
 
@@ -43,7 +43,7 @@
 | 应用完修订清单后 | `revision_sync` |
 | 计划人物有进展（开始做→doing / 初稿完成→done） | `plan_progress` |
 
-每次触发后主动问用户：**"是否同步到云端？"** → 用户说同步 → 输出数据包。
+同步前说明范围：故事入库即全家可见，可能用于家庭周报与问 AI；确认用户愿意按该范围发布后，再输出数据包。私密内容仅在对话内交付。
 
 **新家庭/新人物的顺序**：
 
@@ -62,7 +62,6 @@
 {
   "type": "tree_upsert", "version": 1, "clientId": "uuid", "updatedAt": "...",
   "payload": {
-    "treeId": "tree_20261017_01",
     "persons": [
       {
         "id": "p02",
@@ -109,6 +108,7 @@
 
 - `subject_person_id`：讲述对象（故事主角）的树上 id；`narrator_*` 见 §二.4。
 - `period_precision`：`year` / `month` / `day`。
+- 时间不明时省略 `date`，把“小时候/有一年”等原始标签保留在 `event` 和正文，不编造年份。
 - `timeline[].date`：`"1978"`（年）/ `"1978-05"`（月）/ `"1978-05-01"`（日），网站自动识别精度。
 - `related_persons[].role`：`related`（一般用这个）。
 - 网站行为：**讲述对象只按 id 映射解析（无姓名兜底）**，提供主角 ID 却对不上时整包拒绝（先建立映射，见 §三顺序要求）；讲述者按"映射→姓名"解析，对不上时名字记入备注不丢失；关联人物按映射解析。
@@ -121,14 +121,15 @@
 {
   "type": "verification_update", "version": 1, "clientId": "uuid", "updatedAt": "...",
   "payload": {
-    "interview_client_id": "当初 interview_upsert 的 clientId",
-    "item_text": "1985年是否已在供销社（原文片段，需一字不差）",
-    "status": "verified",
-    "correction": "1983年进供销社（status=corrected 时填）"
+    "interview_client_id": "original-interview-packet",
+    "item_text": "1985年是否已在供销社",
+    "status": "corrected",
+    "correction": "1983年进供销社"
   }
 }
 ```
 
+- `interview_client_id` 必须换为当初故事成功入库包的 clientId；`item_text` 使用当初保存的原文，不能附加解释。
 - 也可用 `interview_id`（网站侧 id）代替 `interview_client_id`，用 `item_id` 代替 `item_text`。
 - `status`：`verified`（已确认）/ `corrected`（已修正，必须填非空 correction），两者在网站统一存为 resolved 并显示已解决；pending 表示重新待核实。未知状态或空更正会整包拒绝。
 
@@ -159,16 +160,17 @@
   "type": "revision_sync", "version": 1, "clientId": "uuid", "updatedAt": "...",
   "payload": {
     "revisions": [
-      {"kind": "verify", "interview_client_id": "uuid", "item_text": "原文片段", "action": "confirm"},
-      {"kind": "verify", "interview_client_id": "uuid", "item_text": "原文片段", "action": "correct", "correction": "修正内容"},
-      {"kind": "verify", "interview_client_id": "uuid", "item_text": "原文片段", "action": "skip"},
-      {"kind": "draft", "interview_client_id": "uuid", "draft": "修订后的初稿全文", "base_version": 1, "revision_reason": "根据家人核对修正年份"},
+      {"kind": "verify", "interview_client_id": "original-interview-packet", "item_text": "1985年是否已在供销社", "action": "confirm"},
+      {"kind": "verify", "interview_client_id": "original-interview-packet", "item_text": "1985年是否已在供销社", "action": "correct", "correction": "修正内容"},
+      {"kind": "verify", "interview_client_id": "original-interview-packet", "item_text": "1985年是否已在供销社", "action": "skip"},
+      {"kind": "draft", "interview_client_id": "original-interview-packet", "draft": "修订后的初稿全文", "base_version": 1, "revision_reason": "根据家人核对修正年份"},
       {"kind": "person", "name": "三叔", "full_name": "王建军"}
     ]
   }
 }
 ```
 
+- 示例展示可用动作，实际只保留需要的条目，不能对同一核实项同时确认、更正又跳过。
 - `action`：`confirm` 确认 / `correct` 修正（填 correction）/ `skip` 转下周追问。
 - `kind=draft`：全文修订，必须提供核对过的当前正文 `base_version` 和 `revision_reason`；网站生成新版本并保留旧版。缺少版本、版本过期或原因为空时整包拒绝，请打开故事编辑/历史页核对，不得猜版本或自动增加版本重试。协议外壳 `version` 不是正文版本。
 - 正文图片仅允许当前家庭的合法相册引用；不要重写图片 URL。外部/跨家庭/不存在的引用整包拒绝，已删除照片按网页规则显示占位并保留文字。
@@ -180,7 +182,7 @@
 {
   "type": "plan_progress", "version": 1, "clientId": "uuid", "updatedAt": "...",
   "payload": {
-    "plan_id": "xxx（可空，空=当前计划）",
+    "plan_id": null,
     "items": [
       {"person_name": "王建军", "status": "doing"},
       {"person_name": "王德顺", "status": "done"}
@@ -189,7 +191,7 @@
 }
 ```
 
-- 人物匹配：优先使用核对后的稳定 skill 映射；计划 API 返回 ID 时用 `site_person_id`。姓名仅在唯一匹配时回退，同名或别名多候选会整包拒绝；可带 skill 侧 `person_id`（如 p01），或用 `site_person_id` 明确携带计划返回的网站人物 ID。人物不在计划/无法对应时整包拒绝。
+- 人物匹配：优先使用核对后的稳定 skill 映射；计划 API 返回 ID 时用 `site_person_id`。姓名仅在唯一匹配时回退，同名或别名多候选会整包拒绝。人物不在计划/无法对应时整包拒绝。
 - `status` 只能是 `pending` / `doing` / `done`；只更新计划条目状态，不改顺序和备注。
 - 触发：某计划人物的故事线本次有进展时，随本次同步节点一起输出。详细见 `references/writing-plan-guide.md`。
 
@@ -211,3 +213,13 @@
 4. 修订与网站现有记录矛盾时（如网站已标已核实），**先指出，不静默覆盖**——以网站为唯一可信源。
 5. 修订包现在整包原子执行：目标缺失、核实项不明确、版本冲突、无效动作都拒绝并回滚，不能把旧版“部分生效”记录当作整包失败。升级前日志若显示部分生效/跳过，先核对历史，只对确实未生效部分生成新操作，禁止重放已生效修订。
 6. **导入失败处理**：把网站返回的错误原文如实告诉用户，不假装成功。失败的数据包不会占用 `clientId`（网站以 failed 记录留痕），**修正数据后用同一个 `clientId` 重新生成整包再导入**，不要每次失败都换新 uuid；若其实已经入库成功，同 `clientId` 重发会被网站自动跳过，不会重复。
+
+## 七、程序接入边界
+
+主路径仍为管理员在浏览器逐包粘贴。skill 没有网站会话，不能声称已直连、已入库，也不向用户索要 Cookie 或密码。
+
+若后续另行授权受控程序接入，`POST /api/sync` 需要有效管理员登录会话，请求体是 `{"family_id":"网站家庭id","packet":{同步包}}`；上面的模板只对应内部 packet。没有独立 API key/Bearer 接入能力。
+
+响应 `ok=true, applied=true` 表示当前包已完成；`applied=false` 表示同 clientId 已处理，不是失败。401 是未登录，403 是无管理员权限，404 是无目标家庭权限，不能解释为没有资料；400 时核对错误并确认本包未生效后再重试。首次调用结果未知时先保留原包及 clientId 核对，不换 UUID 猜测重发。
+
+现有协议不创建亲属结构、不保存完整双历月日、不上传媒体、不写人物小传，也不镜像本地目录。

@@ -1,7 +1,7 @@
 # 写作计划指南（writing-plan-guide）
 
 管理员在网站「📋 写作计划」页定好"先写谁"（可让 AI 先给建议再手动改），
-skill 每次会话开始时拉取当前计划，按计划引导用户补故事、跟进未完成项。
+skill 每次会话使用用户提供的当前计划，按计划引导用户补故事、跟进未完成项。
 
 ## 一、获取计划
 
@@ -45,13 +45,13 @@ skill 每次会话开始时拉取当前计划，按计划引导用户补故事�
 
 ```sync-json
 {"type": "plan_progress", "clientId": "<新uuid>",
- "payload": {"plan_id": "<计划id，可空=当前计划>",
+ "payload": {"plan_id": null,
    "items": [{"site_person_id": "从计划返回复制的网站人物id", "status": "doing"},
              {"person_name": "王德顺", "status": "done"}]}}
 ```
 
 - 人物匹配优先使用计划返回的 ID 填入 `site_person_id`，或已经核对的 skill `person_id`；仅有唯一姓名时可用 `person_name`，同名/别名多候选会拒绝。
-  网站走映射表解析；计划返回的网站 `person_id` 必须放入回写字段 `site_person_id`，不可当作 skill ID。无法对应到该计划时整包拒绝。
+  无法对应到该计划时整包拒绝，不把 HTTP 成功当作人物都已更新。
 - status 只能是 pending / doing / done。
 - 触发时机：某人物的故事线本次有进展（开始做 → doing；初稿完成/已核实 → done）时，
   随本次的同步节点一起输出（见 SKILL.md 规则 9）。

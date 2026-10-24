@@ -109,7 +109,7 @@ def release(version, output):
     if not version or not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}', version):
         raise SystemExit('Supply --version with a safe release name')
     verify_bundle()
-    allowed_dirs = ['templates','static','migrations','tools','tests']
+    allowed_dirs = ['templates','static','migrations','tools','tests','skill']
     files = [p for p in ROOT.iterdir() if p.is_file() and (p.suffix in {'.py','.md','.sql'} or p.name.startswith('requirements') and p.suffix == '.txt' or p.name in {'.env.example','install.sh','tailwind.config.js','package.json','package-lock.json'})]
     for name in allowed_dirs:
         files += [p for p in (ROOT / name).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix != '.pyc']

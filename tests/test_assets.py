@@ -26,7 +26,7 @@ def test_release_is_repeatable_and_excludes_live_data(tmp_path, monkeypatch):
     spec.loader.exec_module(frontend)
     source = tmp_path / 'project'
     source.mkdir()
-    for directory in ['static','templates','migrations','tools']:
+    for directory in ['static','templates','migrations','tools','skill']:
         shutil.copytree(ROOT / directory, source / directory)
     (source / '.env').write_text('must-not-ship-secret')
     (source / 'memoir.db').write_text('must-not-ship-database')
@@ -43,6 +43,7 @@ def test_release_is_repeatable_and_excludes_live_data(tmp_path, monkeypatch):
         names = archive.getnames()
         assert all('/uploads/' not in n and not n.endswith('/.env') and not n.endswith('.db') for n in names)
         assert 'memoir-test/.env.example' in names
+        assert 'memoir-test/skill/memoir-organizer/SKILL.md' in names
         info=json.load(archive.extractfile('memoir-test/RELEASE.json'))
         for filename, digest in info['sha256'].items():
             assert frontend.sha(archive.extractfile('memoir-test/'+filename).read()) == digest

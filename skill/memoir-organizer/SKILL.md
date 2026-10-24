@@ -34,7 +34,7 @@ metadata: { "includeInPrompt": true }
 5. **交付**：在对话中按「输出契约」呈现；待核实清单单独列出并逐条请用户确认或修正；用户确认后输出合并定稿。
 6. **导出**：应要求生成一份完整 Markdown 文档（结构见输出契约），可直接存档或进入排版。
 7. **周报模式**（用户说"本周周报/汇总这一周"时进入）：把本周的初稿包汇总成一份《家庭回忆录周报》——新增故事、金句、待全家核实清单（编号）、新出现人物、家族树更新；周报末尾附"家人纠正格式说明"，家人逐条回复后粘贴回来，skill 按编号应用修正并输出修正版。详细规则见 `references/weekly-digest-guide.md`。
-8. **同步节点**（每次产出初稿包 / 建树更新 / 应用修订后）：按 `references/sync-guide.md` 生成 sync-json 数据包——人物 id 跨对话保持稳定、对不上的人走 🆕 不编造；主动问用户"是否同步到云端？"，用户确认后输出 ```` ```sync-json ```` 代码块并提示到网站「🔄 同步入库」页导入。
+8. **同步节点**（每次产出初稿包 / 建树更新 / 应用修订后）：按 `references/sync-guide.md` 生成 sync-json 数据包——人物 id 跨对话保持稳定、对不上的人走 🆕 不编造；先说明故事导入即全家可见，再征得发布同意；用户确认后输出 ```` ```sync-json ```` 代码块并提示到网站「🔄 同步入库」页导入。
 
 ## Output Contract
 
@@ -55,5 +55,5 @@ metadata: { "includeInPrompt": true }
 5. 提醒用户不要粘贴身份证号、银行卡号、精确住址等敏感信息；如已包含，整理时做打码处理并提醒删除。
 6. 方言或转写明显不通顺处，标注 `[转写存疑]` 而不是猜。
 7. 语音采访模式下：一次只问一个问题；同一话题追问不超过两轮，避免审问感；察觉对方疲惫（回答变短、停顿变多）或情绪波动时，主动建议休息，当段先输出初稿包。
-8. 落盘规范（仅 Muse 环境）：所有需要保存的内容按 `references/storage-guide.md` 写入 `~/workspace/memoir/families/<family-id>/`，命名与版本规则见该文件，每次写操作后更新 `manifest.json`；在其他模型 App 里改用对话内交付（Markdown / sync-json 数据包）。
-9. 同步提示：每次产出初稿包、建树更新、应用修订后，主动提示"是否同步到云端？"，并按 `references/sync-guide.md` 输出对应 sync-json 数据包（7 种 type：tree_upsert / interview_upsert / verification_update / new_person / person_status / revision_sync / plan_progress）；在 Muse 环境同时更新 `manifest.json` 记待同步状态。页面只显示已入库数据，未同步的内容页面看不到——这个提示是关键。
+8. 落盘规范（仅具备可写 workspace 的 Muse 环境）：用户要求存档时按 `references/storage-guide.md` 的自包含规范保存，不假定外部 README 或模板已经存在；在其他模型 App 里改用对话内交付（Markdown / sync-json 数据包）。
+9. 同步提示：每次产出初稿包、建树更新、应用修订后，说明发布范围并得到用户同意后，按 `references/sync-guide.md` 输出对应 sync-json 数据包（7 种 type：tree_upsert / interview_upsert / verification_update / new_person / person_status / revision_sync / plan_progress）；在 Muse 环境同时更新 `manifest.json` 记待同步状态。页面只显示已入库数据，未同步的内容页面看不到——这个提示是关键。
