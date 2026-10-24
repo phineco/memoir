@@ -51,7 +51,7 @@ skill 每次会话开始时拉取当前计划，按计划引导用户补故事�
 ```
 
 - 人物匹配：**优先用 person_name**（最稳）；skill 侧 person_id（如 p01）也可带，
-  网站走映射表解析，对不上会被忽略。
+  网站走映射表解析；计划返回的网站 `person_id` 必须放入回写字段 `site_person_id`，不可当作 skill ID。无法对应到该计划时整包拒绝。
 - status 只能是 pending / doing / done。
 - 触发时机：某人物的故事线本次有进展（开始做 → doing；初稿完成/已核实 → done）时，
   随本次的同步节点一起输出（见 SKILL.md 规则 9）。

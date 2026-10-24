@@ -33,15 +33,28 @@ def sanitize_html(content, family_id):
         raise SyncError(exc.description) from None
 
 
-def _resolve_person(s, family_id, skill_id=None, name=None):
+def _resolve_person(s, family_id, skill_id=None, name=None, site_id=None):
     """skill 人物 → 本站 Person：先查映射表，再姓名精确匹配，再别名匹配。"""
+    for identifier in (skill_id, site_id):
+        if identifier is not None and (not isinstance(identifier, str) or len(identifier) > 64):
+            raise SyncError("人物 ID 必须为不超过 64 字符的字符串，不能把网站 ID 与 skill ID 混用")
+    site_person = None
+    if site_id:
+        site_person = s.query(Person).filter_by(id=site_id, family_id=family_id, del_flag=0).first()
+        if not site_person:
+            raise SyncError("网站人物不存在或不属于本家庭，请重新核对 site_person_id")
     if skill_id:
         m = s.query(PersonIdMap).filter_by(
             family_id=family_id, skill_id=skill_id).first()
         if m:
             p = s.query(Person).filter_by(id=m.person_id, family_id=family_id, del_flag=0).first()
             if p:
+                if site_person and site_person.id != p.id:
+                    raise SyncError("skill ID 已绑定另一人物，不能重新分配，请人工核对")
                 return p
+            raise SyncError("skill ID 对应人物已不可用，不能复用该 ID，请人工核对")
+    if site_person:
+        return site_person
     if name:
         p = s.query(Person).filter_by(
             family_id=family_id, name=name, del_flag=0).first()
@@ -72,7 +85,10 @@ def _apply_tree_upsert(s, family_id, payload, user_id, now):
         name = (sp.get("fullName") or "").strip()
         if not name or name.endswith("（待核实）"):
             continue
-        p = _resolve_person(s, family_id, skill_id=sp.get("id"), name=name)
+        p = _resolve_person(s, family_id, skill_id=sp.get("id"), name=name,
+                            site_id=sp.get("site_person_id"))
+        if p and sp.get("site_person_id") and name != p.name and name not in (p.aliases or []):
+            raise SyncError("网站人物 ID 与姓名不一致，请先核对人物，不能自动改名")
         if p:
             from person_dates import sync_legacy_year
             try:
@@ -126,10 +142,10 @@ def _apply_tree_upsert(s, family_id, payload, user_id, now):
                 s.add(NewPerson(id=new_id(), family_id=family_id, name=name,
                                 context=ctx[:500] or None, join_tree="pending",
                                 create_by=user_id, create_date=now))
-                to_new.append(name)
+            to_new.append(name)
     summary = (f"树更新：{len(updated)} 人信息已更新"
                + (f"（{ '、'.join(updated[:5])}{'…' if len(updated) > 5 else ''}）" if updated else "")
-               + (f"；{len(to_new)} 位新人物记入待定（{ '、'.join(to_new[:5])}）" if to_new else ""))
+               + (f"；{len(to_new)} 位人物仍待定（{ '、'.join(to_new[:5])}），请在家人页添加真实人物，再用新包建立映射；尚不可导入关联故事" if to_new else ""))
     return None, summary
 
 
@@ -155,6 +171,9 @@ def _apply_interview_upsert(s, family_id, payload, user_id, now):
     narrator = _resolve_person(s, family_id,
                                skill_id=payload.get("narrator_person_id"),
                                name=payload.get("narrator_name"))
+    for key, person in (("subject_person_id", subject), ("narrator_person_id", narrator)):
+        if payload.get(key) and not person:
+            raise SyncError(f"{key} 未建立人物映射，请先在家人页核对人物，再提交新的 tree_upsert 包")
     remarks = None
     if payload.get("narrator_name") and not narrator:
         remarks = f"讲述者：{payload['narrator_name']}（待对应到树上人物）"
@@ -220,6 +239,8 @@ def _apply_interview_upsert(s, family_id, payload, user_id, now):
         rp_id = rp.get("person_id") if isinstance(rp, dict) else rp
         role = rp.get("role") if isinstance(rp, dict) else "related"
         p = _resolve_person(s, family_id, skill_id=rp_id)
+        if not p:
+            raise SyncError("关联人物未建立映射，请核对后重新导入，不能静默丢失关联")
         if p and (not subject or p.id != subject.id):
             exists = s.query(InterviewPerson).filter_by(
                 interview_id=iv.id, person_id=p.id, del_flag=0).first()
@@ -401,9 +422,10 @@ def _apply_plan_progress(s, family_id, payload, user_id, now):
             continue
         p = _resolve_person(s, family_id,
                             skill_id=it.get("person_id"),
-                            name=it.get("person_name"))
-        if p:
-            wanted[p.id] = st
+                            name=it.get("person_name"), site_id=it.get("site_person_id"))
+        if not p or not any(row.get("person_id") == p.id for row in items):
+            raise SyncError("人物未对应到该计划，请核对映射或使用计划返回的网站 ID 填入 site_person_id")
+        wanted[p.id] = st
     n = 0
     for it in items:
         if it.get("person_id") in wanted:
@@ -456,16 +478,7 @@ def apply_sync(s, family_id, packet, user_id):
     return True, summary
 
 
-# 网站侧入库实现补充（对应 sync-design.md §五）：
-# - tree_upsert：只更新已有人物信息字段（姓名精确/别名匹配），不自动改挂靠；
-#   对不上的人记入 new_persons（join_tree=pending），并建立 skill_id→person_id 映射。
-# - interview_upsert：人物解析走映射表→姓名匹配；讲述者对不上时 narrator_person_id
-#   留空、narrator_name 记入 interviews.remarks；幂等键 clientId。
-# - revision_sync（网站侧定义）：revisions 数组，kind=verify/draft/person：
-#   verify: {interview_client_id|interview_id, item_text|item_id, action=confirm|correct|skip, correction?}
-#   draft: {interview_client_id|interview_id, draft}（全文修订，生成新版本）
-#   person: {name, full_name}（正名，旧名记入备注）
-# - plan_progress（skill 回写）：{plan_id?, items:[{person_id(skill侧)/person_name, status=pending|doing|done}]}（只更新计划条目状态）
+# 当前同步契约见 memoir-sync-design.md；人物候选不等于真实人物或映射。
 
 
 def log_sync_failure(s, family_id, packet, user_id, error):
