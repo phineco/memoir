@@ -9,6 +9,8 @@ from migrate import run_migrations
 def old_database(tmp_path):
     path = tmp_path / "old.db"
     with sqlite3.connect(path) as db:
+        db.execute("CREATE TABLE photos (id TEXT PRIMARY KEY, family_id TEXT, del_flag INTEGER, photo_year INTEGER)")
+        db.execute("INSERT INTO photos VALUES ('old-photo', 'old-family', 0, 1985)")
         db.execute("CREATE TABLE users (id TEXT PRIMARY KEY, nickname TEXT)")
         db.execute("CREATE TABLE drafts (id TEXT PRIMARY KEY, content TEXT)")
         db.execute("CREATE TABLE verification_items (id TEXT PRIMARY KEY, status TEXT)")

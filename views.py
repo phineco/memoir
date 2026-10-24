@@ -754,7 +754,7 @@ def _person_page_ctx(family_id, p, me):
     s = _s()
     portrait = s.query(Portrait).filter_by(person_id=p.id, del_flag=0)\
         .order_by(Portrait.version.desc()).first()
-    photos = s.query(Photo).filter_by(person_id=p.id, del_flag=0)\
+    photos = s.query(Photo).filter_by(family_id=family_id, person_id=p.id, del_flag=0)\
         .order_by(Photo.photo_year).all()
     events = s.query(TimelineEvent).filter_by(person_id=p.id, del_flag=0)\
         .order_by(TimelineEvent.event_date).all()
@@ -1186,8 +1186,8 @@ def write_article(family_id):
         if (subject_id and subject_id not in allowed_ids) or any(
                 pid not in allowed_ids for pid in related_ids):
             abort(400, "关联人物必须属于本家庭")
-        from sanitize import sanitize_html
-        content = sanitize_html(content)
+        from album import clean_story_images
+        content = clean_story_images(content,family_id)
         p_start = request.form.get("period_start") or None
         p_end = request.form.get("period_end") or None
         precision = request.form.get("period_precision", "day")
@@ -1322,8 +1322,8 @@ def edit_article(family_id, interview_id):
         if (subject_id and subject_id not in allowed_ids) or any(
                 pid not in allowed_ids for pid in related_ids):
             abort(400, "关联人物必须属于本家庭")
-        from sanitize import sanitize_html
-        content = sanitize_html(content)
+        from album import clean_story_images
+        content = clean_story_images(content,family_id)
         p_start = request.form.get("period_start") or None
         p_end = request.form.get("period_end") or None
         precision = request.form.get("period_precision", "day")
@@ -1862,10 +1862,6 @@ def portrait_edit(family_id, person_id):
 
 # ---------------- 照片上传（登录用户；描述必填） ----------------
 
-ALLOWED_IMG = {"jpg", "jpeg", "png", "gif", "webp"}
-MAX_IMG = 10 * 1024 * 1024
-
-
 @bp.route("/uploads/<path:filename>")
 def uploaded_file(filename):
     """本地照片也验证所属家庭，知道 URL 不能绕过家庭权限。"""
@@ -1885,84 +1881,25 @@ def uploaded_file(filename):
 
 @bp.route("/f/<family_id>/person/<person_id>/photos/upload", methods=["POST"])
 def photo_upload(family_id, person_id):
-    me = _current_user()
-    if not me:
-        return redirect(url_for("main.login", next=request.path))
-    fam = _family_or_404(family_id)
-    p = _person_or_404(family_id, person_id)
-    s = _s()
-
-    def fail(msg):
-        ctx = _person_page_ctx(family_id, p, me)
-        return render_template("person.html", family=fam, person=p,
-                               error=msg, **ctx)
-
-    f = request.files.get("photo") or request.files.get("photo2")
-    caption = request.form.get("caption", "").strip()
-    if not f or not f.filename:
-        return fail("请选择照片")
-    if not caption:
-        return fail("请填写照片描述")
-    ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
-    if ext not in ALLOWED_IMG:
-        return fail("只支持 jpg / png / gif / webp 格式")
-    data = f.read()
-    if len(data) > MAX_IMG:
-        return fail("照片太大，请传 10MB 以内的")
-    # 文件头魔数校验（扩展名可伪造）
-    if not (data[:8] == b"\x89PNG\r\n\x1a\n" or data[:3] == b"\xff\xd8\xff"
-            or data[:6] in (b"GIF87a", b"GIF89a")
-            or (data[:4] == b"RIFF" and data[8:12] == b"WEBP")):
-        return fail("文件不是有效图片，请重新选择")
-    try:
-        photo_year = int(request.form.get("photo_year") or 0) or None
-    except ValueError:
-        return fail("年份请填数字")
-    import uuid
-    from storage import get_storage
-    key = f"{family_id}/{person_id}/{uuid.uuid4().hex}.{ext}"
-    try:
-        rel = get_storage().save(data, key)
-    except RuntimeError as e:
-        return fail(str(e))
-    from models import new_id
-    s.add(Photo(id=new_id(), family_id=family_id, person_id=person_id,
-                photo_year=photo_year, storage_path=rel, caption=caption,
-                uploaded_by=me.id, create_by=me.id,
-                create_date=datetime.datetime.now()))
-    s.commit()
-    return redirect(url_for("main.person_page", family_id=family_id,
-                            person_id=person_id))
+    request.max_content_length=11*1024*1024
+    from forms import require_csrf
+    require_csrf()
+    from album import upload
+    return upload(family_id,person_id=person_id)
 
 
 @bp.route("/f/<family_id>/person/<person_id>/photos/<photo_id>/delete",
           methods=["POST"])
 def photo_delete(family_id, person_id, photo_id):
     """删除照片：上传者本人或管理员可操作；存储对象一并删除。"""
-    me = _current_user()
-    if not me:
-        return redirect(url_for("main.login", next=request.path))
-    fam = _family_or_404(family_id)
-    _person_or_404(family_id, person_id)
-    s = _s()
-    ph = s.query(Photo).filter_by(id=photo_id, person_id=person_id,
-                                  del_flag=0).first()
-    if not ph:
-        abort(404)
-    if ph.uploaded_by != me.id and not _is_admin(fam, me):
-        abort(403)
-    if ph.storage_path:
-        from storage import get_storage
-        try:
-            get_storage().delete(ph.storage_path)
-        except Exception:
-            pass  # 文件已不在也继续删记录
-    ph.del_flag = 1
-    ph.update_by = me.id
-    ph.update_date = datetime.datetime.now()
-    s.commit()
-    return redirect(url_for("main.person_page", family_id=family_id,
-                            person_id=person_id))
+    from forms import require_csrf
+    require_csrf()
+    fam=_family_or_404(family_id);_person_or_404(family_id,person_id)
+    from album import photo_or_404,remove_photo
+    photo=photo_or_404(family_id,photo_id)
+    if photo.person_id!=person_id:abort(404)
+    remove_photo(fam,photo)
+    return redirect(url_for('main.person_page',family_id=family_id,person_id=person_id))
 
 
 @bp.route("/f/<family_id>/story/<interview_id>/comments/<comment_id>/delete",

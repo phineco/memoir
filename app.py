@@ -24,6 +24,10 @@ def create_app():
     app.register_blueprint(metrics_bp)
     from voices import bp as voices_bp
     app.register_blueprint(voices_bp)
+    from album import bp as album_bp
+    app.register_blueprint(album_bp)
+    from album import display_html
+    app.jinja_env.globals["article_html"]=display_html
     from person_dates import LUNAR_MONTHS, LUNAR_DAYS
     app.jinja_env.globals.update(lunar_months=LUNAR_MONTHS, lunar_days=LUNAR_DAYS)
     from writing_aids import QUESTIONS

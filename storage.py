@@ -19,6 +19,10 @@ class StorageBackend:
         """删除对象（不存在也不报错）。"""
         raise NotImplementedError
 
+    def read(self, key: str, limit: int) -> bytes:
+        """Read private bytes without issuing a browser storage URL."""
+        raise NotImplementedError
+
     def url(self, key: str) -> str:
         """返回可在 <img> 里直接用的访问 URL。"""
         raise NotImplementedError
@@ -39,6 +43,12 @@ class LocalStorageBackend(StorageBackend):
         dest = os.path.join(self.upload_dir, key)
         if os.path.isfile(dest):
             os.remove(dest)
+
+    def read(self, key: str, limit: int) -> bytes:
+        from pathlib import Path
+        root=Path(self.upload_dir).resolve();path=(root/key).resolve()
+        if root not in path.parents or path.is_symlink():raise ValueError('invalid storage key')
+        with path.open('rb') as stream:return stream.read(limit)
 
     def url(self, key: str) -> str:
         if key and key.startswith('voice/'):return ''
@@ -86,6 +96,11 @@ class OssStorageBackend(StorageBackend):
         self.client.delete_object(self._oss.DeleteObjectRequest(
             bucket=self.bucket, key=key))
 
+    def read(self, key: str, limit: int) -> bytes:
+        result=self.client.get_object(self._oss.GetObjectRequest(bucket=self.bucket,key=key))
+        try:return result.body.read(limit)
+        finally:result.body.close()
+
     def url(self, key: str) -> str:
         if key and key.startswith('voice/'):return ''
         r = self.client.presign(
@@ -115,5 +130,10 @@ def get_storage() -> StorageBackend:
 
 
 def storage_url(key: str) -> str:
+    if key and key.startswith('album/'):
+        import re
+        from flask import url_for
+        match=re.fullmatch(r'album/([A-Za-z0-9_-]{1,64})/([a-f0-9]{32})\.(?:jpg|png)',key)
+        return url_for('album.image',family_id=match[1],photo_id=match[2]) if match else ''
     if key and key.startswith('voice/'):return ''
     return get_storage().url(key)

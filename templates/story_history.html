@@ -2,4 +2,4 @@
 {% block nav %}{% include '_family_nav.html' %}{% endblock %}
 {% block title %}历次版本 · {{ iv.topic }}{% endblock %}
 {% block content %}<a class="btn-secondary" href="{{ url_for('main.story_detail',family_id=family.id,interview_id=iv.id) }}">返回故事</a><h1>《{{ iv.topic }}》历次版本</h1><p class="hint">历史版本仅作者及获准整理此故事的人可见；对外分享快照需另行确认发布。</p>
-{% for d in versions %}<details class="disclosure" {% if loop.first %}open{% endif %}><summary>第 {{ d.version }} 版{% if d.is_current %} · 当前{% endif %}</summary><p>{{ users.get(d.create_by,'原始导入') }} · {{ d.create_date or '时间未记录' }}</p><p>原因：{{ d.remarks or '原始内容／未填写' }}</p><div class="prose">{{ sanitize_html(d.content or '')|safe }}</div></details>{% endfor %}{% endblock %}
+{% for d in versions %}<details class="disclosure" {% if loop.first %}open{% endif %}><summary>第 {{ d.version }} 版{% if d.is_current %} · 当前{% endif %}</summary><p>{{ users.get(d.create_by,'原始导入') }} · {{ d.create_date or '时间未记录' }}</p><p>原因：{{ d.remarks or '原始内容／未填写' }}</p><div class="prose">{{ article_html(d.content or '',family.id)|safe }}</div></details>{% endfor %}{% endblock %}

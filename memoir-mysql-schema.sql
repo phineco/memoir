@@ -305,6 +305,11 @@ CREATE TABLE `photos` (
   `id` varchar(64) NOT NULL COMMENT '主键',
   `family_id` varchar(64) DEFAULT NULL COMMENT '家庭 id',
   `person_id` varchar(64) DEFAULT NULL COMMENT '关联人物 id',
+  `photo_month` int DEFAULT NULL,
+  `metadata_version` int NOT NULL DEFAULT 1,
+  `photo_day` int DEFAULT NULL,
+  `title` varchar(120) DEFAULT NULL,
+  `location` varchar(255) DEFAULT NULL,
   `photo_year` int(11) DEFAULT NULL COMMENT '拍摄年份（可估）',
   `event_id` varchar(64) DEFAULT NULL COMMENT '关联时间轴事件 id（可空）',
   `storage_path` varchar(512) DEFAULT NULL COMMENT '阿里云 OSS 路径',
@@ -317,7 +322,8 @@ CREATE TABLE `photos` (
   `remarks` varchar(255) DEFAULT NULL COMMENT '备注信息',
   `del_flag` int(11) DEFAULT NULL COMMENT '逻辑删除标记（0：显示；1：隐藏）',
   PRIMARY KEY (`id`),
-  KEY `idx_person_year` (`person_id`, `photo_year`)
+  KEY `idx_person_year` (`person_id`, `photo_year`),
+  KEY `ix_photos_family_time` (`family_id`, `del_flag`, `photo_year`, `photo_month`, `photo_day`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='照片表';
 
 -- 14. 人物形象（v1：小传；形象图 v2）

@@ -281,3 +281,12 @@ html {scroll-padding-top:calc(var(--site-header-height,5rem) + 1rem);}
 .reading-controls {border:1px solid var(--line);border-radius:var(--radius);padding:.5rem .8rem;margin:1rem 0;}
 .reading-controls legend {font-size:.9rem;color:var(--muted);}
 .reading-controls button[aria-pressed="true"] {border:2px solid var(--accent);font-weight:700;}
+
+/* Family album and article image picker. */
+.album-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr));gap:1rem;}
+.album-year {grid-column:1/-1;margin-block:1.5rem 0;}
+.album-card {min-width:0;text-align:left;color:inherit;text-decoration:none;}
+.album-card img {width:100%;height:11rem;object-fit:contain;background:var(--surface-soft);border-radius:.5rem;}
+.album-preview {display:block;max-height:70vh;max-width:100%;width:auto;margin:1rem auto;object-fit:contain;}
+.album-search .form-actions input {flex:1 1 14rem;width:auto;}
+.article-body img,.ql-editor img {display:block;max-width:100%;height:auto;margin:1rem auto;}

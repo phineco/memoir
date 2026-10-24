@@ -327,9 +327,15 @@ class TimelineEvent(AuditMixin, Base):
 
 class Photo(AuditMixin, Base):
     __tablename__ = "photos"
+    __table_args__ = (Index("ix_photos_family_time","family_id","del_flag","photo_year","photo_month","photo_day"),)
     family_id = Column(String(64))
     person_id = Column(String(64), index=True)
     photo_year = Column(Integer)
+    photo_month = Column(Integer)
+    photo_day = Column(Integer)
+    title = Column(String(120))
+    location = Column(String(255))
+    metadata_version = Column(Integer, nullable=False, default=1, server_default='1')
     event_id = Column(String(64))
     storage_path = Column(String(512))
     caption = Column(String(255))

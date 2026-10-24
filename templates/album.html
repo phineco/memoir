@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}家庭相册 · {{ family.name }}{% endblock %}
+{% block nav %}{% include '_family_nav.html' %}{% endblock %}
+{% block content %}
+<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>家庭相册</h1><p class="hint">照片按拍摄时间从近到远排列，时间不详的放在最后。全家成员可见，可在写文章时选图插入。</p></div>
+<div class="form-actions"><a class="btn-primary" href="{{ url_for('album.upload',family_id=family.id) }}">上传照片</a><a class="btn-secondary" href="{{ url_for('main.write_article',family_id=family.id) }}">选图写文章</a></div>
+<form method="get" class="album-search"><label for="album-location">按地点找照片</label><div class="form-actions"><input class="full" id="album-location" name="location" value="{{ location }}" maxlength="255" placeholder="如：合肥、老家、学校"><button type="submit" class="btn-secondary">搜索地点</button>{% if location %}<a href="{{ url_for('album.index',family_id=family.id) }}">清除搜索</a>{% endif %}</div></form>
+<p class="hint">共 {{ total }} 张{% if location %} · 地点包含“{{ location }}”{% endif %}</p>
+{% set ns=namespace(year='initial') %}
+<div class="album-grid">
+{% for photo in photos %}
+{% if ns.year != photo.photo_year %}<h2 class="album-year">{{ (photo.photo_year|string)+'年' if photo.photo_year else '拍摄时间不详' }}</h2>{% set ns.year=photo.photo_year %}{% endif %}
+<a class="card album-card" href="{{ url_for('album.detail',family_id=family.id,photo_id=photo.id) }}"><img src="{{ url_for('album.image',family_id=family.id,photo_id=photo.id,size='thumb') }}" alt="{{ photo.title or photo.caption or '家庭照片' }}" loading="lazy" width="640" height="480"><h3 class="card-title">{{ photo.title or photo.caption or '未命名照片' }}</h3><p class="hint">{{ date_label(photo) }} · {{ photo.location or '地点未记录' }}</p>{% if photo.title and photo.caption %}<p>{{ photo.caption }}</p>{% endif %}</a>
+{% else %}<p class="hint">{% if location %}没有找到这个地点的照片，可换个关键词试试。{% else %}还没有照片。上传一张，写下它背后的时间、地点和回忆。{% endif %}</p>{% endfor %}
+</div>
+<nav class="form-actions" aria-label="相册分页">{% if page>1 %}<a class="btn-secondary" href="{{ url_for('album.index',family_id=family.id,location=location,page=page-1) }}">上一页</a>{% endif %}<span>第 {{ page }} / {{ pages }} 页</span>{% if page<pages %}<a class="btn-secondary" href="{{ url_for('album.index',family_id=family.id,location=location,page=page+1) }}">下一页</a>{% endif %}</nav>
+{% endblock %}

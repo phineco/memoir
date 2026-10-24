@@ -28,6 +28,14 @@
   </section>
   <label>标题<br><input name="topic" class="full" value="{{ form.get('topic','') if form else '' }}" required></label>
 
+  <details class="disclosure" id="album-picker" data-endpoint="{{ url_for('album.choices',family_id=family.id) }}" data-initial-photo="{{ request.args.get('photo_id','') }}">
+    <summary>从家庭相册选图</summary>
+    <p class="hint">相册照片全家可见，插入私密文章不会改变相册权限；仅插入选中的照片，不会替换正文。</p>
+    <div class="form-actions"><a class="btn-secondary" href="{{ url_for('album.upload',family_id=family.id) }}" target="_blank" rel="noopener">上传新照片（新窗口）</a><a href="{{ url_for('album.index',family_id=family.id) }}" target="_blank" rel="noopener">查看家庭相册</a></div>
+    <label for="picker-location">按地点选图</label><div class="form-actions"><input id="picker-location" class="full" maxlength="255" placeholder="如：老家"><button id="picker-search" class="btn-secondary" type="button">查找照片</button></div>
+    <p class="hint" id="picker-status" role="status" aria-live="polite"></p><div class="album-grid" id="picker-results"></div>
+    <div class="form-actions"><button type="button" id="picker-prev" class="btn-secondary" disabled>上一页照片</button><span id="picker-page"></span><button type="button" id="picker-next" class="btn-secondary" disabled>下一页照片</button></div>
+  </details>
   <div class="editor-toolbar-row">
     <span class="editor-label">正文</span>
     <button type="button" id="voice-btn" class="voice-btn" aria-pressed="false" aria-describedby="voice-status">语音输入</button>
@@ -126,6 +134,7 @@
 <script src="{{ asset_url('voice-input.js') }}"></script>
 <script src="{{ asset_url('write-recovery.js') }}"></script>
 <script src="{{ asset_url('writing-prompts.js') }}"></script>
+<script src="{{ asset_url('album-picker.js') }}"></script>
 <script>
 let writerVoice = null;
 const initialContent = {{ ((form.get('content','') if form else '') if request.method == 'POST' else (existing_content or '')) | tojson }};
@@ -166,6 +175,22 @@ initWriteRecovery({
   read: function () { return quill ? quill.root.innerHTML : document.getElementById('editor-fallback').value; },
   write: function (value) { if (quill) quill.clipboard.dangerouslyPasteHTML(value); else document.getElementById('editor-fallback').value = value; },
   subscribe: function (callback) { if (quill) quill.on('text-change', callback); }
+});
+let albumCursor = null;
+if (quill) quill.on('selection-change', function(range) { if (range) albumCursor = range; });
+initAlbumPicker({
+  available: !!quill,
+  insert: function(photo) {
+    if (!quill) return;
+    const range = quill.getSelection() || albumCursor || {index: quill.getLength()-1};
+    const index = Math.min(range.index, quill.getLength()-1);
+    quill.insertEmbed(index, 'image', photo.url, 'user');
+    quill.formatText(index, 1, {alt: photo.title.slice(0,500)}, 'user');
+    const caption = '\n' + photo.title + ' · ' + photo.date + ' · ' + photo.location + '\n';
+    quill.insertText(index+1, caption, 'user');
+    quill.setSelection(index+1+caption.length, 0, 'user');
+    quill.focus();
+  }
 });
 initWritingPrompts({
   selfNarrator: {{ (self_narrator_id or '')|tojson }},

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}{{ '编辑照片资料' if photo else '上传照片' }} · {{ family.name }}{% endblock %}
+{% block nav %}{% include '_family_nav.html' %}{% endblock %}
+{% block content %}
+<a class="btn-secondary" href="{{ url_for('album.index',family_id=family.id) }}">返回家庭相册</a>
+<h1>{{ '编辑照片资料' if photo else '上传照片' }}</h1>
+<p class="hint">相册里的照片全家成员可见；即使插入私密文章，照片在相册中的范围仍是全家。请确认照片适合家庭共享。</p>
+{% if error %}<p class="error" role="alert">{{ error }}{% if not photo %} 请重新选择原图；已填写的文字仍保留。{% endif %}</p>{% endif %}
+<form method="post" enctype="multipart/form-data" id="album-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% if photo %}<input type="hidden" name="base_version" value="{{ photo.metadata_version }}"><img class="album-preview" src="{{ url_for('album.image',family_id=family.id,photo_id=photo.id) }}" alt="{{ photo.title or photo.caption or '家庭照片' }}">{% else %}<label>选择照片<input type="file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp" required></label><p class="hint">每次上传一张，限 10 MB；支持 JPG、PNG、GIF、WebP，动态图片保留首帧。手机 HEIC 请先转为 JPG。本站会校正方向、缩放并去除附带定位等信息，原图请自行保留。</p>{% endif %}
+<div class="form-row"><label>名称（与描述至少填一项）<input name="title" class="full" maxlength="120" value="{{ form.get('title','') }}" placeholder="如：老院子里的全家福"></label><label>地点<input name="location" class="full" maxlength="255" required value="{{ form.get('location','') }}" placeholder="如：合肥老家；不清楚可填地点不详"></label></div>
+<label>描述<textarea name="caption" class="full" rows="3" maxlength="255" placeholder="照片里有谁，当时发生了什么……">{{ form.get('caption','') }}</textarea></label>
+<fieldset class="related-box"><legend>拍摄时间（公历）</legend>
+<label>记得多准确<select name="time_precision" class="full" required><option value="">请选择</option>{% for value,label in [('year','只记得年份'),('month','记得到月份'),('day','记得到日期'),('unknown','时间不详')] %}<option value="{{ value }}" {% if form.get('time_precision')==value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+<div class="form-row"><label>年<input type="number" name="photo_year" min="1" max="9999" value="{{ form.get('photo_year','') }}" placeholder="如 1985"></label><label>月<input type="number" name="photo_month" min="1" max="12" value="{{ form.get('photo_month','') }}"></label><label>日<input type="number" name="photo_day" min="1" max="31" value="{{ form.get('photo_day','') }}"></label></div><p class="hint">只填写已知的部分，系统按所选精度保存；选“时间不详”时不保存年月日，不用上传时间代替拍摄时间。</p></fieldset>
+<label>关联人物（选填）<select name="person_id" class="full"><option value="">不指定</option>{% for person in people %}<option value="{{ person.id }}" {% if form.get('person_id')==person.id %}selected{% endif %}>{{ person.name }}</option>{% endfor %}</select></label>
+<div class="form-actions"><button type="submit" class="btn-primary">{{ '保存照片资料' if photo else '保存到家庭相册' }}</button></div>
+</form>
+<script>
+(function(){
+  const form=document.getElementById('album-form'),precision=form.elements.time_precision;
+  function dates(){
+    const fields=[form.elements.photo_year,form.elements.photo_month,form.elements.photo_day];
+    const count={year:1,month:2,day:3}[precision.value]||0;
+    fields.forEach(function(field,index){field.disabled=index>=count;field.required=index<count;});
+  }
+  function description(){form.elements.title.setCustomValidity(form.elements.title.value.trim()||form.elements.caption.value.trim()?'':'请填写照片名称或描述，至少一项。');}
+  precision.addEventListener('change',dates);dates();
+  form.elements.title.addEventListener('input',description);form.elements.caption.addEventListener('input',description);description();
+})();
+</script>
+{% endblock %}

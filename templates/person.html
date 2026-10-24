@@ -40,11 +40,11 @@
 <div class="photos">
 {% for ph in photos %}
   <div class="photo">
-    {% if ph.storage_path %}<img src="{{ storage_url(ph.storage_path) }}" class="photo-img" alt="{{ ph.caption or '' }}" loading="lazy">{% else %}<div class="photo-ph">📷</div>{% endif %}
-    <div class="photo-cap">{{ ph.photo_year or '年份未知' }} · {{ ph.caption or '' }}</div>
+    {% if ph.storage_path %}<img src="{{ url_for('album.image',family_id=family.id,photo_id=ph.id,size='thumb') }}" class="photo-img" alt="{{ ph.title or ph.caption or '家庭照片' }}" loading="lazy">{% else %}<div class="photo-ph">📷</div>{% endif %}
+    <div class="photo-cap">{{ ph.photo_year or '年份未知' }} · <a href="{{ url_for('album.detail',family_id=family.id,photo_id=ph.id) }}">{{ ph.title or ph.caption or '家庭照片' }}</a>{% if ph.location %} · {{ ph.location }}{% endif %}</div>
     {% if me and (ph.uploaded_by == me.id or is_admin) %}
     <form method="post" action="{{ url_for('main.photo_delete', family_id=family.id, person_id=person.id, photo_id=ph.id) }}" onsubmit="return confirm('删除这张照片？')">
-      <button type="submit" class="btn-small btn-danger">删除</button>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn-small btn-danger">删除</button>
     </form>
     {% endif %}
   </div>
@@ -52,31 +52,7 @@
   <p class="hint">暂无照片。</p>
 {% endfor %}
 </div>
-{% if me %}
-<h3>📤 添加照片</h3>
-<form method="post" action="{{ url_for('main.photo_upload', family_id=family.id, person_id=person.id) }}" enctype="multipart/form-data">
-  <div class="upload-row">
-    <label class="btn-secondary filebtn">📷 拍照<input type="file" name="photo" accept="image/*" capture="environment" hidden></label>
-    <label class="btn-secondary filebtn">🖼️ 相册上传<input type="file" name="photo2" accept="image/*" hidden></label>
-    <span id="filename" class="muted"></span>
-  </div>
-  <div class="form-row">
-    <label>拍摄年份 <input type="number" name="photo_year" placeholder="如 1985"></label>
-  </div>
-  <label>照片描述 *<br><input name="caption" class="full" required placeholder="这张照片讲的是…（必填）"></label>
-  <div class="form-actions">
-    <button type="submit" class="btn-primary">上传</button>
-  </div>
-  <p class="hint">手机上"拍照"会直接打开相机。描述必填，方便以后回忆。</p>
-</form>
-<script>
-document.querySelectorAll('input[type=file]').forEach(function(inp){
-  inp.addEventListener('change', function(){
-    if (inp.files.length) document.getElementById('filename').textContent = '已选：' + inp.files[0].name;
-  });
-});
-</script>
-{% endif %}
+{% if me %}<div class="form-actions"><a class="btn-secondary" href="{{ url_for('album.upload',family_id=family.id,person_id=person.id) }}">上传照片并填写资料</a><a class="btn-secondary" href="{{ url_for('album.index',family_id=family.id) }}">查看家庭相册</a></div>{% endif %}
 
 <h2>🕰️ 时间轴</h2>
 {% if is_admin %}<p><a href="{{ url_for('main.timeline_add', family_id=family.id, person_id=person.id) }}" class="btn-small btn-secondary">➕ 添加事件</a></p>{% endif %}

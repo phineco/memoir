@@ -1,7 +1,8 @@
 {
   "files": {
     "ai-chat.js": "ai-chat.1ccb46210a3f7d8e.js",
-    "app.css": "app.afb1e0e789847006.css",
+    "album-picker.js": "album-picker.5a952931c557c5cc.js",
+    "app.css": "app.5e5973dff519b3fd.css",
     "family-context.js": "family-context.8debcaf0224ca923.js",
     "family-voice.js": "family-voice.8c17f9469fbc6559.js",
     "navigation.js": "navigation.abd2cafcd95362e5.js",
@@ -18,7 +19,8 @@
   },
   "sha256": {
     "ai-chat.1ccb46210a3f7d8e.js": "1ccb46210a3f7d8e2b6682d1845b35aaa3047ab3363f67694e3d10ce19ece4cc",
-    "app.afb1e0e789847006.css": "afb1e0e7898470066eb59e0dd23b8c7bea0f2a79dc65be5fba30cec9ea7cca8d",
+    "album-picker.5a952931c557c5cc.js": "5a952931c557c5ccc97bf069e40a7850c3c87e129373a395a05fc3d68328d8ea",
+    "app.5e5973dff519b3fd.css": "5e5973dff519b3fd48b51bd7c93cf87361107a8abd3cca799a3dae000950fc0d",
     "echarts-5.5.0.min.42f8329d989b6f65.js": "42f8329d989b6f6539dd2b15bbdf0d82025762ac112fbb60dc57b27d7bcf3946",
     "family-context.8debcaf0224ca923.js": "8debcaf0224ca92384dad4ec3af11850e8cf3dadcd594e0e69105bf7cd5f403a",
     "family-voice.8c17f9469fbc6559.js": "8c17f9469fbc65595705a6dcfef029528da1b2b59328b38642bbbe57beb2050c",
