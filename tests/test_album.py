@@ -211,3 +211,79 @@ def test_person_photo_entry_reuses_required_metadata_and_private_images(store,cl
     body=client.get('/f/a/person/pa').get_data(as_text=True)
     assert '/f/a/album/'+p.id+'/image?size=thumb' in body and 'Person portrait' in body
     assert client.post('/f/a/person/pa/photos/'+p.id+'/delete',data={}).status_code==400
+
+
+def test_uploaders_filter_by_identity_with_combined_place_and_pagination(store,client,login):
+    from models import User
+    s=get_session()
+    # Two uploaders can have the same nickname; the selector still uses distinct account IDs.
+    s.get(User,'owner-a').nickname=s.get(User,'member-a').nickname='同名家人'
+    for i in range(26):s.add(Photo(id=f'by-member-{i:02}',family_id='a',uploaded_by='member-a',location='老家',photo_year=1980+i,title='成员照片'))
+    s.add(Photo(id='by-owner',family_id='a',uploaded_by='owner-a',location='老家',title='作者照片'))
+    s.add(Photo(id='other-place',family_id='a',uploaded_by='member-a',location='杭州',title='旅行'))
+    s.add(Photo(id='foreign-owner',family_id='b',uploaded_by='owner-b',location='老家',title='别家照片'))
+    s.commit();login()
+    data=client.get('/f/a/album/choices?location=老家&uploader=user:member-a').json
+    assert data['total']==26 and data['pages']==2
+    assert {p['id'] for p in data['photos']}=={f'by-member-{i:02}' for i in range(2,26)}
+    options=data['uploader_options']
+    assert {v['value'] for v in options}=={'user:member-a','user:owner-a'}
+    assert all(v['label']=='同名家人' for v in options)
+    assert 'Beta' not in str(data)
+    tail=client.get('/f/a/album/choices?location=老家&uploader=user:member-a&page=2').json
+    assert tail['total']==26 and len(tail['photos'])==2
+    body=client.get('/f/a/album?location=老家&uploader=user:member-a').get_data(as_text=True)
+    assert 'uploader=user:member-a' in body and 'page=2' in body
+    assert '作者照片' not in body and '旅行' not in body
+    assert '按上传人筛选' in body and '上传人：同名家人' in body
+    assert client.get('/f/a/album/choices?photo_id=by-owner&uploader=user:member-a').json['total']==0
+    assert client.get('/f/a/album/choices?uploader=user:owner-b').json['total']==0
+    assert client.get('/f/b/album/choices?uploader=user:owner-b').status_code==404
+
+
+def test_unknown_deleted_and_unlabelled_uploaders_do_not_expose_phone_numbers(store,client,login):
+    from models import User
+    s=get_session();user=s.get(User,'owner-a');user.nickname='';user.username='18900000000';user.phone='18900000000'
+    s.get(User,'member-a').del_flag=1
+    for pid,uid in [('no-user',None),('orphan','missing-user'),('empty',''),('deleted','member-a'),('unnamed','owner-a')]:
+        s.add(Photo(id=pid,family_id='a',uploaded_by=uid,title=pid))
+    s.commit();login()
+    all_photos=client.get('/f/a/album/choices').json
+    labels={p['id']:p['uploader'] for p in all_photos['photos']}
+    assert labels=={'no-user':'上传人未记录','orphan':'上传人未记录','empty':'上传人未记录','deleted':'已注销家人','unnamed':'家人（未设置昵称）'}
+    unknown=client.get('/f/a/album/choices?uploader=unknown').json
+    assert {p['id'] for p in unknown['photos']}=={'no-user','orphan','empty'}
+    assert any(option['value']=='unknown' for option in unknown['uploader_options'])
+    # The view and JSON never fall back to a username that can be a phone number.
+    assert '18900000000' not in str(all_photos)
+    body=client.get('/f/a/album/deleted').get_data(as_text=True)
+    assert '上传人：已注销家人' in body
+    body=client.get('/f/a/album/unnamed').get_data(as_text=True)
+    assert '上传人：家人（未设置昵称）' in body
+    uploader=re.search(r'id="photo-uploader"[^>]*>(.*?)</p>',body)[1]
+    assert '18900000000' not in uploader
+    assert '上传人：上传人未记录' in client.get('/f/a/album/orphan').get_data(as_text=True)
+
+
+def test_departed_uploader_keeps_attribution_without_restoring_access(store,client,login):
+    s=get_session();s.add(Photo(id='kept-photo',family_id='a',uploaded_by='member-a',title='Retained'));s.get(FamilyMember,'member').del_flag=1;s.commit()
+    login();data=client.get('/f/a/album/choices?uploader=user:member-a').json
+    assert data['total']==1 and data['photos'][0]['uploader']=='Alpha Member'
+    assert '上传人：Alpha Member' in client.get('/f/a/album/kept-photo').get_data(as_text=True)
+    login('member-a');assert client.get('/f/a/album/kept-photo').status_code==404
+    assert client.get('/f/a/album/choices').status_code==404
+
+
+def test_uploader_is_the_actor_and_is_not_overwritten_by_edit(store,client,login):
+    login('member-a');csrf=token(client);upload(client,csrf,uploaded_by='owner-b');pid=photo().id
+    assert photo().uploaded_by=='member-a'
+    login('owner-a');csrf=token(client);version=photo().metadata_version
+    response=client.post('/f/a/album/'+pid+'/edit',data=dict(csrf_token=csrf,base_version=str(version),title='Edited',location='新地点',time_precision='unknown',uploaded_by='owner-a'))
+    assert response.status_code==302
+    assert photo().uploaded_by=='member-a'
+    assert '上传人：Alpha Member' in client.get('/f/a/album/'+pid).get_data(as_text=True)
+
+
+@pytest.mark.parametrize('value',['other','user:','user:'+'a'*65])
+def test_invalid_uploader_filter_is_rejected(client,login,value):
+    login();assert client.get('/f/a/album/choices',query_string={'uploader':value}).status_code==400

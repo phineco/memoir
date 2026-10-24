@@ -44,6 +44,9 @@ import datetime
 s.add(Invite(id="ui-invite",family_id="ui",code="ui-invite-only",max_uses=5,used_count=0,
              expire_at=datetime.datetime.now()+datetime.timedelta(days=7)))
 s.commit()
+if os.environ.get('ALBUM_UPLOADER_UI')=='1':
+    s.get(User,'ui-relative').password_hash=generate_password_hash('ui-relative-test-only')
+    s.commit()
 if os.environ.get('P2_UI_LARGE')=='1':
     s.add(User(id='ui-operator',username='ui-operator',nickname='运营测试',password_hash=generate_password_hash('ui-operator-test-only')))
     app.config['OPERATIONS_USER_IDS']=('ui-operator',)

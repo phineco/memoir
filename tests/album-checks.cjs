@@ -27,19 +27,36 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAZElEQVR4n
   await page.goto(base+'/f/ui/more');await nav(()=>page.getByRole('link',{name:/家庭相册/}).click());
   assert(await page.getByRole('heading',{name:'家庭相册',exact:true}).isVisible());
   const first=await add('老院子的合影','合肥老家','year','1985');
+  assert.match(await page.locator('#photo-uploader').innerText(),/测试家人/);
   const second=await add('西湖散步','杭州西湖','day','2002','6','15');
   const unknown=await add('未记年份的照片','地点不详','unknown');
   await page.goto(base+'/f/ui/album');
   assert.deepEqual(await page.locator('.album-year').allTextContents(),['2002年','1985年','拍摄时间不详']);
-  await page.locator('#album-location').fill('合肥');await nav(()=>page.getByRole('button',{name:'搜索地点',exact:true}).click());
+  await page.locator('#album-location').fill('合肥');await nav(()=>page.getByRole('button',{name:'筛选照片',exact:true}).click());
   assert.equal(await page.locator('.album-card').count(),1);
+  await page.locator('#album-uploader').selectOption('user:ui-user');await nav(()=>page.getByRole('button',{name:'筛选照片',exact:true}).click());
+  assert.equal(new URL(page.url()).searchParams.get('uploader'),'user:ui-user');assert.match(await page.locator('.album-card').innerText(),/上传人：测试家人/);
   assert.match(await page.locator('.album-card').innerText(),/老院子的合影/);
+  if(process.env.ALBUM_UPLOADER_UI==='1'){
+   const relative=await browser.newContext();await relative.request.post(base+'/login',{form:{phone:'ui-relative',password:'ui-relative-test-only'}});
+   const uploadPage=await relative.request.get(base+'/f/ui/album/upload');
+   const csrf=(await uploadPage.text()).match(/name="csrf_token" value="([^"]+)"/)[1];
+   const added=await relative.request.post(base+'/f/ui/album/upload',{multipart:{csrf_token:csrf,title:'另一位家人的照片',location:'合肥老家',time_precision:'unknown',photo:{name:'relative.png',mimeType:'image/png',buffer:png}}});assert(added.ok());await relative.close();
+   await page.reload();assert.equal(await page.locator('.album-card').count(),1,'selected owner and location survive reload');
+   await page.locator('#album-uploader').selectOption('user:ui-relative');await nav(()=>page.getByRole('button',{name:'筛选照片',exact:true}).click());
+   assert.equal(await page.locator('.album-card').count(),1);assert.match(await page.locator('.album-card').innerText(),/另一位家人的照片/);
+   await nav(()=>page.locator('.album-card').click());assert.match(await page.locator('#photo-uploader').innerText(),/另一位家人/);
+   await page.goto(base+'/f/ui/album?location='+encodeURIComponent('合肥')+'&uploader=user:ui-user');
+   assert.equal(await page.locator('.album-card').count(),1);
+  }
   await nav(()=>page.locator('.album-card').click());await nav(()=>page.getByRole('link',{name:'编辑照片资料',exact:true}).click());
   await page.locator('[name=caption]').fill('四代人在院子里合影');await nav(()=>page.getByRole('button',{name:'保存照片资料'}).click());
   assert(await page.getByText('四代人在院子里合影',{exact:true}).isVisible());
   await nav(()=>page.getByRole('link',{name:'用这张照片写文章'}).click());
   await page.locator('#picker-results button').first().waitFor();
   assert.equal(await page.locator('#picker-results button').count(),1,'photo detail opens the selected photo');
+  assert.match(await page.locator('#picker-results').innerText(),/上传人：测试家人/);
+  await Promise.all([page.waitForResponse(r=>r.url().includes('/album/choices')&&new URL(r.url()).searchParams.get('uploader')==='user:ui-user'),page.locator('#picker-uploader').selectOption('user:ui-user')]);
   assert.equal(await page.locator('.ql-editor img').count(),0,'opening picker must not alter content');
   await page.locator('[name=topic]').fill('看照片讲故事');
   await page.locator('.ql-editor').fill('开头与结尾都要保留。');
@@ -87,6 +104,6 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAZElEQVR4n
   assert.match(await page.locator('#articleBody').innerText(),/开头与结尾都要保留/);
   const anonymous=await browser.newContext();assert.equal((await anonymous.request.get(base+'/f/ui/album/'+second+'/image')).status(),401);await anonymous.close();
   assert.deepEqual(errors,[]);
-  console.log('Family album UI passed: upload metadata and partial/unknown dates, timeline and place search, edit, selected-photo entry, two inline images, browser recovery, published revision, removal, private bytes and 3 large-text layouts.');
+  console.log('Family album UI passed: upload metadata and partial/unknown dates, timeline and uploader/place filters, uploader attribution, edit, selected-photo entry, two inline images, browser recovery, published revision, removal, private bytes and 3 large-text layouts.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

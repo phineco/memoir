@@ -6,10 +6,10 @@ import warnings
 from html.parser import HTMLParser
 
 from flask import Blueprint,abort,current_app,redirect,render_template,request,send_file,url_for
-from sqlalchemy import case,func
+from sqlalchemy import case,func,or_
 
 from forms import require_csrf
-from models import Photo,Person,get_session,new_id
+from models import Photo,Person,User,get_session,new_id
 from reporting import local_now
 from storage import get_storage
 from views import _current_user,_family_or_404,_is_admin
@@ -95,11 +95,41 @@ def thumb_key(key):
     return name+'-thumb.'+ext
 
 
+def uploader_label(user):
+    if not user:return '上传人未记录'
+    if user.del_flag==1:return '已注销家人'
+    return (user.nickname or '').strip() or '家人（未设置昵称）'
+
+
+def uploader_info(family_id,selected=""):
+    s=get_session()
+    ids={row[0] for row in s.query(Photo.uploaded_by).filter_by(family_id=family_id,del_flag=0).distinct()}
+    users=s.query(User.id,User.nickname,User.del_flag).filter(User.id.in_([uid for uid in ids if uid])).all()
+    labels={user.id:uploader_label(user) for user in users}
+    options=[dict(value='user:'+uid,label=label) for uid,label in sorted(labels.items(),key=lambda item:(item[1],item[0]))]
+    if ids-set(labels):options.append(dict(value='unknown',label='上传人未记录'))
+    if selected and selected not in {option['value'] for option in options}:options.append(dict(value=selected,label='所选上传人（暂无照片）'))
+    return options,labels
+
+
+def uploader_filter():
+    value=request.args.get('uploader','')
+    if value not in ('','unknown') and not (value.startswith('user:') and 1<=len(value[5:])<=64):
+        abort(400,'上传人筛选无效，请重新选择。')
+    return value
+
+
 def query_photos(family_id):
     location=request.args.get('location','').strip()
     if len(location)>255:abort(400,'地点搜索最多 255 字')
     query=get_session().query(Photo).filter_by(family_id=family_id,del_flag=0)
     if location:query=query.filter(Photo.location.contains(location,autoescape=True))
+    uploader=uploader_filter()
+    if uploader=='unknown':
+        query=query.filter(or_(Photo.uploaded_by.is_(None),Photo.uploaded_by=='',~Photo.uploaded_by.in_(get_session().query(User.id))))
+    elif uploader:query=query.filter(Photo.uploaded_by==uploader[5:])
+    if request.endpoint=='album.choices' and request.args.get('photo_id'):
+        selected=photo_or_404(family_id,request.args['photo_id']);query=query.filter(Photo.id==selected.id)
     # Unknown capture dates remain a separate last group, never substitute upload time.
     query=query.order_by(case((Photo.photo_year.is_(None),1),else_=0),Photo.photo_year.desc(),
                          func.coalesce(Photo.photo_month,0).desc(),func.coalesce(Photo.photo_day,0).desc(),Photo.id)
@@ -107,22 +137,24 @@ def query_photos(family_id):
     if not re.fullmatch(r'[1-9][0-9]{0,5}',page):abort(400,'页码无效')
     page=int(page);total=query.count();pages=max(1,(total+PAGE_SIZE-1)//PAGE_SIZE)
     if page>pages:abort(404)
-    return query.offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE).all(),location,page,pages,total
+    return query.offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE).all(),location,page,pages,total,uploader
 
 
 @bp.get('/f/<family_id>/album')
 def index(family_id):
-    family=_family_or_404(family_id);photos,location,page,pages,total=query_photos(family_id)
-    return render_template('album.html',family=family,photos=photos,location=location,page=page,pages=pages,total=total,date_label=date_label)
+    family=_family_or_404(family_id);photos,location,page,pages,total,uploader=query_photos(family_id)
+    options,labels=uploader_info(family_id,uploader)
+    return render_template('album.html',family=family,photos=photos,location=location,page=page,pages=pages,total=total,date_label=date_label,
+                           uploader=uploader,uploader_options=options,uploader_names=labels)
 
 
 @bp.get('/f/<family_id>/album/choices')
 def choices(family_id):
-    if request.args.get('photo_id'):
-        photos=[photo_or_404(family_id,request.args['photo_id'])];page=pages=total=1
-    else:photos,location,page,pages,total=query_photos(family_id)
+    photos,location,page,pages,total,uploader=query_photos(family_id)
+    options,labels=uploader_info(family_id,uploader)
     return dict(photos=[dict(id=p.id,title=p.title or p.caption or '家庭照片',caption=p.caption or '',date=date_label(p),
-                            location=p.location or '地点未记录',thumbnail=url_for('album.image',family_id=family_id,photo_id=p.id,size='thumb'),url=url_for('album.image',family_id=family_id,photo_id=p.id)) for p in photos],page=page,pages=pages,total=total)
+                            uploader=labels.get(p.uploaded_by,'上传人未记录'),
+                            location=p.location or '地点未记录',thumbnail=url_for('album.image',family_id=family_id,photo_id=p.id,size='thumb'),url=url_for('album.image',family_id=family_id,photo_id=p.id)) for p in photos],page=page,pages=pages,total=total,uploader_options=options,selected_uploader=uploader)
 
 
 def form_page(family,photo=None,error=None,status=200):
@@ -171,7 +203,9 @@ def upload(family_id,person_id=None):
 @bp.get('/f/<family_id>/album/<photo_id>')
 def detail(family_id,photo_id):
     family=_family_or_404(family_id);photo=photo_or_404(family_id,photo_id)
+    user=get_session().query(User.id,User.nickname,User.del_flag).filter_by(id=photo.uploaded_by).first() if photo.uploaded_by else None
     return render_template('album_detail.html',family=family,photo=photo,date_label=date_label,
+                           uploader_name=uploader_label(user),
                            can_manage=photo.uploaded_by==_current_user().id or _is_admin(family,_current_user()))
 
 
