@@ -1,8 +1,6 @@
-<div class="management-section-heading"><h2>家庭资料工具</h2><p class="hint">人物资料与登录账号分别管理。修改或删除人物，请先进入对应的人物页。</p></div>
+<div class="management-section-heading"><h2>家庭资料工具</h2><p class="hint">管理对外分享，或导入已整理的家庭资料。</p></div>
 <div class="management-tools">
-  <section class="card management-tool"><h3>导出家庭可见文章</h3><p class="hint">下载全家可见的已发布文章，不含他人的私密稿、指定人文章或草稿。</p><div class="form-actions"><a class="btn-secondary" href="{{ url_for('main.article_export',family_id=family.id,scope='family') }}">查看导出范围</a></div></section>
   {% for title,description,endpoint,label in [
-    ('家族人物','添加人物，记录生卒日期与亲属关系。','main.tree_add','添加人物'),
     ('分享管理','管理已发布的对外分享。分享快照可供家庭外的人阅读。','main.share_list','管理分享'),
     ('同步入库','把整理好的家庭资料导入，查看同步记录与结果。','main.sync_import','同步入库')
   ] %}

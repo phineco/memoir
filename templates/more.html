@@ -19,11 +19,11 @@
 </div>
 <p class="hint menu-note" id="ebook-availability">电子书：付费功能 · 尚未开放</p>
 </section>
-<section class="menu-section" aria-labelledby="help-manage-heading">
-<h2 id="help-manage-heading">帮助与管理</h2>
+<section class="menu-section" aria-labelledby="help-heading">
+<h2 id="help-heading">帮助</h2>
 <div class="menu-buttons">
 <a class="btn-primary menu-button" href="{{ url_for('main.guide',family_id=family.id) }}">使用帮助</a>
-{% if is_admin %}<a class="btn-primary menu-button" href="{{ url_for('main.family_manage',family_id=family.id) }}">家庭管理</a>{% endif %}
+
 </div>
 </section>
 <details class="menu-notes"><summary>功能说明</summary><dl>

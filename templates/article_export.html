@@ -2,7 +2,7 @@
 {% block title %}导出可读文章 · {{ family.name }}{% endblock %}
 {% block nav %}{% include '_family_nav.html' %}{% endblock %}
 {% block content %}
-<div class="page-return"><a href="{{ url_for('main.family_manage',family_id=family.id,section='tools') if scope=='family' else url_for('main.account',family_id=family.id) }}">← {{ '家庭资料工具' if scope=='family' else '个人中心' }}</a></div>
+<div class="page-return"><a href="{{ url_for('main.family_more',family_id=family.id) if scope=='family' else url_for('main.account',family_id=family.id) }}">← {{ '更多' if scope=='family' else '个人中心' }}</a></div>
 <h1>导出可读文章</h1><p class="hint">解压下载的文件后，打开 index.html 即可离线阅读，不需要登录或联网；同时附带篇数、版本和时间等资料清单。</p>
 <nav class="management-tabs" aria-label="文章导出范围">
   <a href="{{ url_for('main.article_export',family_id=family.id) }}" {% if scope == 'own' %}aria-current="page"{% endif %}>我记录的文章与草稿</a>

@@ -31,7 +31,7 @@ const {execFileSync}=require('node:child_process');
   assert.equal(await read.locator('article').count(),data.articles.length);
   assert(await read.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual(outside,[]);await offline.close();
-  await page.goto(base+'/f/ui/manage/tools');await page.getByRole('link',{name:'查看导出范围',exact:true}).click();
+  await page.goto(base+'/f/ui/more');await page.getByRole('link',{name:'导出家庭可见文章',exact:true}).click();
   assert(new URL(page.url()).searchParams.get('scope')==='family');
   await page.goto(base+'/display?family_id=ui');await page.locator('[name=size][value="26"]').check();
   for(const width of [320,390,1280]) {

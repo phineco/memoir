@@ -40,7 +40,7 @@ const path=require('node:path');
       await page.evaluate(()=>scrollTo(0,0));
       if(baseline[key] && width<768){const ratio=1-metrics.height/baseline[key];assert(ratio>.25,key+' did not reduce scrolling by 25%');reduction.push(Math.round(ratio*100));}
       const names=await buttons.allTextContents();
-      for(const label of name==='more'?['问 AI','写作计划','周报','生成电子书','使用帮助','家庭管理']:['关于我的故事','我记录的故事','我的草稿','导出我的文章','我的声音','显示设置','我的家庭','隐私申请'])assert(names.some(n=>n.trim()===label),label+' missing');
+      for(const label of name==='more'?['问 AI','写作计划','周报','生成电子书','使用帮助']:['关于我的故事','我记录的故事','我的草稿','导出我的文章','我的声音','显示设置','我的家庭','隐私申请'])assert(names.some(n=>n.trim()===label),label+' missing');
       if(name==='more'){
        assert.equal(await page.getByRole('link',{name:'导出我的文章',exact:true}).count(),0);
        assert.match(await page.locator('main').innerText(),/付费功能.*尚未开放/);
