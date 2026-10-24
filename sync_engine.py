@@ -343,21 +343,17 @@ def _apply_revision_sync(s, family_id, payload, user_id, now):
             if not iv_id:
                 notes.append("跳过：修订找不到访谈")
                 continue
-            _editable_interview(s, family_id, iv_id, user_id)
+            iv = _editable_interview(s, family_id, iv_id, user_id)
             new_text = sanitize_html(rv.get("draft") or "")
             if not new_text:
                 notes.append("跳过：修订正文为空")
                 continue
-            cur = s.query(Draft).filter_by(interview_id=iv_id, is_current=True,
-                                           del_flag=0).first()
-            if cur:
-                cur.is_current = False
-                ver = (cur.version or 1) + 1
-            else:
-                ver = 1
-            s.add(Draft(id=new_id(), interview_id=iv_id, version=ver,
-                        is_current=True, content=new_text,
-                        create_by=user_id, create_date=now))
+            from story_revisions import append_revision
+            try:
+                append_revision(s, iv, user_id, new_text, rv.get("base_version"),
+                                rv.get("revision_reason"))
+            except ValueError as exc:
+                raise SyncError(str(exc)) from None
             n_ok += 1
         elif kind == "person":
             p = _resolve_person(s, family_id, name=rv.get("name"))

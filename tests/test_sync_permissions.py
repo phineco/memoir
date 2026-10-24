@@ -12,7 +12,8 @@ def packet(operation, story_id):
             'interview_id': story_id, 'item_id': 'check', 'status': 'verified'}}
     revision = {'kind': operation, 'interview_id': story_id,
                 'draft': '<p>Revised</p>', 'action': 'correct', 'item_id': 'check',
-                'correction': 'Checked year'}
+                'correction': 'Checked year', 'base_version': 1,
+                'revision_reason': 'Checked source'}
     return {'type': 'revision_sync', 'clientId': uuid4().hex,
             'payload': {'revisions': [revision]}}
 
@@ -56,7 +57,8 @@ def test_denied_revision_rolls_back_earlier_items(client, login):
     seed_story()
     login()
     data = packet('draft', 'target')
-    data['payload']['revisions'].insert(0, {'kind': 'draft', 'interview_id': 'public-a', 'draft': 'Allowed'})
+    data['payload']['revisions'].insert(0, {'kind': 'draft', 'interview_id': 'public-a', 'draft': 'Allowed',
+                                         'base_version': 1, 'revision_reason': 'Checked source'})
     assert client.post('/api/sync', json={'family_id': 'a', 'packet': data}).status_code == 400
     s = get_session()
     assert s.get(Draft, 'd-public-a').is_current

@@ -154,7 +154,7 @@
       {"kind": "verify", "interview_client_id": "uuid", "item_text": "原文片段", "action": "confirm"},
       {"kind": "verify", "interview_client_id": "uuid", "item_text": "原文片段", "action": "correct", "correction": "修正内容"},
       {"kind": "verify", "interview_client_id": "uuid", "item_text": "原文片段", "action": "skip"},
-      {"kind": "draft", "interview_client_id": "uuid", "draft": "修订后的初稿全文"},
+      {"kind": "draft", "interview_client_id": "uuid", "draft": "修订后的初稿全文", "base_version": 1, "revision_reason": "根据家人核对修正年份"},
       {"kind": "person", "name": "三叔", "full_name": "王建军"}
     ]
   }
@@ -162,7 +162,7 @@
 ```
 
 - `action`：`confirm` 确认 / `correct` 修正（填 correction）/ `skip` 转下周追问。
-- `kind=draft`：全文修订，网站生成新版本（旧版本保留）。
+- `kind=draft`：全文修订，必须提供核对过的当前正文 `base_version` 和 `revision_reason`；网站生成新版本并保留旧版。缺少版本、版本过期或原因为空时整包拒绝，请打开故事编辑/历史页核对，不得猜版本或自动增加版本重试。协议外壳 `version` 不是正文版本。
 - `kind=person`：正名（如"三叔→王建军"），旧名记入人物备注。
 
 ### 7. plan_progress（写作计划进度回写）

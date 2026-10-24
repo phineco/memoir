@@ -1384,17 +1384,14 @@ def edit_article(family_id, interview_id):
             if not was_published:
                 iv.published_at = now
             iv.publish_status = "published"
-        # 旧版本保留，写新版本
-        if cur_draft:
-            claimed = s.query(Draft).filter_by(id=cur_draft.id, is_current=True).update(
-                {Draft.is_current:False}, synchronize_session=False)
-            if claimed != 1:
-                s.rollback(); abort(409, "已有较新版本，请刷新后恢复本机副本。")
-            cur_draft.is_current = False
-        max_v = s.query(func.max(Draft.version)).filter_by(interview_id=iv.id).scalar() or 0
-        s.add(Draft(id=new_id(), interview_id=iv.id, version=max_v + 1,
-                    is_current=True, content=content, create_by=me.id, remarks=reason[:255],
-                    create_date=local_now()))
+        from story_revisions import append_revision, RevisionConflict
+        try:
+            append_revision(s, iv, me.id, content,
+                            request.form.get("base_version", str(cur_draft.version if cur_draft else 0)),
+                            reason or "保存草稿")
+        except RevisionConflict as exc:
+            s.rollback()
+            abort(409, str(exc))
         for l in cur_links:
             l.del_flag = 1
         if subject_id:

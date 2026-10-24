@@ -61,7 +61,7 @@
 ```json
 [
   {"kind": "verify", "interview_id": "site-story-id", "item_id": "verification-id", "action": "correct", "correction": "应为1979年"},
-  {"kind": "draft", "interview_client_id": "original-import-packet-id", "draft": "<p>修订后的全文。</p>"},
+  {"kind": "draft", "interview_client_id": "original-import-packet-id", "draft": "<p>修订后的全文。</p>", "base_version": 1, "revision_reason": "根据原始资料核对"},
   {"kind": "person", "name": "旧名", "full_name": "正确姓名"}
 ]
 ```
@@ -83,3 +83,5 @@
 ### 人物双历日期兼容（2026-10-21）
 
 网站人物表单可维护出生、去世的独立公历/农历年、月、日及闰月标记，不自动换算。现有 `tree_upsert` 协议仍采用 `birthYear/deathYear`：仅有年份的旧记录可继续更新；若与已有月日或另一套历法日期冲突，整包拒绝并提示到人物编辑页核实，避免年份导入覆盖更精细的家庭资料。相同年份不会清掉月日或闰月。健在标记与去世日期冲突同样需先核实。
+
+全文修订现要求 `base_version`（当前正文版本整数）和 `revision_reason`。缺失或过期时整包拒绝，不自动覆盖；网页与同步共用版本声明及原子写入。旧 skill 全文修订包须重新核对后生成，不能只递增版本号绕过冲突。
