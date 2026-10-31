@@ -724,3 +724,23 @@ class InterviewQuestion(AuditMixin, Base):
     usage = Column(JSON)
     lease_token = Column(String(64))
     lease_until = Column(DateTime)
+
+
+class InterviewClip(AuditMixin, Base):
+    __tablename__ = 'interview_clips'
+    family_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64), nullable=False, index=True)
+    session_id = Column(String(64), nullable=False, index=True)
+    input_revision = Column(Integer, nullable=False)
+    question = Column(String(512), nullable=False)
+    source_hash = Column(String(64), nullable=False)
+    storage_key = Column(String(255), nullable=False)
+    duration_ms = Column(Integer, nullable=False)
+    status = Column(String(16), nullable=False, default='uploaded')
+    answer_id = Column(String(64))
+    transcript = Column(Text().with_variant(MEDIUMTEXT(), 'mysql'))
+    consent_asr = Column(Boolean, nullable=False, default=False)
+    model = Column(String(80))
+    usage = Column(JSON)
+    lease_token = Column(String(64))
+    lease_until = Column(DateTime)

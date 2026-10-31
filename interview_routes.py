@@ -1,10 +1,11 @@
 """Interview pages use the same family membership and author-only material boundary."""
 import secrets
 
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from flask import Blueprint, abort, redirect, render_template, request, url_for, send_file, jsonify, current_app
+import io
 from forms import require_csrf
 from werkzeug.exceptions import HTTPException
-from models import InterviewSession, InterviewQuestion, Person, get_session
+from models import InterviewSession, InterviewQuestion, InterviewClip, Person, get_session
 import interviewing
 from views import _current_user, _family_or_404, _families_for_user
 
@@ -17,7 +18,7 @@ def authenticate():
         if request.method == 'GET': return redirect(url_for('main.login', next=request.full_path.rstrip('?')))
         abort(401)
     if request.method == 'POST':
-        request.max_content_length = 1024 * 1024
+        request.max_content_length = current_app.config['INTERVIEW_MAX_UPLOAD_BYTES']+128*1024 if request.endpoint=='interview.upload' else 1024*1024
         require_csrf()
 
 
@@ -55,8 +56,10 @@ def detail(family_id, session_id):
 def render_detail(family_id, session_id, error=None):
     family = _family_or_404(family_id); s = get_session()
     row = interviewing.owned(s, family_id, _current_user().id, session_id)
+    import interview_audio
+    clips=s.query(InterviewClip).filter_by(session_id=row.id,del_flag=0).filter(InterviewClip.status.notin_(('deleting','deleted'))).order_by(InterviewClip.create_date).all()
     latest = s.query(InterviewQuestion).filter_by(session_id=row.id).order_by(InterviewQuestion.create_date.desc()).first()
-    return render_template('interview.html', family=family, interview=row, answers=interviewing.answers(s, row.id),
+    return render_template('interview.html', family=family, interview=row, clips=clips, local_identity=interview_audio.local_identity(_current_user().id), recorder_user=_current_user().id, answers=interviewing.answers(s, row.id),
         topics=interviewing.TOPICS, nonce=secrets.token_urlsafe(24), pending=interviewing.pending(s, row), latest_question=latest,
         error=error.description if error else None, values=request.form if error else {}), error.code if error else 200
 
@@ -81,3 +84,31 @@ def action(family_id, session_id):
         get_session().rollback()
         if exc.code not in (400,409,429): raise
         return render_detail(family_id, session_id, error=exc)
+
+
+@bp.get('/account/interview-identity')
+def identity():
+    return jsonify(user_id=_current_user().id)
+
+
+@bp.post('/f/<family_id>/interview/<session_id>/upload')
+def upload(family_id,session_id):
+    import interview_audio
+    file=request.files.get('audio')
+    if not file: abort(400,'请选择录音文件')
+    try:
+        clip=interview_audio.upload(get_session(),family_id,_current_user().id,session_id,request.form.get('revision'),
+            request.form.get('nonce'),file.read(current_app.config['INTERVIEW_MAX_UPLOAD_BYTES']+1),request.form.get('consent_recording')=='yes')
+    except HTTPException as exc:
+        get_session().rollback()
+        if request.headers.get('Accept')=='application/json': return jsonify(error=exc.description),exc.code
+        raise
+    if request.headers.get('Accept')=='application/json': return jsonify(id=clip.id,status=clip.status)
+    return redirect(url_for('interview.detail',family_id=family_id,session_id=session_id))
+
+
+@bp.get('/f/<family_id>/interview/<session_id>/audio/<clip_id>')
+def audio(family_id,session_id,clip_id):
+    import interview_audio
+    clip=interview_audio.owned_clip(get_session(),family_id,_current_user().id,session_id,clip_id)
+    return send_file(io.BytesIO(interview_audio.read(clip.storage_key)),mimetype='audio/wav',as_attachment=request.args.get('download')=='1',download_name='采访原声-'+clip.id+'.wav')

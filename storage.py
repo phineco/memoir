@@ -51,7 +51,7 @@ class LocalStorageBackend(StorageBackend):
         with path.open('rb') as stream:return stream.read(limit)
 
     def url(self, key: str) -> str:
-        if key and key.startswith('voice/'):return ''
+        if key and key.startswith(('voice/','interview/')):return ''
         return f"/uploads/{key}"
 
 
@@ -102,7 +102,7 @@ class OssStorageBackend(StorageBackend):
         finally:result.body.close()
 
     def url(self, key: str) -> str:
-        if key and key.startswith('voice/'):return ''
+        if key and key.startswith(('voice/','interview/')):return ''
         r = self.client.presign(
             self._oss.GetObjectRequest(bucket=self.bucket, key=key),
             expires=datetime.timedelta(seconds=self.url_expires))
@@ -135,5 +135,5 @@ def storage_url(key: str) -> str:
         from flask import url_for
         match=re.fullmatch(r'album/([A-Za-z0-9_-]{1,64})/([a-f0-9]{32})\.(?:jpg|png)',key)
         return url_for('album.image',family_id=match[1],photo_id=match[2]) if match else ''
-    if key and key.startswith('voice/'):return ''
+    if key and key.startswith(('voice/','interview/')):return ''
     return get_storage().url(key)

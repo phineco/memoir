@@ -1889,7 +1889,7 @@ def uploaded_file(filename):
     """本地照片也验证所属家庭，知道 URL 不能绕过家庭权限。"""
     from config import Config
     from flask import send_from_directory
-    if filename.startswith('voice/'):abort(404)
+    if filename.startswith(('voice/','interview/')):abort(404)
     if not _current_user():
         abort(401)
     photo = _s().query(Photo).filter_by(storage_path=filename, del_flag=0).first()

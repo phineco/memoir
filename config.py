@@ -63,6 +63,7 @@ class Config:
         "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
     DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-flash")
     AI_ENABLED = bool(os.environ.get("DEEPSEEK_API_KEY", ""))
+    INTERVIEW_MAX_UPLOAD_BYTES = int(os.environ.get('INTERVIEW_MAX_UPLOAD_BYTES','16777216'))
     INTERVIEW_MODEL = os.environ.get('INTERVIEW_MODEL') or DEEPSEEK_MODEL
     INTERVIEW_MAX_TOKENS = int(os.environ.get('INTERVIEW_MAX_TOKENS', '500'))
     INTERVIEW_AI_ENABLED = os.environ.get('INTERVIEW_AI_ENABLED', '0') == '1'
