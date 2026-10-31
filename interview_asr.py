@@ -41,8 +41,9 @@ def begin(s,fid,uid,sid,cid,nonce,consent=False,retry=False):
     rows=s.query(InterviewAsrTask.duration_ms).filter(InterviewAsrTask.user_id==uid,InterviewAsrTask.create_date>=start).with_for_update().all()
     if len(rows)>=current_app.config['INTERVIEW_ASR_DAILY_TASKS'] or sum(r[0] for r in rows)+clip.duration_ms>current_app.config['INTERVIEW_ASR_DAILY_SECONDS']*1000:
         abort(429,'今日转写额度已用完，录音已保存，仍可回听或人工填写。')
+    from legal import PRIVACY_VERSION
     task=InterviewAsrTask(id=tid,family_id=fid,user_id=uid,session_id=sid,clip_id=cid,status='queued',
-        model=current_app.config['INTERVIEW_ASR_MODEL'],duration_ms=clip.duration_ms,create_by=uid,create_date=local_now(),remarks='recording-asr-consent-v1')
+        model=current_app.config['INTERVIEW_ASR_MODEL'],duration_ms=clip.duration_ms,create_by=uid,create_date=local_now(),remarks='recording-asr-consent-v1;policy='+PRIVACY_VERSION)
     clip.consent_asr=True;s.add(task);s.commit();return task
 
 

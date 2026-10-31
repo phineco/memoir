@@ -19,6 +19,8 @@ def test_idempotency_and_success_query_do_not_regenerate(app):
     with app.app_context():
         task = jobs.begin('a', 'member-a', rid, 1, 'request-1', True)
         tid = task.id
+        from legal import PRIVACY_VERSION
+        assert task.remarks=='organize-consent-v1;policy='+PRIVACY_VERSION
         assert jobs.begin('a', 'member-a', rid, 1, 'request-2', True).id == tid
         calls = []
         assert jobs.run_one(lambda payload: (calls.append(payload['content']) or {'title': '回忆', 'body': 'Result', 'quotes': [], 'verification': [], 'timeline': [], 'people': [], 'period': None}, {'tokens': 5}))

@@ -33,6 +33,8 @@ def test_private_short_audio_and_idempotent_upload(app,client,login):
     with app.app_context():
         s=get_session();clip=interview_audio.upload(s,'a','member-a',sid,1,'upload-test',wav(),True)
         cid,key=clip.id,clip.storage_key
+        from legal import PRIVACY_VERSION
+        assert clip.remarks=='recording-storage-v1;policy='+PRIVACY_VERSION
         assert interview_audio.upload(s,'a','member-a',sid,1,'upload-test',wav(),True).id==cid
         assert s.query(InterviewClip).count()==1 and clip.duration_ms==200
         assert storage_url(key)==''

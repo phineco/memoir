@@ -47,10 +47,11 @@ def begin(family_id, user_id, record_id, revision, nonce, consent=False, regener
     charged = q.with_entities(OrganizeTask.id, OrganizeTask.source_chars).with_for_update().all()
     if len(charged) >= current_app.config['ORGANIZE_DAILY_TASKS'] or sum(row.source_chars for row in charged) + len(record.content) > current_app.config['ORGANIZE_DAILY_CHARS']:
         abort(429, '今日整理额度已用完；原稿仍可保存、编辑或导出。')
+    from legal import PRIVACY_VERSION
     task = OrganizeTask(id=identifier, family_id=family_id, user_id=user_id, record_id=record.id,
         input_revision=record.revision, base_preview_revision=record.preview_revision, source_chars=len(record.content), status='queued',
         model=current_app.config['ORGANIZE_MODEL'], prompt_version='organize-v1', create_by=user_id,
-        create_date=local_now())
+        create_date=local_now(), remarks='organize-consent-v1;policy='+PRIVACY_VERSION)
     s.add(task)
     s.commit()
     return task

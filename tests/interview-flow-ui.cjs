@@ -27,6 +27,8 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   await page.waitForURL('**?listen=1');
   assert.equal(await page.locator('#interview-question').textContent(),'老院子的夏天，您最记得什么？');
   assert(!(await page.locator('#interview-answer-form textarea').isDisabled()));
+  assert(await page.locator('#recording-consent').isChecked());assert(await page.locator('#recording-asr-consent').isChecked());
+  assert.equal(await page.locator('#recording-notice').evaluate(n=>n.open),false);await page.locator('#recording-notice-summary').click();await page.locator('#recording-asr-consent').uncheck();await page.reload();assert(!(await page.locator('#recording-asr-consent').isChecked()));
   await page.getByText('已保存的回答（1）',{exact:true}).click();assert(await page.locator('details').filter({has:page.getByText('已保存的回答（1）',{exact:true})}).locator('p.whitespace-pre-wrap').first().isVisible());
   await context.request.post(base+'/login',{form:{phone:'ui-relative',password:'ui-relative-test-only'}});
   assert.equal((await context.request.get(path)).status(),404);

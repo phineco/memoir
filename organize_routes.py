@@ -8,7 +8,7 @@ from flask import Blueprint, abort, redirect, render_template, request, send_fil
 from werkzeug.exceptions import HTTPException
 
 from forms import require_csrf
-from models import OrganizeRecord, OrganizeTask, Person, get_session
+from models import OrganizeRecord, OrganizeTask, Person, Interview, get_session
 import organizing
 from views import _current_user, _family_or_404, _families_for_user
 
@@ -91,6 +91,7 @@ def material_page(family_id, record_id=None, action_error=None):
             s.rollback()
             error, status = exc.description, exc.code
     people = s.query(Person).filter_by(family_id=family_id, del_flag=0).order_by(Person.sort, Person.name).all()
+    saved_story=s.query(Interview).filter_by(id=record.story_id,family_id=family_id,author_id=me.id,del_flag=0).first() if record and record.story_id else None
     import organize_jobs
     from people_suggestions import source_context
     followup=source_context(s,record)
@@ -98,9 +99,12 @@ def material_page(family_id, record_id=None, action_error=None):
     plan_options=options(s,record)
     task = s.query(OrganizeTask).filter_by(record_id=record.id, user_id=me.id).order_by(OrganizeTask.create_date.desc(), OrganizeTask.id.desc()).first() if record else None
     return render_template('organize.html', family=family, record=record, values=values,
-        error=error, followup=followup, plan_options=plan_options, people=people, task=task, task_message=organize_jobs.MESSAGES.get(task.status) if task else None,
+        error=error, saved_story=saved_story, followup=followup, plan_options=plan_options, people=people, task=task, task_message=organize_jobs.MESSAGES.get(task.status) if task else None,
         ai_enabled=organize_jobs.enabled(), preview_values=request.form if action_error else {}, nonce=values.get('nonce') or secrets.token_urlsafe(24),
-        notice='原稿已保存，仅自己可见。' if request.args.get('saved') == '1' else None), status
+        notice='原稿已保存，仅自己可见。' if request.args.get('saved') == '1' else {
+            'manual':'已准备人工预览，请核对后暂存。','preview':'核对结果已暂存。','share-people':'人物建议已提交，等待管理员核对。',
+            'plan-suggest':'进度建议已提交，等待管理员确认。','generate':'整理请求已登记，请查看任务进度。',
+            'cancel':'已取消本站后续整理，已发出的请求可能产生用量。'}.get(request.args.get('done'))), status
 
 
 @bp.route('/f/<family_id>/organize/new', methods=['GET', 'POST'])
@@ -159,7 +163,7 @@ def action(family_id, record_id):
             else: organize_preview.save(*args, request.form)
         else:
             abort(400, '操作无效')
-        return redirect(url_for('organize.detail', family_id=family_id, record_id=record_id))
+        return redirect(url_for('organize.detail', family_id=family_id, record_id=record_id, done=name))
     except HTTPException as exc:
         s.rollback()
         if exc.code not in (400, 409, 429): raise

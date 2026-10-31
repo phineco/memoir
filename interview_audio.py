@@ -86,7 +86,7 @@ def normalize(data):
 
 def upload(s,fid,uid,sid,revision,nonce,data,consent):
     row=interviewing.owned(s,fid,uid,sid)
-    if not consent: abort(400,'请先确认本人或已告知讲述者，允许录音在本站私有保存；这不包含声音复刻授权。')
+    if not consent: abort(400,'请先确认本人同意，或已向实际讲述者说明并取得同意；本次录音不包含声音复刻授权。')
     cid=interviewing.nonce_id('clip',sid,uid,nonce); digest=hashlib.sha256(data).hexdigest()
     def prior(lock=False):
         query=s.query(InterviewClip).filter_by(id=cid,session_id=sid,user_id=uid,del_flag=0)
@@ -106,8 +106,9 @@ def upload(s,fid,uid,sid,revision,nonce,data,consent):
         if row.state!='active' or interviewing.pending(s,row):abort(409,'采访进度已变化，录音保留在本机；请先恢复对应问题。')
         if s.query(InterviewClip).filter_by(session_id=sid,del_flag=0).count()>=100:abort(400,'本段录音已达到100个片段，请先整理本段。')
     key='interview/'+fid+'/'+cid+'.wav';token=uuid4().hex
+    from legal import PRIVACY_VERSION
     clip=old or InterviewClip(id=cid,family_id=fid,user_id=uid,session_id=sid,input_revision=row.revision,
-        question=row.question,source_hash=digest,storage_key=key,duration_ms=duration,create_by=uid)
+        question=row.question,source_hash=digest,storage_key=key,duration_ms=duration,create_by=uid,remarks='recording-storage-v1;policy='+PRIVACY_VERSION)
     clip.status='uploading';clip.lease_token=token;clip.lease_until=local_now()+datetime.timedelta(seconds=60)
     s.add(clip)
     try:s.commit()

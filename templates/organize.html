@@ -7,7 +7,7 @@
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 {% if notice %}<p class="success" role="status">{{ notice }}</p>{% endif %}
 {% if record and record.story_id %}
-<section class="disclosure"><h2>已生成故事草稿</h2><p>后续请在故事中编辑和发布；不会从这份原材料重复创建故事。</p><a class="btn-primary" href="{{ url_for('main.edit_article',family_id=family.id,interview_id=record.story_id) }}">进入故事编辑</a></section>
+<section class="disclosure">{% if saved_story %}<h2>{{ '已发布故事' if (saved_story.publish_status or 'published')=='published' else '已生成故事草稿' }}</h2><p>后续请在故事中编辑或按所选范围发布；不会从这份原材料重复创建故事。</p><p class="hint">{{ ('故事范围：'+{'public':'全家可见','private':'仅自己','specific':'指定家人'}.get(saved_story.visibility or 'public','请进入故事核对')) if (saved_story.publish_status or 'published')=='published' else '草稿只向作者开放' }}</p><a class="btn-primary" href="{{ url_for('main.edit_article',family_id=family.id,interview_id=saved_story.id) }}">进入故事编辑</a>{% else %}<h2>关联故事暂不可用</h2><p>关联故事已删除或当前不可编辑，原稿仍保留；不会从旧记录重复创建故事。</p>{% endif %}</section>
 {% else %}
 {% if easy_mode and record %}<details class="disclosure"><summary>查看或修改原稿与讲述身份</summary>{% endif %}<form data-source-editor method="post" enctype="multipart/form-data" class="disclosure">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

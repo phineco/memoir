@@ -76,6 +76,7 @@ jobs:
       - run: EASY_UI=1 UI_CHECK_SCRIPT=tests/easy-ui.cjs python tools/run_ui.py
       - run: ALBUM_UPLOADER_UI=1 PWA_UI=1 UI_CHECK_SCRIPT=tests/pwa-ui.cjs python tools/run_ui.py
       - run: ALBUM_UPLOADER_UI=1 EASY_UI=1 UI_CHECK_SCRIPT=tests/display-sync-ui.cjs python tools/run_ui.py
+      - run: ALBUM_UPLOADER_UI=1 AUX_UI=1 UI_CHECK_SCRIPT=tests/auxiliary-ui.cjs python tools/run_ui.py
       - name: Package verified release
         run: |
           python tools/frontend.py release --version "${GITHUB_SHA}" --output "dist/memoir-${GITHUB_SHA}.tar.gz"

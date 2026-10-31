@@ -130,6 +130,23 @@ if os.environ.get('PWA_UI')=='1':
         app.config['RELEASE_VERSION']='pwa-ui-update-only'
         return dict(ok=True)
 
+if os.environ.get('AUX_UI')=='1':
+    import organizing,organize_drafts
+    from models import WritingPlan
+    from reporting import local_now
+    import json
+    with app.app_context():
+        s=get_session();text='1980年，邻居阿姨常到院子里来，奶奶说那时大家都很亲近。'
+        row=organizing.create(s,'ui','ui-relative',{'content':text,'topic':'辅助联动原稿','subject_id':'grandma'},nonce='aux-ui-source')
+        row.preview={'title':'院子里的邻居','body':text,'quotes':[],'verification':[{'text':'邻居阿姨的名字待核实','evidence':text}],
+            'timeline':[],'people':[{'name':'邻居阿姨','context':'老邻居','evidence':text}],'period':None}
+        row.preview_revision=1;row.preview_source_revision=1;s.commit()
+        story=organize_drafts.confirm(s,'ui','ui-relative',row.id,1,1,'aux-ui-confirm')
+        story.publish_status='published';story.visibility='public';story.published_at=local_now()
+        s.add(WritingPlan(id='aux-plan',family_id='ui',title='辅助采访计划',status='active',items=json.dumps([
+            {'person_id':'grandma','person_name':'林奶奶','status':'pending','note':'补充院子的故事'}],ensure_ascii=False)))
+        s.commit()
+
 if __name__ == "__main__":
     import logging
     logging.getLogger("werkzeug").setLevel(logging.ERROR)

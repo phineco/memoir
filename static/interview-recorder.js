@@ -7,6 +7,14 @@
  const player=document.getElementById('record-playback'),list=document.getElementById('record-pending');
  let recorder=null,stream=null,timer=null,warning=null,generation=0,recording=false,waiting=false,pendingCount=0,playUrl=null;
  const owner=root.dataset.owner,sid=root.dataset.session,token=root.dataset.csrf;
+ const asrConsent=document.getElementById('recording-asr-consent'),noticePanel=document.getElementById('recording-notice'),noticeSummary=document.getElementById('recording-notice-summary');
+ function choiceSummary(){if(noticeSummary)noticeSummary.textContent=!consent.checked?'录音与转写选择（先确认）':asrConsent&&asrConsent.checked?'录音/转写选择 · 已确认':asrConsent?'录音已确认 · 未选转写':'录音已确认 · 仅保存';}
+ const choiceKey='memoir.interview.choice.v1.'+JSON.stringify([root.dataset.user,sid,root.dataset.notice]);
+ try{const choice=JSON.parse(sessionStorage.getItem(choiceKey)||'null');if(choice){consent.checked=choice.recording===true;if(asrConsent)asrConsent.checked=choice.asr===true;}}catch(e){}
+ choiceSummary();if(consent.checked&&noticePanel)noticePanel.open=false;
+ function retainChoice(){choiceSummary();try{sessionStorage.setItem(choiceKey,JSON.stringify({recording:consent.checked,asr:!!(asrConsent&&asrConsent.checked)}));}catch(e){}}
+ consent.addEventListener('change',retainChoice);if(asrConsent)asrConsent.addEventListener('change',retainChoice);
+ const fileForm=root.querySelector('form');if(fileForm)fileForm.addEventListener('submit',()=>{try{sessionStorage.setItem(choiceKey,JSON.stringify({recording:fileForm.elements.consent_recording.checked,asr:!!(fileForm.elements.consent_asr&&fileForm.elements.consent_asr.checked)}));}catch(e){}});
  function say(message){status.textContent=message;}
  function notify(){root.dataset.recordBusy=recording||waiting?'yes':'no';root.dispatchEvent(new CustomEvent('interview:record-state',{bubbles:true,detail:{recording,waiting}}));}
  function pausePlayback(){document.querySelectorAll('audio,video').forEach(a=>a.pause());Object.values(window.memoirReaders||{}).forEach(r=>r.stop());if(window.speechSynthesis)window.speechSynthesis.cancel();}
@@ -59,7 +67,7 @@
   let r;try{r=await fetch(root.dataset.upload,{method:'POST',body,headers:{Accept:'application/json','X-CSRFToken':token},redirect:'error'});}catch(e){say('网络中断，本机片段已保留，可稍后重试上传或先下载。');return;}
   if(!r.ok){let failure;try{failure=await r.json();}catch(e){}if(failure&&typeof failure.error==='string'){say(failure.error+' 本机片段仍保留，可回听或下载。');return;}say(r.status===409?'采访进度已变化，片段仍在本机，可下载后从对应记录重新上传。':'上传未完成，片段仍在本机；可稍后重试或下载保存。');return;}
   const result=await r.json();if(['uploading','upload_failed'].includes(result.status)){say('服务器还未确认录音保存，本机片段保留，请稍后重试上传。');return;}if(!result.id)throw Error('未收到保存确认，片段仍在本机。');
-  await transaction('readwrite',s=>s.delete(row.id));await render();say(result.note||(result.status==='queued'||result.status==='running'?'服务器已保存录音，正在转写。':'服务器已私有保存，可刷新查看回听；转写功能未开通时仍可文字回答。'));
+  await transaction('readwrite',s=>s.delete(row.id));await render();say(result.note||(result.status==='queued'||result.status==='running'?'服务器已保存录音，正在转写。':'服务器已私有保存，当前未发起转写，可回听或填写文字继续。'));
   root.dispatchEvent(new CustomEvent('interview:uploaded',{bubbles:true,detail:result}));
  }
  function release(){clearTimeout(timer);clearTimeout(warning);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;}
@@ -71,7 +79,7 @@
   release();
  }
  start.addEventListener('click',async()=>{
-  if(recording||waiting)return;const text=document.querySelector('#interview-answer-form textarea');if(text&&text.value.trim()){say('请先保存已有文字回答，再录下一题；也可以清空未保存文字后录音。');return;}if(!consent.checked){say('请先确认录音保存告知。');consent.focus();return;}
+  if(recording||waiting)return;const text=document.querySelector('#interview-answer-form textarea');if(text&&text.value.trim()){say('请先保存已有文字回答，再录下一题；也可以清空未保存文字后录音。');return;}if(!consent.checked){say('请先确认录音保存告知。');if(noticePanel)noticePanel.open=true;consent.focus();return;}
   if(!navigator.mediaDevices||!window.MediaRecorder||!window.crypto||!crypto.subtle){say('此浏览器暂不支持本站录音，可上传手机录音文件，或用手机键盘听写。');return;}
   const turn=++generation;waiting=true;start.disabled=true;notify();say('正在申请麦克风权限。');
   try{
