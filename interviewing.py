@@ -24,7 +24,7 @@ def owned(s, fid, uid, sid, lock=False, allow_deleted=False):
     if lock:
         from transaction_locks import serialize_sqlite
         serialize_sqlite(s,uid)
-    member(s, fid, uid)
+    member(s, fid, uid, lock=lock)
     q = s.query(InterviewSession).filter_by(id=sid, family_id=fid, user_id=uid, del_flag=0)
     row = (q.with_for_update() if lock else q).populate_existing().first()
     if not row: abort(404)
@@ -33,7 +33,9 @@ def owned(s, fid, uid, sid, lock=False, allow_deleted=False):
 
 
 def start(s, fid, uid, data, nonce):
-    member(s, fid, uid)
+    from transaction_locks import serialize_sqlite
+    serialize_sqlite(s,uid)
+    member(s, fid, uid, lock=True)
     topic = data.get('topic', 'childhood')
     if topic not in TOPICS: abort(400, '请选择采访话题')
     values = fields(s, fid, dict(data, content='身份核对', topic=''))
@@ -93,7 +95,7 @@ def cancel_questions(s, row):
 def answer(s, fid, uid, sid, revision, nonce, content, skip=False, clip_id=None):
     row = owned(s, fid, uid, sid, lock=True)
     aid = nonce_id('answer', sid, uid, nonce)
-    prior = s.get(InterviewAnswer, aid)
+    prior = s.query(InterviewAnswer).filter_by(id=aid).with_for_update().populate_existing().first()
     if prior:
         if prior.content != ('' if skip else content.strip()) or prior.kind != ('skip' if skip else 'text'):
             abort(409, '本次回答编号已有不同内容，请重新打开采访。')

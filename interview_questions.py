@@ -83,6 +83,10 @@ def run_one(provider=None):
         if row.revision != task.input_revision or row.state != 'active' or not row.ai_consent: raise Stale()
         payload = {'answers': [{'question': a.question, 'answer': a.content} for a in answers(s,row.id)[-2:]], 'model': task.model}
         s.commit()
+        current=s.query(InterviewQuestion).filter_by(id=tid,status='running',lease_token=token).first()
+        row=owned(s,task.family_id,task.user_id,task.session_id)
+        if not current or row.state!='active' or row.revision!=task.input_revision or not row.ai_consent:raise Stale()
+        s.commit()
         question, usage = (provider or generate)(payload); question = validate(question)
         s.rollback(); s.expire_all(); task = s.get(InterviewQuestion, tid)
         row = owned(s, task.family_id, task.user_id, task.session_id, lock=True)

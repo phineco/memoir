@@ -33,7 +33,7 @@
  function play(blob){pausePlayback();if(playUrl)URL.revokeObjectURL(playUrl);playUrl=URL.createObjectURL(blob);player.src=playUrl;return player.play().catch(()=>say('可以点击播放器回听。'));}
  async function rows(){return (await transaction('readonly',s=>s.getAll())).filter(r=>r.owner===owner&&r.sid===sid);}
  async function render(){
-  const saved=await rows();pendingCount=saved.length;root.dataset.pendingCount=String(pendingCount);list.replaceChildren();
+  const saved=await rows();pendingCount=saved.length;root.dataset.pendingCount=String(pendingCount);list.textContent='';
   saved.forEach(row=>{
    const box=document.createElement('div');box.className='disclosure';
    const label=document.createElement('p');label.textContent='本机待上传录音 · '+new Date(row.created).toLocaleString();box.append(label);
@@ -79,7 +79,7 @@
    const acquired=await navigator.mediaDevices.getUserMedia({audio:true});
    if(turn!==generation||document.hidden){acquired.getTracks().forEach(t=>t.stop());throw Error('录音未开始，请回到本页再试。');}
    stream=acquired;
-   const mime=['audio/webm;codecs=opus','audio/mp4','audio/ogg;codecs=opus'].find(t=>MediaRecorder.isTypeSupported(t));
+   const mime=['audio/webm;codecs=opus','audio/mp4','audio/ogg;codecs=opus'].find(t=>typeof MediaRecorder.isTypeSupported==='function'&&MediaRecorder.isTypeSupported(t));
    recorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);const chunks=[];let bytes=0;
    recorder.ondataavailable=e=>{if(e.data.size){chunks.push(e.data);bytes+=e.data.size;if(bytes>16*1024*1024)finish('片段较大，已停止，正在封存。');}};
    recorder.onerror=()=>finish('录音发生中断，正在尽力保存已有片段。');
@@ -100,7 +100,7 @@
  });
  stop.addEventListener('click',()=>finish());
  document.addEventListener('play',e=>{if(recording)finish('开始播放，已停止录音并封存。');},true);
- document.addEventListener('visibilitychange',()=>{if(document.hidden){generation++;finish('离开前台，已停止录音，尽力保存本段。');pausePlayback();}else identity().catch(e=>{pausePlayback();player.removeAttribute('src');list.replaceChildren();say(e.message);});});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){generation++;finish('离开前台，已停止录音，尽力保存本段。');pausePlayback();}else identity().catch(e=>{pausePlayback();player.removeAttribute('src');list.textContent='';say(e.message);});});
  window.addEventListener('beforeunload',e=>{if(recording||waiting||pendingCount){e.preventDefault();e.returnValue='';}});
  render().catch(e=>say(e.message));
 })();

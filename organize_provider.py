@@ -98,6 +98,11 @@ def generate(payload):
         {'source': payload['content'], 'identity': payload['identity']}, ensure_ascii=False)}]
     usage = {'calls': []}
     for attempt in range(2):
+        if attempt and payload.get('dispatch_check'):
+            try:payload['dispatch_check']()
+            except Exception as exc:
+                exc.usage=usage
+                raise
         try:
             response = requests.post(c['DEEPSEEK_BASE_URL'].rstrip('/') + '/chat/completions',
                 headers={'Authorization': 'Bearer ' + c['DEEPSEEK_API_KEY']},

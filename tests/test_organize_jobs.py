@@ -74,3 +74,18 @@ def test_disabled_and_daily_limit_keep_sources(app):
             jobs.begin('a', 'member-a', rid, 1, 'request-2', True)
         assert error.value.code == 429
         assert get_session().get(OrganizeRecord, rid).content == '原始回忆。'
+
+
+def test_cancel_after_claim_before_dispatch_does_not_send_source(app,monkeypatch):
+    rid=setup(app)
+    with app.app_context():
+        tid=jobs.begin('a','member-a',rid,1,'request-cancel',True).id
+        original=jobs.owned;injected=[]
+        def gate(*args,**kwargs):
+            record=original(*args,**kwargs)
+            if not injected:
+                injected.append(True);jobs.cancel('a','member-a',rid,tid)
+            return record
+        monkeypatch.setattr(jobs,'owned',gate)
+        calls=[];jobs.run_one(lambda payload:(calls.append(payload) or {},{}))
+        assert not calls and get_session().get(OrganizeTask,tid).status=='cancelled'

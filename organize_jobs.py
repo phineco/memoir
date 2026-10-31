@@ -28,7 +28,7 @@ def begin(family_id, user_id, record_id, revision, nonce, consent=False, regener
     if not re.fullmatch(r'[A-Za-z0-9_-]{8,80}', nonce or ''):
         abort(400, '请求编号无效，请刷新后重试。')
     identifier = hashlib.sha256((user_id+'\0'+record.id+'\0'+nonce).encode()).hexdigest()
-    prior = s.get(OrganizeTask, identifier)
+    prior = s.query(OrganizeTask).filter_by(id=identifier).with_for_update().populate_existing().first()
     if prior:
         if str(prior.input_revision) != str(revision):
             abort(409, '该请求编号用于另一版本，请刷新核对。')
@@ -93,6 +93,15 @@ def run_one(provider=None):
         payload = dict(content=source.content, identity=source.identity, family_id=task.family_id,
                        user_id=task.user_id, model=task.model, prompt_version=task.prompt_version)
         s.commit()
+        def dispatch_check():
+            s.rollback();s.expire_all()
+            current=s.query(OrganizeTask).filter_by(id=identifier,status='running',lease_token=token).first()
+            if not current:raise Outdated()
+            material=owned(s,current.family_id,current.user_id,current.record_id)
+            if material.revision!=current.input_revision or material.story_id or material.preview_revision!=current.base_preview_revision:raise Outdated()
+            s.commit()
+        payload['dispatch_check']=dispatch_check
+        dispatch_check()
         if provider is None:
             from organize_provider import generate
             provider = generate

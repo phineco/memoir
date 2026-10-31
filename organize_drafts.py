@@ -19,14 +19,14 @@ def confirm(s, fid, uid, rid, source_revision, preview_revision, nonce, related_
         abort(400, '请刷新页面后确认。')
     record = owned(s, fid, uid, rid, lock=True)
     if record.story_id:
-        story = s.query(Interview).filter_by(id=record.story_id, family_id=fid, author_id=uid, del_flag=0).first()
+        story = s.query(Interview).filter_by(id=record.story_id, family_id=fid, author_id=uid, del_flag=0).with_for_update().populate_existing().first()
         if not story: abort(409, '关联故事已删除或状态变化，请先核对记录。')
         return story
     if str(record.revision) != str(source_revision) or str(record.preview_revision) != str(preview_revision) or not record.preview or record.preview_source_revision != record.revision:
         abort(409, '原稿或预览已变化，请重新核对，未创建故事。')
     related_ids = set(related_ids)
     required_ids = related_ids | {p for p in (record.narrator_id, record.subject_id) if p}
-    allowed = {p[0] for p in s.query(Person.id).filter(Person.family_id == fid, Person.del_flag == 0, Person.id.in_(required_ids)).all()}
+    allowed = {p[0] for p in s.query(Person.id).filter(Person.family_id == fid, Person.del_flag == 0, Person.id.in_(required_ids)).with_for_update().all()}
     if required_ids != allowed:
         abort(400, '人物已删除或不属于当前家庭；请先更新讲述身份。')
     sid = hashlib.sha256(('organize-story\0'+record.id).encode()).hexdigest()

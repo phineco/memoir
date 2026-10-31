@@ -48,7 +48,7 @@ def propose(s,fid,uid,rid,plan_id,index,expected_stamp,story_version):
     except (TypeError,ValueError):abort(400)
     if not plan or stamp(plan)!=expected_stamp or not eligible(s,plan,story,index):abort(409,'计划条目已变化，请重新核对。')
     sid=hashlib.sha256(('plan-suggestion\0'+story.id+'\0'+str(draft.version)+'\0'+plan.id+'\0'+str(index)+'\0'+expected_stamp).encode()).hexdigest()
-    old=s.get(PlanProgressSuggestion,sid)
+    old=s.query(PlanProgressSuggestion).filter_by(id=sid).with_for_update().populate_existing().first()
     if old:return old
     row=PlanProgressSuggestion(id=sid,family_id=fid,user_id=uid,record_id=rid,story_id=story.id,story_version=draft.version,
         person_id=story.person_id,plan_id=plan.id,item_index=index,plan_stamp=expected_stamp,status='pending',create_by=uid,create_date=local_now())
@@ -57,8 +57,8 @@ def propose(s,fid,uid,rid,plan_id,index,expected_stamp,story_version):
 
 def review(s,fid,uid,sid,action):
     from transaction_locks import serialize_sqlite
-    serialize_sqlite(s,uid);member(s,fid,uid)
-    if family_role(s,fid,uid) not in ('owner','admin'):abort(403)
+    serialize_sqlite(s,uid)
+    if member(s,fid,uid,lock=True) not in ('owner','admin'):abort(403)
     row=s.query(PlanProgressSuggestion).filter_by(id=sid,family_id=fid,del_flag=0).first()
     if not row:abort(404)
     story,draft=public_story(s,fid,row.story_id,lock=True)

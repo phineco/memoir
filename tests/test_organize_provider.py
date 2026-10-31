@@ -68,3 +68,13 @@ def test_no_blind_retry_after_uncertain_or_truncated_call(app, monkeypatch, mode
     assert len(calls) == (2 if mode == 'invalid-twice' else 1)
     assert error.value.uncertain == (mode == 'timeout')
     assert 'secret' not in str(error.value)
+
+
+def test_cancelled_between_complete_reply_and_format_repair_stops_second_call(app,monkeypatch):
+    calls=[]
+    def post(*args,**kwargs):calls.append(1);return Response('{}')
+    def cancelled():raise GenerationError('cancelled')
+    monkeypatch.setattr(requests,'post',post)
+    with app.app_context(),pytest.raises(GenerationError):
+        generate({'content':SOURCE,'identity':{},'model':'test','dispatch_check':cancelled})
+    assert len(calls)==1

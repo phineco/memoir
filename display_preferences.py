@@ -48,7 +48,8 @@ def preference():
     serialize_sqlite(s,me.id)
     if not s.query(User).filter_by(id=me.id,del_flag=0).with_for_update().first():abort(401)
     row=s.query(UserDisplayPreference).filter_by(user_id=me.id).with_for_update().populate_existing().first()
-    if row and row.preferences==values and not row.del_flag:return jsonify(payload(me))
+    if row and row.preferences==values and not row.del_flag:
+        s.commit();return jsonify(payload(me))
     if (row.revision if row else 0)!=revision:abort(409,'账号默认设置已被另一台设备更新；请先读取核对，不会覆盖较新设置。')
     if not row:
         row=UserDisplayPreference(id=me.id,user_id=me.id,revision=1,preferences=values,create_by=me.id)

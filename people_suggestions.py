@@ -51,7 +51,7 @@ def share(s,fid,uid,rid,revision,preview_revision,story_version,indices):
     if not selected:abort(400,'请选择要提交的人物建议')
     for index,item in selected:
         cid=hashlib.sha256(('site-person\0'+rid+'\0'+str(record.preview_revision)+'\0'+str(index)).encode()).hexdigest()
-        if s.get(NewPerson,cid):continue
+        if s.query(NewPerson).filter_by(id=cid).with_for_update().populate_existing().first():continue
         s.add(NewPerson(id=cid,family_id=fid,interview_id=story.id,name=item['name'],context=item['evidence'],
             evidence=item['evidence'],source_record_id=rid,source_revision=record.revision,source_preview_revision=record.preview_revision,
             join_tree='pending',create_by=uid,create_date=local_now()))
@@ -60,8 +60,8 @@ def share(s,fid,uid,rid,revision,preview_revision,story_version,indices):
 
 def review(s,fid,uid,cid,story_version,action,person_id=None,name='',duplicate=False):
     from transaction_locks import serialize_sqlite
-    serialize_sqlite(s,uid);member(s,fid,uid)
-    if family_role(s,fid,uid) not in ('owner','admin'):abort(403)
+    serialize_sqlite(s,uid)
+    if member(s,fid,uid,lock=True) not in ('owner','admin'):abort(403)
     candidate=s.query(NewPerson).filter_by(id=cid,family_id=fid,del_flag=0).first()
     if not candidate or not candidate.source_record_id:abort(404)
     story,draft=public_story(s,fid,candidate.interview_id,lock=True)
@@ -73,12 +73,12 @@ def review(s,fid,uid,cid,story_version,action,person_id=None,name='',duplicate=F
     if action=='dismiss':candidate.join_tree='dismissed'
     elif action in ('link','create'):
         if action=='link':
-            person=s.query(Person).filter_by(id=person_id,family_id=fid,del_flag=0).first()
+            person=s.query(Person).filter_by(id=person_id,family_id=fid,del_flag=0).with_for_update().populate_existing().first()
             if not person:abort(400,'请选择本家庭现有人物，不会自动猜测同名对应关系。')
         else:
             name=name.strip()
             if not name or len(name)>100:abort(400,'请填写人物姓名或暂存称谓，最多100字。')
-            existing=s.query(Person.id).filter_by(family_id=fid,name=name,del_flag=0).first()
+            existing=s.query(Person.id).filter_by(family_id=fid,name=name,del_flag=0).with_for_update().first()
             if existing and not duplicate:abort(409,'家庭中已有同名人物。请手动关联，或明确确认这是另一位同名人物。')
             person=Person(id=new_id(),family_id=fid,name=name,status='pending',life_status='unknown',
                 notes=['来源于已公开故事的人物建议，关系与身份尚待核对。'],create_by=uid)

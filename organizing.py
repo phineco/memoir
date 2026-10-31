@@ -6,23 +6,33 @@ from flask import abort
 from sqlalchemy.exc import IntegrityError
 
 from access import family_role
-from models import OrganizeRecord, OrganizeSource, Person, User, new_id
+from models import OrganizeRecord, OrganizeSource, Person, User, Family, FamilyMember, new_id
 from reporting import local_now
 
 MAX_TEXT = 20000
 MAX_FILE = 1024 * 1024
 
 
-def member(s, family_id, user_id):
-    if not s.query(User.id).filter_by(id=user_id, del_flag=0).first() or not family_role(s, family_id, user_id):
-        abort(404)
+def member(s, family_id, user_id, lock=False):
+    if lock:
+        active=s.query(User).filter_by(id=user_id,del_flag=0).with_for_update().populate_existing().first()
+        family=s.query(Family).filter_by(id=family_id,del_flag=0).with_for_update().populate_existing().first()
+        membership=s.query(FamilyMember).filter_by(family_id=family_id,user_id=user_id).with_for_update().populate_existing().first()
+        role=(membership.role if membership and membership.del_flag==0 and membership.role in ('owner','admin','member') else
+              ('owner' if membership is None and family and family.owner_user_id==user_id else None))
+        if not active or not family or not role:abort(404)
+        return role
+    if not s.query(User.id).filter_by(id=user_id,del_flag=0).first():abort(404)
+    role=family_role(s,family_id,user_id)
+    if not role:abort(404)
+    return role
 
 
 def owned(s, family_id, user_id, record_id, lock=False):
     if lock:
         from transaction_locks import serialize_sqlite
         serialize_sqlite(s,user_id)
-    member(s, family_id, user_id)
+    member(s, family_id, user_id, lock=lock)
     q = s.query(OrganizeRecord).filter_by(id=record_id, family_id=family_id, user_id=user_id, del_flag=0)
     record = (q.with_for_update() if lock else q).populate_existing().first()
     if not record:
@@ -43,7 +53,7 @@ def fields(s, family_id, data):
     values = dict(content=content, topic=topic, narrator_label=label or None, recording_mode=mode)
     for name in ('narrator_id', 'subject_id'):
         value = data.get(name) or None
-        if value and (not isinstance(value, str) or not s.query(Person.id).filter_by(id=value, family_id=family_id, del_flag=0).first()):
+        if value and (not isinstance(value, str) or not s.query(Person.id).filter_by(id=value, family_id=family_id, del_flag=0).with_for_update().first()):
             abort(400, '人物必须属于当前家庭；身份不明可以暂不选择。')
         values[name] = value
     return values
@@ -56,7 +66,9 @@ def snapshot(s, record):
 
 
 def create(s, family_id, user_id, data, nonce=None):
-    member(s, family_id, user_id)
+    from transaction_locks import serialize_sqlite
+    serialize_sqlite(s,user_id)
+    member(s, family_id, user_id, lock=True)
     values = fields(s, family_id, data)
     if nonce is not None and (not isinstance(nonce, str) or not re.fullmatch(r'[A-Za-z0-9_-]{8,80}', nonce)):
         abort(400, '请刷新页面后重试')
