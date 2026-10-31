@@ -20,7 +20,7 @@ def nonce_id(prefix, fid, uid, nonce):
     return hashlib.sha256((prefix+'\0'+fid+'\0'+uid+'\0'+nonce).encode()).hexdigest()
 
 
-def owned(s, fid, uid, sid, lock=False):
+def owned(s, fid, uid, sid, lock=False, allow_deleted=False):
     if lock:
         from transaction_locks import serialize_sqlite
         serialize_sqlite(s,uid)
@@ -28,6 +28,7 @@ def owned(s, fid, uid, sid, lock=False):
     q = s.query(InterviewSession).filter_by(id=sid, family_id=fid, user_id=uid, del_flag=0)
     row = (q.with_for_update() if lock else q).populate_existing().first()
     if not row: abort(404)
+    if row.state in ('deleting','deleting_run','delete_failed','deleted') and not allow_deleted:abort(410,'原材料已申请删除，不能继续读取。')
     return row
 
 

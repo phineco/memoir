@@ -26,6 +26,9 @@ def main():
                 worked=False
                 for name,process in queues.items():
                     if args.queue in ('all',name):worked=process() or worked
+                if args.queue in ('all','asr'):
+                    from interview_materials import purge_one
+                    worked=purge_one() or worked
             finally:
                 remove_session()
         if args.once:

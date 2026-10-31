@@ -40,7 +40,11 @@ def read(key):
 
 
 def delete(key):
-    check(key); backend().delete(key)
+    check(key);store=backend()
+    if hasattr(store,'upload_dir'):store.delete(key)
+    else:
+        result=store.client.delete_object(store._oss.DeleteObjectRequest(bucket=store.bucket,key=key))
+        if result.status_code not in (200,204,404):raise RuntimeError('private audio deletion failed')
 
 
 def save(data,key):

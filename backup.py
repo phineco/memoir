@@ -114,6 +114,8 @@ def _photo_keys(url):
             # Include audio awaiting deletion too; a backup must not silently omit private media.
             for table,column in [('voice_profiles','sample_key'),('voice_audio','storage_key')]:
                 if inspector.has_table(table):keys += [r[0] for r in conn.execute(text(f'SELECT {column} FROM {table} WHERE {column} IS NOT NULL'))]
+            if inspector.has_table('interview_clips'):
+                keys += [r[0] for r in conn.execute(text("SELECT storage_key FROM interview_clips WHERE status NOT IN ('uploading','upload_failed')"))]
             return keys
     finally:
         engine.dispose()
@@ -156,7 +158,7 @@ def create_backup(url, archive, media_dir, storage_backend="local", oss_export=F
         for key in keys:
             relative = PurePosixPath(key)
             if relative.is_absolute() or ".." in relative.parts or not (stage / "media" / key).is_file():
-                raise BackupError("存在未归档的照片引用，备份不完整；请核对媒体目录")
+                raise BackupError("存在未归档的媒体引用，备份不完整；请核对媒体目录")
         manifest = {"format": 1, "engine": engine_name, "database": database.name,
                     "storage_backend": storage_backend,
                     "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),

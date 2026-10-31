@@ -103,7 +103,7 @@ def update(s, family_id, user_id, record_id, revision, data):
     return record
 
 
-def delete(s, family_id, user_id, record_id, acknowledge_story=False):
+def delete(s, family_id, user_id, record_id, acknowledge_story=False, commit=True):
     record = owned(s, family_id, user_id, record_id, lock=True)
     if record.story_id and not acknowledge_story:
         abort(409, '已有正式故事。删除原材料不会删除故事，请先明确确认。')
@@ -112,4 +112,4 @@ def delete(s, family_id, user_id, record_id, acknowledge_story=False):
         OrganizeTask.status: 'cancelled', OrganizeTask.result: None, OrganizeTask.usage: None}, synchronize_session=False)
     s.query(OrganizeSource).filter_by(record_id=record.id).delete(synchronize_session=False)
     s.delete(record)
-    s.commit()
+    if commit:s.commit()

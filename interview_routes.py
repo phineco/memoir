@@ -33,7 +33,7 @@ def private(response):
 def index(family_id=None):
     family = _family_or_404(family_id) if family_id else None
     families = [family] if family else _families_for_user(_current_user())
-    rows = get_session().query(InterviewSession).filter_by(user_id=_current_user().id, del_flag=0).filter(InterviewSession.family_id.in_([f.id for f in families])).order_by(InterviewSession.update_date.desc()).limit(50).all()
+    rows = get_session().query(InterviewSession).filter_by(user_id=_current_user().id, del_flag=0).filter(InterviewSession.family_id.in_([f.id for f in families]),InterviewSession.state!='deleted').order_by(InterviewSession.update_date.desc()).limit(50).all()
     return render_template('interviews.html', family=family, rows=rows, families=families)
 
 
@@ -55,7 +55,9 @@ def detail(family_id, session_id):
 
 def render_detail(family_id, session_id, error=None):
     family = _family_or_404(family_id); s = get_session()
-    row = interviewing.owned(s, family_id, _current_user().id, session_id)
+    row = interviewing.owned(s, family_id, _current_user().id, session_id, allow_deleted=True)
+    if row.state in ('deleting','deleting_run','delete_failed','deleted'):
+        return render_template('interview_deletion.html',family=family,interview=row)
     import interview_audio
     import interview_asr
     tasks=s.query(InterviewAsrTask).filter_by(session_id=row.id).order_by(InterviewAsrTask.create_date).all()
@@ -149,3 +151,21 @@ def asr_status(family_id,session_id,clip_id):
 def progress(family_id,session_id):
     row=interviewing.owned(get_session(),family_id,_current_user().id,session_id)
     return jsonify(revision=row.revision,state=row.state,pending=bool(interviewing.pending(get_session(),row)))
+
+
+@bp.get('/f/<family_id>/interview/<session_id>/export')
+def export(family_id,session_id):
+    import interview_materials
+    archive=interview_materials.export(get_session(),family_id,_current_user().id,session_id)
+    response=send_file(archive,mimetype='application/zip',as_attachment=True,download_name='家音采访-'+session_id+'.zip')
+    response.call_on_close(archive.close);return response
+
+
+@bp.post('/f/<family_id>/interview/<session_id>/delete')
+def delete(family_id,session_id):
+    import interview_materials
+    if request.form.get('retry')=='yes':interview_materials.retry(get_session(),family_id,_current_user().id,session_id)
+    else:
+        if request.form.get('confirm')!='yes':abort(400,'请确认删除原材料，已成稿故事单独保留。')
+        interview_materials.request_delete(get_session(),family_id,_current_user().id,session_id)
+    return redirect(url_for('interview.detail',family_id=family_id,session_id=session_id))

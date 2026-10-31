@@ -415,3 +415,24 @@ sudo systemctl restart memoir
 独立队列：`python tools/ai_jobs.py --once` 验证单次处理；常驻用 `python tools/ai_jobs.py`，服务模板为 `tools/systemd/memoir-ai.service`，按实际路径/账号调整后安装。Web GET 只查询，不生成。队列中断或超时转“结果不确定”，不自动再次调用；取消无法撤回已发出的调用和费用。备份恢复包含新记录/版本/任务表；恢复前需停止队列，并核对运行中任务，不重放未知请求。
 
 真实质量验收至少包括：获准短答、常规材料、接近20000字长稿、未知日期/同名称谓/原文指令注入；记录原稿版本、模型/提示词版本、人工核对结论及实际 token/费用。隔离模拟检查不能替代这些证据。
+
+
+## 站内采访与阿里云转写（默认关闭真实调用）
+
+文字采访入口在故事页“讲一段回忆”及个人中心“我的采访”。按题保存、暂停继续、结束后核对原稿，不自动发布。单段文字最多4000字，本次采访原稿接近19000字时提示先成稿；不要求最低时长/字数。语音分段最长3分钟、文件16MiB；服务端需要 `ffmpeg`（`VOICE_FFMPEG` 指定可执行文件），保存为16k单声道WAV。nginx请求体上限应大于16MiB，上传代理超时应覆盖媒体处理；原声目录须私有且不能由nginx静态直出。
+
+新迁移021–024须与前一批一起执行、检查数据库后再启动三个独立worker：
+
+- 整理：`python tools/ai_jobs.py --queue organize`
+- 提问：`python tools/ai_jobs.py --queue question`
+- 转写及原声清理：`python tools/ai_jobs.py --queue asr`（即使ASR关闭，仍处理已授权删除的私有原声）
+
+systemd模板为 `memoir-ai.service`、`memoir-interview.service`、`memoir-asr.service`，路径/用户按部署环境修改。`--once --queue asr` 可验证单轮。开发可用默认 `--queue all`，生产分别运行以免长文阻塞采访。Web只查询进度，不在GET里重发AI请求。
+
+AI提问需显式 `INTERVIEW_AI_ENABLED=1`、已有文本数据处理批准开关及服务端key；模型与输出预算独立配置。阿里云ASR需 `INTERVIEW_ASR_ENABLED=1` 和 `INTERVIEW_ASR_DATA_APPROVED=1`，以及 `INTERVIEW_ASR_API_KEY`（或服务器DASHSCOPE_API_KEY）和正确地域/业务空间 `INTERVIEW_ASR_BASE_URL`。按[官方Qwen-ASR接口](https://help.aliyun.com/zh/model-studio/qwen-asr-api-reference)填写兼容端点，不填写公网音频URL，本站通过Base64发送私有音频字节。
+
+在供应商数据保留/删除政策、授权样本、实际方言与计费未验证前保留默认关闭；选择阿里云不等于已完成这些验收。开启后用户仍需确认本段录音/转写告知，不与声音复刻同意混用。日任务和秒数额度可配置；超时/未知用量不自动重放，明确重试可能再次计费。
+
+删除先立即停止原材料访问，再由清理队列删除私有存储；失败可见且有退避重试，不能把“申请删除”显示为物理删除成功。已成稿故事、摘要和核实依据保留并需单独处理。备份须停止Web和三个worker，确认上传/删除任务稳定后同时备份数据库与私有媒体；OSS先完整导出。恢复包含采访、原转写和人工版本；不得在未知运行中任务上自动重放调用。
+
+华为真机验收仍待具体型号/系统/浏览器：实际前台录放、权限拒绝、来电/锁屏、弱网重试、恢复片段、中文提问播报及ASR口音质量。浏览器自动化使用合成音频与模拟服务，不能视作已通过真机或真实服务验收。
