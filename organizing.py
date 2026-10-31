@@ -1,5 +1,9 @@
 """User-owned source materials. AI previews never imply publishing permission."""
+import hashlib
+import re
+
 from flask import abort
+from sqlalchemy.exc import IntegrityError
 
 from access import family_role
 from models import OrganizeRecord, OrganizeSource, Person, User, new_id
@@ -46,14 +50,33 @@ def snapshot(s, record):
                         ('topic', 'narrator_id', 'subject_id', 'narrator_label')}, create_by=record.user_id))
 
 
-def create(s, family_id, user_id, data):
+def create(s, family_id, user_id, data, nonce=None):
     member(s, family_id, user_id)
-    record = OrganizeRecord(id=new_id(), family_id=family_id, user_id=user_id,
+    values = fields(s, family_id, data)
+    if nonce is not None and (not isinstance(nonce, str) or not re.fullmatch(r'[A-Za-z0-9_-]{8,80}', nonce)):
+        abort(400, '请刷新页面后重试')
+    identifier = hashlib.sha256((family_id+'\0'+user_id+'\0'+nonce).encode()).hexdigest() if nonce else new_id()
+    def prior():
+        record = s.get(OrganizeRecord, identifier)
+        if record and any(getattr(record, key) != value for key, value in values.items()):
+            abort(409, '该保存编号已有不同内容，请重新打开新原稿页面。')
+        return record
+    existing = prior()
+    if existing:
+        return existing
+    record = OrganizeRecord(id=identifier, family_id=family_id, user_id=user_id,
                             revision=1, preview_revision=0, create_by=user_id,
-                            **fields(s, family_id, data))
+                            **values)
     s.add(record)
     snapshot(s, record)
-    s.commit()
+    try:
+        s.commit()
+    except IntegrityError:
+        s.rollback()
+        existing = prior()
+        if not existing:
+            raise
+        return existing
     return record
 
 

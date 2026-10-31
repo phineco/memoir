@@ -2,7 +2,7 @@
 {% block title %}故事 · {{ family.name }}{% endblock %}
 {% block nav %}{% include "_family_nav.html" %}{% endblock %}
 {% block content %}
-<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>一家人的故事</h1><p class="hint">记住那些平凡、珍贵、值得再讲一遍的日子。</p><div class="form-actions"><a class="btn-primary" href="{{ url_for('main.write_article', family_id=family.id) }}">写故事</a></div></div>
+<div class="page-heading"><p class="eyebrow">{{ family.name }}</p><h1>一家人的故事</h1><p class="hint">记住那些平凡、珍贵、值得再讲一遍的日子。</p><div class="form-actions"><a class="btn-primary" href="{{ url_for('main.write_article', family_id=family.id) }}">写故事</a><a class="btn-secondary" href="{{ url_for('organize.new',family_id=family.id) }}">AI 整理</a></div></div>
 <form method="get" class="disclosure" aria-label="查找故事">
   <label>关键词<input class="full" type="search" name="q" maxlength="200" value="{{ filters.q }}" placeholder="搜索标题、正文或金句"></label>
   <details {% if filters.subject or filters.narrator or filters.period_from or filters.period_to or filters.published_from or filters.published_to or filters.sort != 'published_desc' %}open{% endif %}><summary>按人物与时间筛选</summary><div class="form-row">

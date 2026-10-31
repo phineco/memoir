@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}我的整理记录 · 家音{% endblock %}
+{% block nav %}{% if family %}{% include "_family_nav.html" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-heading"><h1>我的整理记录</h1><p class="hint">仅列出本人在有效家庭中的原材料；不会自动公开给管理员或其他家人。</p>{% if family %}<a class="btn-primary" href="{{ url_for('organize.new',family_id=family.id) }}">提供原稿</a>{% endif %}</div>
+<ul class="plain-list">{% for row,fam in rows %}<li><a class="btn-secondary" href="{{ url_for('organize.detail',family_id=fam.id,record_id=row.id) }}">{{ row.topic or '未命名原稿' }} · {{ fam.name }}</a><span class="hint">{{ '已生成故事' if row.story_id else '仅自己保存' }}</span></li>{% else %}<li>还没有整理记录。可从家庭故事页提供一段原稿。</li>{% endfor %}</ul>
+<div class="form-actions">{% if page>1 %}<a class="btn-secondary" href="{{ page_url(page-1) }}">上一页</a>{% endif %}<span>第 {{ page }} / {{ pages }} 页</span>{% if page<pages %}<a class="btn-secondary" href="{{ page_url(page+1) }}">下一页</a>{% endif %}</div>
+{% endblock %}

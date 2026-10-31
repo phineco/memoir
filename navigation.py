@@ -37,6 +37,8 @@ for endpoint, title in {
     'index': '家庭相册', 'detail': '照片详情', 'upload': '上传照片', 'edit': '编辑照片资料',
 }.items():
     PAGES['album.' + endpoint] = ('album', title)
+for endpoint,title in [('index','我的整理记录'),('new','提供原稿'),('detail','整理原稿')]:
+    PAGES['organize.'+endpoint]=('stories',title)
 PAGES['voices.manage'] = ('people', '声音管理')
 for endpoint, title in {
     'main.account': '个人中心', 'main.account_drafts': '我的草稿',

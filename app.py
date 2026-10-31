@@ -26,6 +26,8 @@ def create_app():
     app.register_blueprint(voices_bp)
     from album import bp as album_bp
     app.register_blueprint(album_bp)
+    from organize_routes import bp as organize_bp
+    app.register_blueprint(organize_bp)
     from album import display_html
     app.jinja_env.globals["article_html"]=display_html
     from person_dates import LUNAR_MONTHS, LUNAR_DAYS
