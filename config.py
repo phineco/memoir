@@ -63,6 +63,12 @@ class Config:
         "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
     DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-flash")
     AI_ENABLED = bool(os.environ.get("DEEPSEEK_API_KEY", ""))
+    ORGANIZE_ENABLED = os.environ.get('ORGANIZE_ENABLED', '0') == '1'
+    INAPP_AI_DATA_APPROVED = os.environ.get('INAPP_AI_DATA_APPROVED', '0') == '1'
+    ORGANIZE_MODEL = os.environ.get('ORGANIZE_MODEL', DEEPSEEK_MODEL)
+    ORGANIZE_MAX_TOKENS = int(os.environ.get('ORGANIZE_MAX_TOKENS', '12000'))
+    ORGANIZE_DAILY_TASKS = int(os.environ.get('ORGANIZE_DAILY_TASKS', '10'))
+    ORGANIZE_DAILY_CHARS = int(os.environ.get('ORGANIZE_DAILY_CHARS', '50000'))
 
     # ---- 阿里云短信（Dysmsapi SendSms） ----
     ALIYUN_SMS_ACCESS_KEY_ID = os.environ.get("ALIYUN_SMS_ACCESS_KEY_ID", "")

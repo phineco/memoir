@@ -661,3 +661,20 @@ class OrganizeSource(AuditMixin, Base):
     content = Column(Text().with_variant(MEDIUMTEXT(), 'mysql'), nullable=False)
     identity = Column(JSON)
     __table_args__ = (UniqueConstraint('record_id', 'revision', name='uq_organize_source_version'),)
+
+
+class OrganizeTask(AuditMixin, Base):
+    __tablename__ = 'organize_tasks'
+    family_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64), nullable=False, index=True)
+    record_id = Column(String(64), nullable=False, index=True)
+    input_revision = Column(Integer, nullable=False)
+    status = Column(String(16), nullable=False)
+    model = Column(String(80))
+    prompt_version = Column(String(32))
+    source_chars = Column(Integer, nullable=False)
+    result = Column(JSON)
+    usage = Column(JSON)
+    error_code = Column(String(32))
+    lease_token = Column(String(64))
+    lease_until = Column(DateTime)
