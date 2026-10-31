@@ -350,3 +350,66 @@ def test_mysql_help_recovers_from_killed_idle_connection_and_recycles(monkeypatc
             with admin.connect() as conn:
                 conn.execute(text(f'DROP DATABASE `{name}`'))
         admin.dispose()
+
+
+@pytest.mark.parametrize('operation', ['generate', 'confirm'])
+def test_mysql_organize_double_submit_is_one_task_or_story(monkeypatch, operation):
+    import threading
+    import models
+    from flask import Flask
+    from sqlalchemy.orm import scoped_session
+    import organizing
+    import organize_jobs
+    import organize_preview
+    import organize_drafts
+    from models import FamilyMember, OrganizeTask, OrganizeRecord
+
+    admin_url = make_url(os.environ['MEMOIR_TEST_MYSQL_ADMIN_URL'])
+    assert admin_url.get_backend_name() == 'mysql'
+    admin = create_engine(admin_url, isolation_level='AUTOCOMMIT')
+    name = 'memoir_organize_test_' + uuid.uuid4().hex[:12]
+    engine = None; threads = []; created = False; sessions = None
+    results = []; errors = []; barrier = threading.Barrier(2)
+    application = Flask('organize-concurrency')
+    application.config.update(ORGANIZE_ENABLED=True, INAPP_AI_DATA_APPROVED=True, DEEPSEEK_API_KEY='synthetic-only',
+        ORGANIZE_MODEL='mock', ORGANIZE_DAILY_TASKS=10, ORGANIZE_DAILY_CHARS=50000)
+    try:
+        with admin.connect() as conn:
+            conn.execute(text(f'CREATE DATABASE `{name}` CHARACTER SET utf8mb4')); created = True
+        engine = create_engine(admin_url.set(database=name)); Base.metadata.create_all(engine)
+        sessions = scoped_session(sessionmaker(bind=engine)); monkeypatch.setattr(models, '_Session', sessions)
+        s = sessions()
+        s.add_all([User(id='owner'), Family(id='family', owner_user_id='owner'),
+                   FamilyMember(id='membership', family_id='family', user_id='owner', role='owner')]); s.commit()
+        rid = organizing.create(s, 'family', 'owner', {'content': '一段独立测试回忆。'}).id
+        organize_preview.manual(s, 'family', 'owner', rid, 1, 0); sessions.remove()
+        def submit():
+            try:
+                with application.app_context():
+                    barrier.wait(timeout=10)
+                    if operation == 'generate':
+                        result = organize_jobs.begin('family', 'owner', rid, 1, uuid.uuid4().hex, True)
+                    else:
+                        result = organize_drafts.confirm(sessions(), 'family', 'owner', rid, 1, 1, uuid.uuid4().hex)
+                    results.append(result.id)
+            except Exception as exc:
+                errors.append(type(exc).__name__)
+            finally:
+                sessions.remove()
+        threads = [threading.Thread(target=submit) for _ in range(2)]
+        for thread in threads: thread.start()
+        for thread in threads: thread.join(timeout=20)
+        assert not any(t.is_alive() for t in threads) and not errors
+        assert len(results) == 2 and len(set(results)) == 1
+        s = sessions()
+        if operation == 'generate': assert s.query(OrganizeTask).count() == 1
+        else:
+            assert s.query(Interview).count() == 1 and s.query(Draft).count() == 1
+            assert s.get(OrganizeRecord, rid).story_id == results[0]
+    finally:
+        for thread in threads: thread.join(timeout=20)
+        if sessions: sessions.remove()
+        if engine: engine.dispose()
+        if created:
+            with admin.connect() as conn: conn.execute(text(f'DROP DATABASE `{name}`'))
+        admin.dispose()

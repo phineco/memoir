@@ -11,6 +11,7 @@
 - 每个迁移文件的 SQL 写法兼容 MySQL 5.7 和 SQLite：
   - ALTER TABLE ... ADD COLUMN ... 语句若列已存在会自动跳过（migrate.py 预检），
     所以即使之前手动跑过同样的 ALTER，再跑一次也是安全的。
+  - 正文 TEXT → MEDIUMTEXT 扩容仅在 MySQL 执行；SQLite TEXT 已无该容量限制。
   - COMMENT '...' 只在 MySQL 生效，SQLite 下会自动去掉。
 - 语句按分号切分；迁移文件里不要写存储过程/触发器这类带分号的复杂体。
 

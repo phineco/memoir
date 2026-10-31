@@ -17,6 +17,7 @@
 <label>原稿<textarea class="full" name="content" rows="12" maxlength="20000">{{ values.get('content',record.content if record else '') }}</textarea></label>
 <label>或上传文字文件<input class="full" type="file" name="source" accept=".txt,.md,text/plain,text/markdown"></label>
 <p class="hint">UTF-8 的 .txt/.md，文件最多 1 MiB、正文最多 20000 字；同时填文字和选文件时会请你只保留一种，不会覆盖已有内容。</p>
+<label>讲述方式<select class="full" name="recording_mode">{% for key,label in [('unspecified','暂不确定'),('self','自己讲'),('accompany','陪家人记录')] %}<option value="{{ key }}" {% if values.get('recording_mode',record.recording_mode if record else 'unspecified')==key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
 <details><summary>补充讲述身份（选填）</summary>
 <label>讲述称谓<input class="full" name="narrator_label" maxlength="100" value="{{ values.get('narrator_label',(record.narrator_label or '') if record else '') }}" placeholder="例如：我、妈妈，暂时不确定也可留空"></label>
 {% for name,label in [('narrator_id','谁讲的'),('subject_id','主要讲谁')] %}

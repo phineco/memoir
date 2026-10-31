@@ -1,0 +1,21 @@
+[Unit]
+Description=Memoir private organizing queue
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=memoir
+WorkingDirectory=/opt/memoir
+EnvironmentFile=/opt/memoir/.env
+Environment=TZ=Asia/Shanghai
+ExecStart=/opt/memoir/.venv/bin/python -B tools/ai_jobs.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=360
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

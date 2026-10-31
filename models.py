@@ -640,6 +640,7 @@ class AiTurn(AuditMixin, Base):
 
 class OrganizeRecord(AuditMixin, Base):
     __tablename__ = 'organize_records'
+    recording_mode = Column(String(16), nullable=False, default='unspecified')
     family_id = Column(String(64), nullable=False, index=True)
     user_id = Column(String(64), nullable=False, index=True)
     revision = Column(Integer, nullable=False, default=1)

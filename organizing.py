@@ -35,7 +35,9 @@ def fields(s, family_id, data):
     label = data.get('narrator_label', '').strip()
     if len(topic) > 128 or len(label) > 100:
         abort(400, '标题或讲述称谓过长')
-    values = dict(content=content, topic=topic, narrator_label=label or None)
+    mode = data.get('recording_mode', 'unspecified')
+    if mode not in ('self', 'accompany', 'unspecified'): abort(400, '请选择讲述方式')
+    values = dict(content=content, topic=topic, narrator_label=label or None, recording_mode=mode)
     for name in ('narrator_id', 'subject_id'):
         value = data.get(name) or None
         if value and (not isinstance(value, str) or not s.query(Person.id).filter_by(id=value, family_id=family_id, del_flag=0).first()):
@@ -47,7 +49,7 @@ def fields(s, family_id, data):
 def snapshot(s, record):
     s.add(OrganizeSource(id=new_id(), record_id=record.id, revision=record.revision,
                         content=record.content, identity={name: getattr(record, name) for name in
-                        ('topic', 'narrator_id', 'subject_id', 'narrator_label')}, create_by=record.user_id))
+                        ('topic', 'narrator_id', 'subject_id', 'narrator_label', 'recording_mode')}, create_by=record.user_id))
 
 
 def create(s, family_id, user_id, data, nonce=None):

@@ -881,6 +881,7 @@ CREATE TABLE IF NOT EXISTS `voice_audit` (
 CREATE INDEX ix_voice_audit_profile_id ON `voice_audit` (`profile_id`);
 
 CREATE TABLE IF NOT EXISTS `organize_records` (
+  `recording_mode` varchar(16) NOT NULL DEFAULT 'unspecified',
   `id` varchar(64) NOT NULL PRIMARY KEY,
   `family_id` varchar(64) NOT NULL,
   `user_id` varchar(64) NOT NULL,

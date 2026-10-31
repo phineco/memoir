@@ -75,7 +75,7 @@ mysql -h 127.0.0.1 -u memoir -p memoir < memoir-mysql-schema.sql
 .venv/bin/python create_admin.py --phone 13800000000 --nickname 主持人 --family-name 我的家
 ```
 
-业务表共 43 张，`schema_migrations` 由迁移程序维护。已有库不能重新导入建表 SQL。`create_admin.py` 交互输入密码，不清空已有记录；**生产不得执行 `seed.py`**。`install.sh` 只建立项目虚拟环境、安装依赖和缺省配置，不再自动执行 seed 或修改数据库。
+业务表以当前建表 SQL 为准，`schema_migrations` 由迁移程序维护。已有库不能重新导入建表 SQL。`create_admin.py` 交互输入密码，不清空已有记录；**生产不得执行 `seed.py`**。`install.sh` 只建立项目虚拟环境、安装依赖和缺省配置，不再自动执行 seed 或修改数据库。
 
 ## 四、服务与 HTTPS
 
@@ -402,3 +402,16 @@ sudo systemctl restart memoir
 交付与验收见 [家庭相册说明](FAMILY_ALBUM_2026-10-24.md)。本次含数据库变更与 Pillow==13.0.0 新依赖，不能仅替换代码。先备份/停服，在网站相同配置与虚拟环境安装 requirements.txt，单进程执行 `python migrate.py` 补齐所有未执行迁移（含 014），通过 `python tools/check_database.py` 后再启动。014 为 photos 增加月、日、名称、地点和资料版本及时间索引，保留旧照片与原年份。
 
 相册图片通过本站权限入口读取，本地与 OSS 均需由应用进程可读；不得将 uploads 或 album 前缀公开。媒体备份继续覆盖 photos.storage_path 主图；缩略图可回退主图，原始未处理照片不属于此次档案范围。发布须包含已构建的 16 项 static/dist 资源，生产无须 Node 或新后台任务。隐私政策更新为 2026-10-24.1，不补记已有用户同意；真实存储、MySQL 与手机验收按交付说明落实。
+
+
+## 站内文字整理（分步开发，默认关闭）
+
+入口：故事页“AI 整理”及个人中心“我的整理记录”。未配置服务时可以保存原稿、人工整理、保存本人私有草稿。与旧同步导入路径独立，确认预览不发布文章。
+
+升级先停止 Web 与队列、备份数据库及私有存储，单进程执行 `python migrate.py`，再运行 `python tools/check_database.py`；本批新增 016–020。SQLite 独立测试通过，真实 MySQL 验收须使用测试库，禁止在生产重放建表 SQL。
+
+获准数据处理配置和样本验收后，才设置 `ORGANIZE_ENABLED=1`、`INAPP_AI_DATA_APPROVED=1` 及服务端 `DEEPSEEK_API_KEY`。用途模型/输出预算通过 `ORGANIZE_MODEL/MAX_TOKENS` 配置；日任务/原稿字符额度通过 `ORGANIZE_DAILY_TASKS/CHARS`。字符限额不是费用上限；一次任务可能包含一次格式纠错，安全用量记录在私有任务中。未确定模型、费用和数据保留条款前保留默认关闭。
+
+独立队列：`python tools/ai_jobs.py --once` 验证单次处理；常驻用 `python tools/ai_jobs.py`，服务模板为 `tools/systemd/memoir-ai.service`，按实际路径/账号调整后安装。Web GET 只查询，不生成。队列中断或超时转“结果不确定”，不自动再次调用；取消无法撤回已发出的调用和费用。备份恢复包含新记录/版本/任务表；恢复前需停止队列，并核对运行中任务，不重放未知请求。
+
+真实质量验收至少包括：获准短答、常规材料、接近20000字长稿、未知日期/同名称谓/原文指令注入；记录原稿版本、模型/提示词版本、人工核对结论及实际 token/费用。隔离模拟检查不能替代这些证据。
