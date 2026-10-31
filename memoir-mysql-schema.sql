@@ -1029,3 +1029,23 @@ CREATE TABLE IF NOT EXISTS `interview_clips` (
   `remarks` varchar(255),
   `del_flag` integer DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `interview_asr_tasks` (
+  `id` varchar(64) NOT NULL PRIMARY KEY,
+  `family_id` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `session_id` varchar(64) NOT NULL,
+  `clip_id` varchar(64) NOT NULL,
+  `status` varchar(16) NOT NULL,
+  `model` varchar(80) NOT NULL,
+  `duration_ms` integer NOT NULL,
+  `usage` json,
+  `lease_token` varchar(64),
+  `lease_until` datetime,
+  `create_by` varchar(64),
+  `create_date` datetime,
+  `update_by` varchar(64),
+  `update_date` datetime,
+  `remarks` varchar(255),
+  `del_flag` integer DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

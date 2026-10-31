@@ -86,7 +86,7 @@ def cancel_questions(s, row):
         {InterviewQuestion.status: 'cancelled'}, synchronize_session=False)
 
 
-def answer(s, fid, uid, sid, revision, nonce, content, skip=False):
+def answer(s, fid, uid, sid, revision, nonce, content, skip=False, clip_id=None):
     row = owned(s, fid, uid, sid, lock=True)
     aid = nonce_id('answer', sid, uid, nonce)
     prior = s.get(InterviewAnswer, aid)
@@ -98,6 +98,11 @@ def answer(s, fid, uid, sid, revision, nonce, content, skip=False):
     if row.state != 'active' or pending(s, row): abort(409, '请先继续采访，或等待下一个问题。')
     if not isinstance(content, str) or (not skip and (not content.strip() or len(content) > 4000)):
         abort(400, '回答可长可短，每段最多4000字；较长内容请分段。')
+    clip=None
+    if clip_id:
+        from interview_audio import owned_clip
+        clip=owned_clip(s,fid,uid,sid,clip_id)
+        if clip.input_revision!=row.revision or clip.answer_id:abort(409,'录音对应的问题已变化，请保留转写后人工核对。')
     current = answers(s, sid)
     if len(current) >= 100 or sum(len(a.content)+len(a.question)+12 for a in current)+len(content)+len(row.question)+12 > 19000:
         abort(400, '本段材料已接近整理上限，请先结束本段并核对成稿，再开始下一段；当前回答未保存。')
@@ -107,6 +112,7 @@ def answer(s, fid, uid, sid, revision, nonce, content, skip=False):
     question = TOPICS[new_topic][1] if followups == 0 else FOLLOWUPS[followups-1]
     s.add(InterviewAnswer(id=aid, session_id=sid, sequence=len(current)+1, question=row.question,
         content='' if skip else content.strip(), kind='skip' if skip else 'text', version=1, history=[], create_by=uid))
+    if clip:clip.answer_id=aid;clip.status='accepted'
     claim(s, row, question=question, topic=new_topic, followups=followups)
     from interview_questions import enqueue
     enqueue(s, row)

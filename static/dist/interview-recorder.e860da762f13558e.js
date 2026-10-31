@@ -51,12 +51,12 @@
   await identity();
   if(!consent.checked)throw Error('请先勾选录音保存告知。');
   const blob=await unseal(row);const body=new FormData();
-  body.append('audio',blob,'answer');body.append('revision',String(row.revision));body.append('nonce',row.id);body.append('consent_recording','yes');body.append('csrf_token',token);
+  body.append('audio',blob,'answer');body.append('revision',String(row.revision));body.append('nonce',row.id);body.append('consent_recording','yes');const asr=document.getElementById('recording-asr-consent');if(asr&&asr.checked)body.append('consent_asr','yes');body.append('csrf_token',token);
   say('正在上传，本机片段保留至服务器确认保存。');
   let r;try{r=await fetch(root.dataset.upload,{method:'POST',body,headers:{Accept:'application/json','X-CSRFToken':token},redirect:'error'});}catch(e){say('网络中断，本机片段已保留，可稍后重试上传或先下载。');return;}
   if(!r.ok){let failure;try{failure=await r.json();}catch(e){}if(failure&&typeof failure.error==='string'){say(failure.error+' 本机片段仍保留，可回听或下载。');return;}say(r.status===409?'采访进度已变化，片段仍在本机，可下载后从对应记录重新上传。':'上传未完成，片段仍在本机；可稍后重试或下载保存。');return;}
   const result=await r.json();if(!result.id)throw Error('未收到保存确认，片段仍在本机。');
-  await transaction('readwrite',s=>s.delete(row.id));await render();say('服务器已私有保存，可刷新查看回听；转写功能未开通时仍可文字回答。');
+  await transaction('readwrite',s=>s.delete(row.id));await render();say(result.note||(result.status==='queued'||result.status==='running'?'服务器已保存录音，正在转写。':'服务器已私有保存，可刷新查看回听；转写功能未开通时仍可文字回答。'));
   root.dispatchEvent(new CustomEvent('interview:uploaded',{bubbles:true,detail:result}));
  }
  function release(){clearTimeout(timer);clearTimeout(warning);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;}

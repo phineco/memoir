@@ -744,3 +744,17 @@ class InterviewClip(AuditMixin, Base):
     usage = Column(JSON)
     lease_token = Column(String(64))
     lease_until = Column(DateTime)
+
+
+class InterviewAsrTask(AuditMixin, Base):
+    __tablename__ = 'interview_asr_tasks'
+    family_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64), nullable=False, index=True)
+    session_id = Column(String(64), nullable=False, index=True)
+    clip_id = Column(String(64), nullable=False, index=True)
+    status = Column(String(16), nullable=False)
+    model = Column(String(80), nullable=False)
+    duration_ms = Column(Integer, nullable=False)
+    usage = Column(JSON)
+    lease_token = Column(String(64))
+    lease_until = Column(DateTime)

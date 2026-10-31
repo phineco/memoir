@@ -22,6 +22,8 @@ def main():
                 from interview_questions import run_one as question_one
                 worked = run_one()
                 worked = question_one() or worked
+                from interview_asr import run_one as asr_one
+                worked = asr_one() or worked
             finally:
                 remove_session()
         if args.once:
