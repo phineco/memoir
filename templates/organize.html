@@ -9,7 +9,7 @@
 {% if record and record.story_id %}
 <section class="disclosure"><h2>已生成故事草稿</h2><p>后续请在故事中编辑和发布；不会从这份原材料重复创建故事。</p><a class="btn-primary" href="{{ url_for('main.edit_article',family_id=family.id,interview_id=record.story_id) }}">进入故事编辑</a></section>
 {% else %}
-<form method="post" enctype="multipart/form-data" class="disclosure">
+{% if easy_mode and record %}<details class="disclosure"><summary>查看或修改原稿与讲述身份</summary>{% endif %}<form method="post" enctype="multipart/form-data" class="disclosure">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <input type="hidden" name="nonce" value="{{ nonce }}">
 {% if record %}<input type="hidden" name="revision" value="{{ values.get('revision',record.revision) }}">{% endif %}
@@ -24,7 +24,7 @@
 <label>{{ label }}<select class="full" name="{{ name }}"><option value="">暂不选择</option>{% for person in people %}<option value="{{ person.id }}" {% if values.get(name,record|attr(name) if record else '')==person.id %}selected{% endif %}>{{ person.name }}{% if person.relation %} · {{ person.relation }}{% endif %}</option>{% endfor %}</select></label>
 {% endfor %}</details>
 <div class="form-actions"><button class="btn-primary" type="submit">保存原稿（仅自己）</button><a class="btn-secondary" href="{{ url_for('organize.index',family_id=family.id) }}">我的整理记录</a></div>
-</form>
+</form>{% if easy_mode and record %}</details>{% endif %}
 {% endif %}
 {% if record %}
 <p class="hint">原稿版本 {{ record.revision }} · 本次记录仅自己可见 · 保存原稿不调用 AI。</p>

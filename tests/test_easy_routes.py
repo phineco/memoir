@@ -44,3 +44,21 @@ def test_continue_private_interview_with_same_services_and_navigation(client,log
     login('owner-a')
     assert client.get(path).status_code==404
     assert '本人私有题目' not in client.get('/easy/records').get_data(as_text=True)
+
+
+def test_easy_reading_reuses_story_visibility_and_excludes_drafts(client,login,app):
+    app.config['EASY_ENABLED']=True;login('member-a')
+    listing=client.get('/easy/listen').get_data(as_text=True)
+    assert 'public-a' in listing and 'specific-a' in listing
+    assert 'private-a' not in listing and 'draft-a' not in listing and 'public-b' not in listing
+    assert client.get('/easy/f/a/story/private-a').status_code==404
+    assert client.get('/easy/f/a/story/specific-a').status_code==200
+    assert client.get('/easy/f/b/story/public-b').status_code==404
+    login('owner-a')
+    assert client.get('/easy/f/a/story/private-a').status_code==200
+    assert client.get('/easy/f/a/story/draft-a').status_code==404
+    for path in ['/easy/settings','/easy/help','/easy/photos','/easy/families']:
+        response=client.get(path)
+        assert response.status_code==200 and 'no-store' in response.headers['Cache-Control']
+    assert '当前版本' not in client.get('/easy').get_data(as_text=True)
+    assert '版本：' in client.get('/easy/help').get_data(as_text=True)

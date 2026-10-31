@@ -87,6 +87,8 @@ if os.environ.get('VOICE_UI')=='1':
         process_one()
         return dict(creates=fake_voice.creates,syntheses=fake_voice.syntheses)
 
+if os.environ.get('EASY_UI')=='1':app.config['EASY_ENABLED']=True
+
 if os.environ.get('INTERVIEW_UI')=='1':
     from flask import abort,request
     import interview_asr,interview_questions
