@@ -923,6 +923,7 @@ CREATE TABLE IF NOT EXISTS `organize_tasks` (
   `user_id` varchar(64) NOT NULL,
   `record_id` varchar(64) NOT NULL,
   `input_revision` integer NOT NULL,
+  `base_preview_revision` integer NOT NULL DEFAULT 0,
   `status` varchar(16) NOT NULL,
   `model` varchar(80),
   `prompt_version` varchar(32),

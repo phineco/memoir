@@ -8,7 +8,7 @@ from flask import Blueprint, abort, redirect, render_template, request, send_fil
 from werkzeug.exceptions import HTTPException
 
 from forms import require_csrf
-from models import OrganizeRecord, Person, get_session
+from models import OrganizeRecord, OrganizeTask, Person, get_session
 import organizing
 from views import _current_user, _family_or_404, _families_for_user
 
@@ -71,12 +71,12 @@ def material_input():
     return values
 
 
-def material_page(family_id, record_id=None):
+def material_page(family_id, record_id=None, action_error=None):
     me, s = _current_user(), get_session()
     family = _family_or_404(family_id)
     record = organizing.owned(s, family_id, me.id, record_id) if record_id else None
-    values, error, status = {}, None, 200
-    if request.method == 'POST':
+    values, error, status = {}, action_error.description if action_error else None, action_error.code if action_error else 200
+    if request.method == 'POST' and action_error is None:
         values = request.form.to_dict()
         try:
             values = material_input()
@@ -91,8 +91,11 @@ def material_page(family_id, record_id=None):
             s.rollback()
             error, status = exc.description, exc.code
     people = s.query(Person).filter_by(family_id=family_id, del_flag=0).order_by(Person.sort, Person.name).all()
+    import organize_jobs
+    task = s.query(OrganizeTask).filter_by(record_id=record.id, user_id=me.id).order_by(OrganizeTask.create_date.desc(), OrganizeTask.id.desc()).first() if record else None
     return render_template('organize.html', family=family, record=record, values=values,
-        error=error, people=people, nonce=values.get('nonce') or secrets.token_urlsafe(24),
+        error=error, people=people, task=task, task_message=organize_jobs.MESSAGES.get(task.status) if task else None,
+        ai_enabled=organize_jobs.enabled(), preview_values=request.form if action_error else {}, nonce=values.get('nonce') or secrets.token_urlsafe(24),
         notice='原稿已保存，仅自己可见。' if request.args.get('saved') == '1' else None), status
 
 
@@ -119,3 +122,28 @@ def remove(family_id, record_id):
         abort(400, '请明确确认删除原材料')
     organizing.delete(get_session(), family_id, _current_user().id, record_id, acknowledge_story=True)
     return redirect(url_for('organize.index', family_id=family_id))
+
+
+@bp.route('/f/<family_id>/organize/<record_id>/action', methods=['POST'])
+def action(family_id, record_id):
+    import organize_jobs
+    import organize_preview
+    me, s = _current_user(), get_session()
+    try:
+        name = request.form.get('action')
+        if name == 'generate':
+            organize_jobs.begin(family_id, me.id, record_id, request.form.get('revision'), request.form.get('nonce'),
+                consent=request.form.get('consent') == 'yes', regenerate=request.form.get('regenerate') == 'yes')
+        elif name == 'cancel':
+            organize_jobs.cancel(family_id, me.id, record_id, request.form.get('task_id'))
+        elif name in ('manual', 'preview'):
+            args = (s, family_id, me.id, record_id, request.form.get('revision'), request.form.get('preview_revision'))
+            if name == 'manual': organize_preview.manual(*args)
+            else: organize_preview.save(*args, request.form)
+        else:
+            abort(400, '操作无效')
+        return redirect(url_for('organize.detail', family_id=family_id, record_id=record_id))
+    except HTTPException as exc:
+        s.rollback()
+        if exc.code not in (400, 409, 429): raise
+        return material_page(family_id, record_id, action_error=exc)

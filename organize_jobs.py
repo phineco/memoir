@@ -48,7 +48,7 @@ def begin(family_id, user_id, record_id, revision, nonce, consent=False, regener
     if len(charged) >= current_app.config['ORGANIZE_DAILY_TASKS'] or sum(row.source_chars for row in charged) + len(record.content) > current_app.config['ORGANIZE_DAILY_CHARS']:
         abort(429, '今日整理额度已用完；原稿仍可保存、编辑或导出。')
     task = OrganizeTask(id=identifier, family_id=family_id, user_id=user_id, record_id=record.id,
-        input_revision=record.revision, source_chars=len(record.content), status='queued',
+        input_revision=record.revision, base_preview_revision=record.preview_revision, source_chars=len(record.content), status='queued',
         model=current_app.config['ORGANIZE_MODEL'], prompt_version='organize-v1', create_by=user_id,
         create_date=local_now())
     s.add(task)
@@ -99,16 +99,21 @@ def run_one(provider=None):
         result, usage = provider(payload)
         s.rollback()
         s.expire_all()
+        task = s.get(OrganizeTask, identifier)
+        record = owned(s, task.family_id, task.user_id, task.record_id, lock=True)
         task = s.query(OrganizeTask).filter_by(id=identifier).with_for_update().populate_existing().one()
         if task.status != 'running' or task.lease_token != token:
             s.rollback()
             return True
-        record = owned(s, task.family_id, task.user_id, task.record_id, lock=True)
-        if record.revision != task.input_revision or record.story_id:
+        if record.revision != task.input_revision or record.story_id or record.preview_revision != task.base_preview_revision:
             raise Outdated()
         from organize_provider import validate
         result = validate(result, payload['content'])
         task.result, task.usage, task.status = result, usage, 'succeeded'
+        record.preview = result
+        record.preview_source_revision = task.input_revision
+        record.preview_revision += 1
+        record.update_date = local_now()
         s.commit()
     except Exception as exc:
         s.rollback()

@@ -1,0 +1,30 @@
+{% if not record.story_id %}
+<section class="disclosure"><h2>整理与核对</h2>
+{% if task %}<p role="status">{{ task_message }}</p><p class="hint">{{ '已发给 AI，可能已产生用量' if task.lease_token else '尚未发送 AI' }} · 原稿版本 {{ task.input_revision }}</p>
+<div class="form-actions"><a class="btn-secondary" href="{{ url_for('organize.detail',family_id=family.id,record_id=record.id) }}">查询进度</a>
+{% if task.status in ['queued','running'] %}<form method="post" action="{{ url_for('organize.action',family_id=family.id,record_id=record.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="cancel"><input type="hidden" name="task_id" value="{{ task.id }}"><button class="btn-secondary" type="submit">取消后续整理</button></form>{% endif %}</div>{% endif %}
+{% if ai_enabled %}
+<form method="post" action="{{ url_for('organize.action',family_id=family.id,record_id=record.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="generate"><input type="hidden" name="revision" value="{{ record.revision }}"><input type="hidden" name="nonce" value="{{ nonce }}"><input type="hidden" name="regenerate" value="{{ 'yes' if record.preview else 'no' }}">
+<label class="check"><input type="checkbox" name="consent" value="yes" required>同意将本份原稿及所选讲述身份交由已配置的 AI 服务整理；{% if record.preview %}重新生成会再次调用服务并替换未修改的当前预览；{% endif %}发布前由我核对。</label><button class="btn-primary" type="submit">{{ '重新生成预览' if record.preview else '让 AI 整理' }}</button></form>
+{% else %}<p class="hint">AI 整理尚未开通。仍可保存原稿、人工整理和生成草稿。</p>{% endif %}
+{% if not record.preview or record.preview_source_revision != record.revision %}
+<form method="post" action="{{ url_for('organize.action',family_id=family.id,record_id=record.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="manual"><input type="hidden" name="revision" value="{{ record.revision }}"><input type="hidden" name="preview_revision" value="{{ record.preview_revision }}"><button class="btn-secondary" type="submit">用当前原稿人工整理（不调用 AI）</button></form>{% endif %}
+</section>
+{% if record.preview %}
+<section class="disclosure"><h2>核对预览</h2><p class="hint">预览版本 {{ record.preview_revision }} · 依据原稿版本 {{ record.preview_source_revision }} · 仅自己可见</p>
+{% if record.preview_source_revision != record.revision %}<p class="error">此预览依据旧原稿，不能直接成稿，请重新整理当前原稿。</p>{% endif %}
+<form method="post" action="{{ url_for('organize.action',family_id=family.id,record_id=record.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="preview"><input type="hidden" name="revision" value="{{ preview_values.get('revision',record.revision) }}"><input type="hidden" name="preview_revision" value="{{ preview_values.get('preview_revision',record.preview_revision) }}">
+<label>标题<input class="full" name="title" maxlength="128" value="{{ preview_values.get('title',record.preview.title) }}" required></label>
+<label>正文<textarea class="full" name="body" maxlength="30000" rows="14" required>{{ preview_values.get('body',record.preview.body) }}</textarea></label>
+<details><summary>核对金句、疑点和关联建议</summary><p class="hint">取消勾选即删除该项。金句可修改；改写后保存为摘要，不再标为原话。建议不会直接建人物或关系。</p>
+{% for key,label in [('quotes','原话或摘要'),('verification','待核实'),('timeline','时间轴'),('people','人物建议')] %}
+{% for item in record.preview[key] %}<div class="disclosure"><label class="check"><input type="checkbox" name="keep_{{ key }}_{{ loop.index0 }}" value="yes" {% if not preview_values or preview_values.get('keep_'+key+'_'+loop.index0|string)=='yes' %}checked{% endif %}>保留{{ label }}</label>
+{% if key=='quotes' %}<input class="full" name="quote_{{ loop.index0 }}" maxlength="500" value="{{ preview_values.get('quote_'+loop.index0|string,item.text) }}"><p class="hint">{{ '摘要（人工改写）' if item.kind=='summary' else '原话（原稿逐字）' }}</p>
+{% elif key=='verification' %}<p>{{ item.text }}</p>{% elif key=='timeline' %}<p>{{ item.date }} · {{ item.title }}</p>{% else %}<p>{{ item.name }} · {{ item.context }}</p>{% endif %}
+<blockquote>原稿依据：{{ item.evidence }}</blockquote></div>{% endfor %}{% endfor %}
+{% if record.preview.period %}<label class="check"><input type="checkbox" name="keep_period" value="yes" checked>保留故事时间段 {{ record.preview.period.start }} 至 {{ record.preview.period.end }}</label><blockquote>{{ record.preview.period.evidence }}</blockquote>{% endif %}
+</details><div class="form-actions"><button class="btn-primary" type="submit">暂存核对结果</button></div></form>
+{% block confirmation %}{% endblock %}
+</section>{% endif %}
+{% endif %}

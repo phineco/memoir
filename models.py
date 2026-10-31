@@ -669,6 +669,7 @@ class OrganizeTask(AuditMixin, Base):
     user_id = Column(String(64), nullable=False, index=True)
     record_id = Column(String(64), nullable=False, index=True)
     input_revision = Column(Integer, nullable=False)
+    base_preview_revision = Column(Integer, nullable=False, default=0)
     status = Column(String(16), nullable=False)
     model = Column(String(80))
     prompt_version = Column(String(32))
