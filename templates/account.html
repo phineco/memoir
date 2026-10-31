@@ -26,6 +26,7 @@
 {% if is_operator %}
 <section class="menu-section" aria-labelledby="operations-heading"><h2 id="operations-heading">运营工作区</h2><div class="menu-buttons"><a class="btn-primary menu-button" href="{{ url_for('privacy.operations_list') }}">隐私申请处理</a><a class="btn-primary menu-button" href="{{ url_for('metrics.dashboard') }}">周度指标</a>{% if voice_feature_enabled %}<a class="btn-primary menu-button" href="{{ url_for('voices.operations') }}">声音授权与删除</a>{% endif %}</div></section>
 {% endif %}
+{% if easy_enabled %}<section class="menu-section"><h2>简易入口</h2><div class="menu-buttons"><a class="btn-primary menu-button" href="{{ url_for('easy.index',family_id=family.id if family else none) }}">打开简易版</a></div></section>{% endif %}
 <div class="menu-exit"><a class="btn-secondary menu-button" href="{{ url_for('main.logout') }}">退出登录</a></div>
 </div>
 {% endblock %}

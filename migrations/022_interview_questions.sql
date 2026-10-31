@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS interview_questions (
  id varchar(64) NOT NULL PRIMARY KEY,
  family_id varchar(64) NOT NULL, user_id varchar(64) NOT NULL, session_id varchar(64) NOT NULL,
  input_revision integer NOT NULL, status varchar(16) NOT NULL, model varchar(80), source_chars integer NOT NULL,
- question varchar(512), usage json, lease_token varchar(64), lease_until datetime,
+ question varchar(512), `usage` json, lease_token varchar(64), lease_until datetime,
  create_by varchar(64), create_date datetime, update_by varchar(64), update_date datetime, remarks varchar(255), del_flag integer DEFAULT 0
 );
 CREATE INDEX ix_interview_questions_session_id ON interview_questions(session_id);

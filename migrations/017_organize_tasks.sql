@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS organize_tasks (
  user_id varchar(64) NOT NULL, record_id varchar(64) NOT NULL,
  input_revision integer NOT NULL, status varchar(16) NOT NULL,
  model varchar(80), prompt_version varchar(32), source_chars integer NOT NULL,
- result json, usage json, error_code varchar(32), lease_token varchar(64), lease_until datetime,
+ result json, `usage` json, error_code varchar(32), lease_token varchar(64), lease_until datetime,
  create_by varchar(64), create_date datetime, update_by varchar(64), update_date datetime,
  remarks varchar(255), del_flag integer DEFAULT 0
 );

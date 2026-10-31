@@ -13,6 +13,7 @@ const assert=require('node:assert/strict');
   await page.getByRole('button',{name:'用当前原稿人工整理（不调用 AI）'}).click();
   await page.locator('[name=title]').fill('老院子的夏夜');
   await page.locator('[name=body]').fill('妈妈带着我们在门口乘凉。');
+  assert(await page.locator('[data-preview-confirm] button[type=submit]').isDisabled());
   await page.getByRole('button',{name:'暂存核对结果'}).click();
   await page.reload();assert.equal(await page.locator('[name=body]').inputValue(),'妈妈带着我们在门口乘凉。');
   let layouts=0;
