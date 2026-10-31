@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "easy_base.html" if easy_mode else "base.html" %}
 {% block title %}我的整理记录 · 家音{% endblock %}
 {% block nav %}{% if family %}{% include "_family_nav.html" %}{% endif %}{% endblock %}
 {% block content %}

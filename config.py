@@ -63,6 +63,7 @@ class Config:
         "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
     DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-flash")
     AI_ENABLED = bool(os.environ.get("DEEPSEEK_API_KEY", ""))
+    EASY_ENABLED = os.environ.get('EASY_ENABLED','0') == '1'
     INTERVIEW_ASR_ENABLED = os.environ.get('INTERVIEW_ASR_ENABLED','0') == '1'
     INTERVIEW_ASR_DATA_APPROVED = os.environ.get('INTERVIEW_ASR_DATA_APPROVED','0') == '1'
     INTERVIEW_ASR_API_KEY = os.environ.get('INTERVIEW_ASR_API_KEY') or os.environ.get('DASHSCOPE_API_KEY','')

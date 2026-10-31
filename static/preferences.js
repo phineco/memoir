@@ -3,7 +3,7 @@
   'use strict';
   var key = 'memoir.display.v1', hintKey = 'memoir.display-hint.v1';
   var choices = {theme:['modern','paper','contrast'], font:['sans','serif','rounded'], size:['18','22','26'], mode:['standard','simple']};
-  var defaults = {theme:'modern',font:'sans',size:'18',mode:'standard'};
+  var defaults = {theme:'modern',font:'sans',size:document.documentElement.hasAttribute('data-easy')?'22':'18',mode:'standard'};
   function normalize(value) {
     var result = {};
     Object.keys(defaults).forEach(function(k){ result[k] = value && choices[k].indexOf(value[k]) !== -1 ? value[k] : defaults[k]; });

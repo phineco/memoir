@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% block title %}开始采访{% endblock %}{% block nav %}{% include '_family_nav.html' %}{% endblock %}
+{% extends 'easy_base.html' if easy_mode else 'base.html' %}{% block title %}开始采访{% endblock %}{% block nav %}{% include '_family_nav.html' %}{% endblock %}
 {% block content %}<div class="page-return"><a href="{{ url_for('main.stories',family_id=family.id) }}">← 返回故事</a></div>
 <div class="page-heading"><h1>讲一段回忆</h1><p class="hint">先保存为本人私有记录，不用先添加人物。讲述者不会自动获得这些原材料。</p></div>
 <form method="post" class="disclosure"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="nonce" value="{{ nonce }}">

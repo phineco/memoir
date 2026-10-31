@@ -30,6 +30,8 @@ def create_app():
     app.register_blueprint(organize_bp)
     from interview_routes import bp as interview_bp
     app.register_blueprint(interview_bp)
+    from easy_routes import install as install_easy
+    install_easy(app)
     from album import display_html
     app.jinja_env.globals["article_html"]=display_html
     from person_dates import LUNAR_MONTHS, LUNAR_DAYS
