@@ -636,3 +636,28 @@ class AiTurn(AuditMixin, Base):
     sources = Column(JSON)
     context_stamp = Column(String(64), nullable=False)
     lease_until = Column(DateTime)
+
+
+class OrganizeRecord(AuditMixin, Base):
+    __tablename__ = 'organize_records'
+    family_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64), nullable=False, index=True)
+    revision = Column(Integer, nullable=False, default=1)
+    topic = Column(String(128), nullable=False, default='')
+    content = Column(Text().with_variant(MEDIUMTEXT(), 'mysql'), nullable=False)
+    narrator_id = Column(String(64))
+    subject_id = Column(String(64))
+    narrator_label = Column(String(100))
+    preview = Column(JSON)
+    preview_revision = Column(Integer, nullable=False, default=0)
+    preview_source_revision = Column(Integer)
+    story_id = Column(String(64))
+
+
+class OrganizeSource(AuditMixin, Base):
+    __tablename__ = 'organize_sources'
+    record_id = Column(String(64), nullable=False, index=True)
+    revision = Column(Integer, nullable=False)
+    content = Column(Text().with_variant(MEDIUMTEXT(), 'mysql'), nullable=False)
+    identity = Column(JSON)
+    __table_args__ = (UniqueConstraint('record_id', 'revision', name='uq_organize_source_version'),)

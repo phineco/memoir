@@ -879,3 +879,40 @@ CREATE TABLE IF NOT EXISTS `voice_audit` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE INDEX ix_voice_audit_profile_id ON `voice_audit` (`profile_id`);
+
+CREATE TABLE IF NOT EXISTS `organize_records` (
+  `id` varchar(64) NOT NULL PRIMARY KEY,
+  `family_id` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `revision` integer NOT NULL DEFAULT 1,
+  `topic` varchar(128) NOT NULL,
+  `content` mediumtext NOT NULL,
+  `narrator_id` varchar(64),
+  `subject_id` varchar(64),
+  `narrator_label` varchar(100),
+  `preview` json,
+  `preview_revision` integer NOT NULL DEFAULT 0,
+  `preview_source_revision` integer,
+  `story_id` varchar(64),
+  `create_by` varchar(64),
+  `create_date` datetime,
+  `update_by` varchar(64),
+  `update_date` datetime,
+  `remarks` varchar(255),
+  `del_flag` integer DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `organize_sources` (
+  `id` varchar(64) NOT NULL PRIMARY KEY,
+  `record_id` varchar(64) NOT NULL,
+  `revision` integer NOT NULL,
+  `content` mediumtext NOT NULL,
+  `identity` json,
+  `create_by` varchar(64),
+  `create_date` datetime,
+  `update_by` varchar(64),
+  `update_date` datetime,
+  `remarks` varchar(255),
+  `del_flag` integer DEFAULT 0,
+  CONSTRAINT uq_organize_source_version UNIQUE (record_id,revision)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
