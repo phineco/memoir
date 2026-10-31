@@ -46,3 +46,10 @@ def review(family_id,candidate_id):
     people_suggestions.review(get_session(),family_id,_current_user().id,candidate_id,request.form.get('story_version'),
         request.form.get('action'),request.form.get('person_id'),request.form.get('name',''),request.form.get('duplicate')=='yes')
     return redirect(url_for('suggestions.index',family_id=family_id))
+
+
+@bp.post('/f/<family_id>/plans/suggestions/<suggestion_id>')
+def plan_review(family_id,suggestion_id):
+    import plan_suggestions
+    plan_suggestions.review(get_session(),family_id,_current_user().id,suggestion_id,request.form.get('action'))
+    return redirect(url_for('main.plan_list',family_id=family_id))

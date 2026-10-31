@@ -2414,7 +2414,9 @@ def plan_list(family_id):
         family_id=family_id, user_id=me.id, del_flag=0).first() \
         if me else None
     import ai as ai_mod
-    return render_template("plans.html", family=fam, me=me, plans=plans,
+    import plan_suggestions
+    progress_rows=plan_suggestions.pending(s,family_id) if _is_admin(fam,me) else []
+    return render_template("plans.html", family=fam, me=me, plans=plans, progress_rows=progress_rows,
                            plan_items=_plan_items,
                            is_admin=_is_admin(fam, me),
                            viewer_person_id=viewer.id if viewer else None,
@@ -2549,8 +2551,14 @@ def plan_update(family_id, plan_id):
     fam = _family_or_404(family_id)
     if not _is_admin(fam, me):
         abort(403)
-    plan = _plan_or_404(family_id, plan_id)
-    s = _s()
+    from forms import require_csrf
+    require_csrf()
+    from plan_suggestions import stamp
+    from transaction_locks import serialize_sqlite
+    s=_s();serialize_sqlite(s,me.id)
+    plan=s.query(WritingPlan).filter_by(id=plan_id,family_id=family_id,del_flag=0).with_for_update().populate_existing().first()
+    if not plan:abort(404)
+    if request.form.get('base_stamp')!=stamp(plan):abort(409,'计划已更新，请重新核对后保存。')
     title = request.form.get("title", "").strip()
     if not title:
         persons = s.query(Person).filter_by(

@@ -18,6 +18,7 @@
 {% else %}
 <form method="post" action="{{ url_for('main.plan_update', family_id=family.id, plan_id=plan.id) }}">
 {% endif %}
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% if plan %}<input type="hidden" name="base_stamp" value="{{ plan_stamp(plan) }}">{% endif %}
   <label>计划标题 *<br><input name="title" class="full" required maxlength="128"
     value="{{ plan.title if plan else suggested_title }}" placeholder="如：王家·冬季采访计划"></label>
   <h3>优先级排序（从上到下，先写谁）</h3>

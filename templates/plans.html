@@ -7,6 +7,7 @@
 {% if is_admin %}
 <p><a href="{{ url_for('main.plan_new', family_id=family.id) }}" class="btn-primary" style="text-decoration:none">➕ 新建计划</a></p>
 {% endif %}
+{% if is_admin and progress_rows %}<details class="disclosure"><summary>待确认的进度建议（{{ progress_rows|length }}）</summary><p class="hint">一篇故事只能建议本条计划“进行中”，不自动标记整个人物完成。</p>{% for row,story,plan in progress_rows %}<section class="disclosure"><p>{{ plan.title }} · 已有故事《{{ story.topic }}》</p><a class="btn-secondary" href="{{ url_for('main.story_detail',family_id=family.id,interview_id=story.id) }}">核对来源故事</a><form method="post" action="{{ url_for('suggestions.plan_review',family_id=family.id,suggestion_id=row.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="form-actions"><button class="btn-primary" name="action" value="apply">确认此条进行中</button><button class="btn-secondary" name="action" value="dismiss">忽略建议</button></div></form></section>{% endfor %}</details>{% endif %}
 {% for plan in plans %}
 <div class="card" style="margin-bottom:16px">
   <h3>{{ plan.title }}

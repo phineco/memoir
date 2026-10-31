@@ -94,9 +94,11 @@ def material_page(family_id, record_id=None, action_error=None):
     import organize_jobs
     from people_suggestions import source_context
     followup=source_context(s,record)
+    from plan_suggestions import options
+    plan_options=options(s,record)
     task = s.query(OrganizeTask).filter_by(record_id=record.id, user_id=me.id).order_by(OrganizeTask.create_date.desc(), OrganizeTask.id.desc()).first() if record else None
     return render_template('organize.html', family=family, record=record, values=values,
-        error=error, followup=followup, people=people, task=task, task_message=organize_jobs.MESSAGES.get(task.status) if task else None,
+        error=error, followup=followup, plan_options=plan_options, people=people, task=task, task_message=organize_jobs.MESSAGES.get(task.status) if task else None,
         ai_enabled=organize_jobs.enabled(), preview_values=request.form if action_error else {}, nonce=values.get('nonce') or secrets.token_urlsafe(24),
         notice='原稿已保存，仅自己可见。' if request.args.get('saved') == '1' else None), status
 
@@ -138,6 +140,9 @@ def action(family_id, record_id):
                 consent=request.form.get('consent') == 'yes', regenerate=request.form.get('regenerate') == 'yes')
         elif name == 'cancel':
             organize_jobs.cancel(family_id, me.id, record_id, request.form.get('task_id'))
+        elif name == 'plan-suggest':
+            import plan_suggestions
+            plan_suggestions.propose(s,family_id,me.id,record_id,request.form.get('plan_id'),request.form.get('item_index'),request.form.get('plan_stamp'),request.form.get('story_version'))
         elif name == 'share-people':
             import people_suggestions
             if request.form.get('confirm_share')!='yes':abort(400,'请确认只分享已公开故事中的人物依据。')

@@ -38,7 +38,7 @@
 {% for q in quotes %}<li>"{{ q.text }}"</li>{% else %}<li class="hint">暂无。</li>{% endfor %}
 </ul>
 
-<h2>❓ 待核实</h2>
+<h2 id="verification">❓ 待核实</h2>
 <ul>
 {% for v in verifs %}
   <li>{{ '✅' if v.status == 'resolved' else '⏳' }} 「{{ v.text }}」→ {{ v.reason }}

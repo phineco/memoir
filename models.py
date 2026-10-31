@@ -764,3 +764,18 @@ class InterviewAsrTask(AuditMixin, Base):
     usage = Column(JSON)
     lease_token = Column(String(64))
     lease_until = Column(DateTime)
+
+
+class PlanProgressSuggestion(AuditMixin, Base):
+    __tablename__ = 'plan_progress_suggestions'
+    family_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64), nullable=False)
+    record_id = Column(String(64), nullable=False)
+    story_id = Column(String(64), nullable=False)
+    story_version = Column(Integer, nullable=False)
+    person_id = Column(String(64), nullable=False)
+    plan_id = Column(String(64), nullable=False)
+    item_index = Column(Integer, nullable=False)
+    plan_stamp = Column(String(64), nullable=False)
+    status = Column(String(16), nullable=False, default='pending')
+    reviewed_by = Column(String(64))

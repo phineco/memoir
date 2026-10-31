@@ -40,6 +40,8 @@ def create_app():
     app.jinja_env.globals.update(lunar_months=LUNAR_MONTHS, lunar_days=LUNAR_DAYS)
     from writing_aids import QUESTIONS
     app.jinja_env.globals['writing_questions'] = QUESTIONS
+    from plan_suggestions import stamp as plan_stamp
+    app.jinja_env.globals['plan_stamp']=plan_stamp
     from navigation import context as site_navigation, back_url, context_link, return_label
     app.jinja_env.globals.update(site_navigation=site_navigation, back_url=back_url, context_link=context_link, return_label=return_label)
     from forms import csrf_token
