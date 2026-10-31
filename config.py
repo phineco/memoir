@@ -63,6 +63,10 @@ class Config:
         "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
     DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-flash")
     AI_ENABLED = bool(os.environ.get("DEEPSEEK_API_KEY", ""))
+    INTERVIEW_MODEL = os.environ.get('INTERVIEW_MODEL') or DEEPSEEK_MODEL
+    INTERVIEW_MAX_TOKENS = int(os.environ.get('INTERVIEW_MAX_TOKENS', '500'))
+    INTERVIEW_AI_ENABLED = os.environ.get('INTERVIEW_AI_ENABLED', '0') == '1'
+    INTERVIEW_DAILY_QUESTIONS = int(os.environ.get('INTERVIEW_DAILY_QUESTIONS', '50'))
     ORGANIZE_ENABLED = os.environ.get('ORGANIZE_ENABLED', '0') == '1'
     INAPP_AI_DATA_APPROVED = os.environ.get('INAPP_AI_DATA_APPROVED', '0') == '1'
     ORGANIZE_MODEL = os.environ.get('ORGANIZE_MODEL', DEEPSEEK_MODEL)

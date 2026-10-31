@@ -19,7 +19,9 @@ def main():
     while True:
         with app.app_context():
             try:
+                from interview_questions import run_one as question_one
                 worked = run_one()
+                worked = question_one() or worked
             finally:
                 remove_session()
         if args.once:

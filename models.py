@@ -684,6 +684,7 @@ class OrganizeTask(AuditMixin, Base):
 
 class InterviewSession(AuditMixin, Base):
     __tablename__ = 'interview_sessions'
+    ai_consent = Column(Boolean, nullable=False, default=False)
     family_id = Column(String(64), nullable=False, index=True)
     user_id = Column(String(64), nullable=False, index=True)
     revision = Column(Integer, nullable=False, default=1)
@@ -708,3 +709,18 @@ class InterviewAnswer(AuditMixin, Base):
     kind = Column(String(16), nullable=False, default='text')
     history = Column(JSON)
     __table_args__ = (UniqueConstraint('session_id', 'sequence', name='uq_interview_answer_sequence'),)
+
+
+class InterviewQuestion(AuditMixin, Base):
+    __tablename__ = 'interview_questions'
+    family_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64), nullable=False, index=True)
+    session_id = Column(String(64), nullable=False, index=True)
+    input_revision = Column(Integer, nullable=False)
+    status = Column(String(16), nullable=False)
+    model = Column(String(80))
+    source_chars = Column(Integer, nullable=False)
+    question = Column(String(512))
+    usage = Column(JSON)
+    lease_token = Column(String(64))
+    lease_until = Column(DateTime)
