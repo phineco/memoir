@@ -680,3 +680,31 @@ class OrganizeTask(AuditMixin, Base):
     error_code = Column(String(32))
     lease_token = Column(String(64))
     lease_until = Column(DateTime)
+
+
+class InterviewSession(AuditMixin, Base):
+    __tablename__ = 'interview_sessions'
+    family_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64), nullable=False, index=True)
+    revision = Column(Integer, nullable=False, default=1)
+    state = Column(String(16), nullable=False, default='active')
+    topic = Column(String(16), nullable=False, default='childhood')
+    followups = Column(Integer, nullable=False, default=0)
+    question = Column(String(512), nullable=False)
+    recording_mode = Column(String(16), nullable=False, default='unspecified')
+    narrator_id = Column(String(64))
+    subject_id = Column(String(64))
+    narrator_label = Column(String(100))
+    record_id = Column(String(64))
+
+
+class InterviewAnswer(AuditMixin, Base):
+    __tablename__ = 'interview_answers'
+    session_id = Column(String(64), nullable=False, index=True)
+    sequence = Column(Integer, nullable=False)
+    version = Column(Integer, nullable=False, default=1)
+    question = Column(String(512), nullable=False)
+    content = Column(Text().with_variant(MEDIUMTEXT(), 'mysql'), nullable=False)
+    kind = Column(String(16), nullable=False, default='text')
+    history = Column(JSON)
+    __table_args__ = (UniqueConstraint('session_id', 'sequence', name='uq_interview_answer_sequence'),)

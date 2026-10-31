@@ -39,6 +39,8 @@ for endpoint, title in {
     PAGES['album.' + endpoint] = ('album', title)
 for endpoint,title in [('index','我的整理记录'),('new','提供原稿'),('detail','整理原稿')]:
     PAGES['organize.'+endpoint]=('stories',title)
+for endpoint,title in [('index','我的采访'),('new','开始采访'),('detail','采访记录')]:
+    PAGES['interview.'+endpoint]=('stories',title)
 PAGES['voices.manage'] = ('people', '声音管理')
 for endpoint, title in {
     'main.account': '个人中心', 'main.account_drafts': '我的草稿',

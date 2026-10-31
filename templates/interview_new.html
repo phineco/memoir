@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% block title %}开始采访{% endblock %}{% block nav %}{% include '_family_nav.html' %}{% endblock %}
+{% block content %}<div class="page-return"><a href="{{ url_for('main.stories',family_id=family.id) }}">← 返回故事</a></div>
+<div class="page-heading"><h1>讲一段回忆</h1><p class="hint">先保存为本人私有记录，不用先添加人物。讲述者不会自动获得这些原材料。</p></div>
+<form method="post" class="disclosure"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="nonce" value="{{ nonce }}">
+<label>先聊什么<select class="full" name="topic">{% for key,item in topics.items() %}<option value="{{ key }}">{{ item[0] }}</option>{% endfor %}</select></label>
+<label>讲述方式<select class="full" name="recording_mode"><option value="self">自己讲</option><option value="accompany">陪家人记录</option><option value="unspecified">暂不确定</option></select></label>
+<details><summary>讲述身份（选填）</summary><label>讲述称谓<input class="full" name="narrator_label" maxlength="100" placeholder="例如：妈妈"></label>{% for key,label in [('narrator_id','谁讲的'),('subject_id','主要讲谁')] %}<label>{{ label }}<select class="full" name="{{ key }}"><option value="">暂不选择</option>{% for person in people %}<option value="{{ person.id }}">{{ person.name }}{% if person.relation %} · {{ person.relation }}{% endif %}</option>{% endfor %}</select></label>{% endfor %}</details>
+<button class="btn-primary" type="submit">开始这一段</button></form>{% endblock %}

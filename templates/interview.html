@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% block title %}我的采访{% endblock %}{% block nav %}{% include '_family_nav.html' %}{% endblock %}{% block content %}
+<div class="page-return"><a href="{{ url_for('interview.index',family_id=family.id) }}">← 我的采访</a></div><div class="page-heading"><h1>{{ topics[interview.topic][0] }}回忆</h1><p class="hint">仅自己可见 · {{ interview.narrator_label or '讲述者暂未选择' }} · {{ {'active':'进行中','paused':'已暂停','ended':'本段已结束'}.get(interview.state,interview.state) }}</p></div>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+{% if interview.state=='active' %}<section class="disclosure"><h2 id="interview-question">{{ interview.question }}</h2>{% block answering %}{% endblock %}</section>{% endif %}
+<div class="form-actions">{% if interview.state!='ended' %}<form method="post" action="{{ url_for('interview.action',family_id=family.id,session_id=interview.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="revision" value="{{ interview.revision }}"><button class="btn-secondary" name="action" value="{{ 'resume' if interview.state=='paused' else 'pause' }}">{{ '继续采访' if interview.state=='paused' else '先休息，稍后继续' }}</button></form>{% endif %}</div>
+{% block ending %}{% endblock %}
+<details class="disclosure"><summary>已保存的回答（{{ answers|length }}）</summary>{% for answer in answers %}<section class="disclosure"><h3>{{ loop.index }}. {{ answer.question }}</h3><p class="whitespace-pre-wrap">{{ answer.content if answer.kind!='skip' else '已跳过' }}</p>{% block answer_tools scoped %}{% endblock %}</section>{% else %}<p>还没有保存回答。</p>{% endfor %}</details>
+{% endblock %}
