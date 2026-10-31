@@ -5,7 +5,6 @@ import re
 from uuid import uuid4
 
 from flask import abort, current_app
-from sqlalchemy import func
 
 from models import OrganizeRecord, OrganizeSource, OrganizeTask, User, get_session
 from organizing import owned, member
@@ -31,7 +30,7 @@ def begin(family_id, user_id, record_id, revision, nonce, consent=False, regener
     identifier = hashlib.sha256((user_id+'\0'+record.id+'\0'+nonce).encode()).hexdigest()
     prior = s.get(OrganizeTask, identifier)
     if prior:
-        if prior.input_revision != int(revision):
+        if str(prior.input_revision) != str(revision):
             abort(409, '该请求编号用于另一版本，请刷新核对。')
         return prior
     if record.story_id or str(record.revision) != str(revision):
@@ -107,13 +106,15 @@ def run_one(provider=None):
         record = owned(s, task.family_id, task.user_id, task.record_id, lock=True)
         if record.revision != task.input_revision or record.story_id:
             raise Outdated()
+        from organize_provider import validate
+        result = validate(result, payload['content'])
         task.result, task.usage, task.status = result, usage, 'succeeded'
         s.commit()
     except Exception as exc:
         s.rollback()
         status = 'outdated' if isinstance(exc, Outdated) or getattr(exc, 'code', None) == 404 else ('uncertain' if getattr(exc, 'uncertain', False) else 'failed')
         s.query(OrganizeTask).filter_by(id=identifier, status='running', lease_token=token).update({
-            OrganizeTask.status: status, OrganizeTask.error_code: 'request_unfinished' if status == 'uncertain' else 'result_unavailable'}, synchronize_session=False)
+            OrganizeTask.status: status, OrganizeTask.usage: getattr(exc, 'usage', None), OrganizeTask.error_code: 'request_unfinished' if status == 'uncertain' else 'result_unavailable'}, synchronize_session=False)
         s.commit()
     return True
 

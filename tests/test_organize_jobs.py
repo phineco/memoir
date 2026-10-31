@@ -21,7 +21,7 @@ def test_idempotency_and_success_query_do_not_regenerate(app):
         tid = task.id
         assert jobs.begin('a', 'member-a', rid, 1, 'request-2', True).id == tid
         calls = []
-        assert jobs.run_one(lambda payload: (calls.append(payload['content']) or {'body': 'Result'}, {'tokens': 5}))
+        assert jobs.run_one(lambda payload: (calls.append(payload['content']) or {'title': '回忆', 'body': 'Result', 'quotes': [], 'verification': [], 'timeline': [], 'people': [], 'period': None}, {'tokens': 5}))
         assert calls == ['原始回忆。']
         assert jobs.begin('a', 'member-a', rid, 1, 'request-3', True).id == tid
         assert get_session().get(OrganizeTask, tid).status == 'succeeded'
