@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "easy_base.html" if easy_mode else "base.html" %}
 {% block title %}登录 · 家音{% endblock %}
 {% block content %}
 <h1>登录</h1>

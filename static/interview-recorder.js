@@ -8,7 +8,7 @@
  let recorder=null,stream=null,timer=null,warning=null,generation=0,recording=false,waiting=false,pendingCount=0,playUrl=null;
  const owner=root.dataset.owner,sid=root.dataset.session,token=root.dataset.csrf;
  function say(message){status.textContent=message;}
- function notify(){root.dispatchEvent(new CustomEvent('interview:record-state',{bubbles:true,detail:{recording,waiting}}));}
+ function notify(){root.dataset.recordBusy=recording||waiting?'yes':'no';root.dispatchEvent(new CustomEvent('interview:record-state',{bubbles:true,detail:{recording,waiting}}));}
  function pausePlayback(){document.querySelectorAll('audio,video').forEach(a=>a.pause());Object.values(window.memoirReaders||{}).forEach(r=>r.stop());if(window.speechSynthesis)window.speechSynthesis.cancel();}
  async function identity(){
   const r=await fetch(root.dataset.identity,{cache:'no-store',redirect:'error'});
@@ -33,7 +33,7 @@
  function play(blob){pausePlayback();if(playUrl)URL.revokeObjectURL(playUrl);playUrl=URL.createObjectURL(blob);player.src=playUrl;return player.play().catch(()=>say('可以点击播放器回听。'));}
  async function rows(){return (await transaction('readonly',s=>s.getAll())).filter(r=>r.owner===owner&&r.sid===sid);}
  async function render(){
-  const saved=await rows();pendingCount=saved.length;list.replaceChildren();
+  const saved=await rows();pendingCount=saved.length;root.dataset.pendingCount=String(pendingCount);list.replaceChildren();
   saved.forEach(row=>{
    const box=document.createElement('div');box.className='disclosure';
    const label=document.createElement('p');label.textContent='本机待上传录音 · '+new Date(row.created).toLocaleString();box.append(label);

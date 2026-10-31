@@ -11,9 +11,9 @@
 <form method="post" action="{{ url_for('organize.action',family_id=family.id,record_id=record.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="manual"><input type="hidden" name="revision" value="{{ record.revision }}"><input type="hidden" name="preview_revision" value="{{ record.preview_revision }}"><button class="btn-secondary" type="submit">用当前原稿人工整理（不调用 AI）</button></form>{% endif %}
 </section>
 {% if record.preview %}
-<section class="disclosure"><h2>核对预览</h2><p class="hint">预览版本 {{ record.preview_revision }} · 依据原稿版本 {{ record.preview_source_revision }} · 仅自己可见</p>
+<section class="disclosure"><h2>核对预览</h2><p class="hint" id="preview-save-needed" role="status" hidden>请先保存上方原稿或暂存预览修改，再执行整理和成稿。</p><p class="hint">预览版本 {{ record.preview_revision }} · 依据原稿版本 {{ record.preview_source_revision }} · 仅自己可见</p>
 {% if record.preview_source_revision != record.revision %}<p class="error">此预览依据旧原稿，不能直接成稿，请重新整理当前原稿。</p>{% endif %}
-<form method="post" action="{{ url_for('organize.action',family_id=family.id,record_id=record.id) }}">
+<form data-preview-editor method="post" action="{{ url_for('organize.action',family_id=family.id,record_id=record.id) }}">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="preview"><input type="hidden" name="revision" value="{{ preview_values.get('revision',record.revision) }}"><input type="hidden" name="preview_revision" value="{{ preview_values.get('preview_revision',record.preview_revision) }}">
 <label>标题<input class="full" name="title" maxlength="128" value="{{ preview_values.get('title',record.preview.title) }}" required></label>
 <label>正文<textarea class="full" name="body" maxlength="30000" rows="14" required>{{ preview_values.get('body',record.preview.body) }}</textarea></label>
@@ -26,7 +26,7 @@
 {% if record.preview.period %}<label class="check"><input type="checkbox" name="keep_period" value="yes" checked>保留故事时间段 {{ record.preview.period.start }} 至 {{ record.preview.period.end }}</label><blockquote>{{ record.preview.period.evidence }}</blockquote>{% endif %}
 </details><div class="form-actions"><button class="btn-primary" type="submit">暂存核对结果</button></div></form>
 {% if record.preview_source_revision == record.revision %}
-<form method="post" action="{{ url_for('organize.action',family_id=family.id,record_id=record.id) }}" class="disclosure">
+<form data-preview-confirm method="post" action="{{ url_for('organize.action',family_id=family.id,record_id=record.id) }}" class="disclosure">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="confirm"><input type="hidden" name="revision" value="{{ record.revision }}"><input type="hidden" name="preview_revision" value="{{ record.preview_revision }}"><input type="hidden" name="nonce" value="{{ nonce }}">
 <details><summary>关联已有家人（选填，需手动确认）</summary>{% for person in people %}<label class="check"><input type="checkbox" name="related_ids" value="{{ person.id }}">{{ person.name }}{% if person.relation %} · {{ person.relation }}{% endif %}</label>{% endfor %}</details>
 <p class="hint">先暂存上方修改，再保存草稿。只保存当前已暂存版本，默认仅自己；下一步进入故事编辑后，明确选择可见范围再发布。</p>

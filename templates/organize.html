@@ -9,7 +9,7 @@
 {% if record and record.story_id %}
 <section class="disclosure"><h2>已生成故事草稿</h2><p>后续请在故事中编辑和发布；不会从这份原材料重复创建故事。</p><a class="btn-primary" href="{{ url_for('main.edit_article',family_id=family.id,interview_id=record.story_id) }}">进入故事编辑</a></section>
 {% else %}
-{% if easy_mode and record %}<details class="disclosure"><summary>查看或修改原稿与讲述身份</summary>{% endif %}<form method="post" enctype="multipart/form-data" class="disclosure">
+{% if easy_mode and record %}<details class="disclosure"><summary>查看或修改原稿与讲述身份</summary>{% endif %}<form data-source-editor method="post" enctype="multipart/form-data" class="disclosure">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <input type="hidden" name="nonce" value="{{ nonce }}">
 {% if record %}<input type="hidden" name="revision" value="{{ values.get('revision',record.revision) }}">{% endif %}
@@ -34,3 +34,5 @@
 <form method="post" action="{{ url_for('organize.remove',family_id=family.id,record_id=record.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label class="check"><input type="checkbox" name="confirm" value="yes" required>确认删除此原材料及历史{% if record.story_id %}，保留关联故事{% endif %}</label><button class="btn-danger" type="submit">删除原材料</button></form></details>
 {% endif %}
 {% endblock %}
+
+{% block script %}<script src="{{ asset_url('form-state.js') }}"></script>{% endblock %}

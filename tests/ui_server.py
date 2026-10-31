@@ -89,6 +89,8 @@ if os.environ.get('VOICE_UI')=='1':
 
 if os.environ.get('EASY_UI')=='1':app.config['EASY_ENABLED']=True
 
+if os.environ.get('PWA_UI')=='1':app.config.update(EASY_ENABLED=True,EASY_PWA_ENABLED=True)
+
 if os.environ.get('INTERVIEW_UI')=='1':
     from flask import abort,request
     import interview_asr,interview_questions
@@ -101,6 +103,32 @@ if os.environ.get('INTERVIEW_UI')=='1':
         asr=interview_asr.run_one(lambda data,model:('小时候在老院子里乘凉。',{'seconds':.5}))
         question=interview_questions.run_one(lambda payload:('老院子的夏天，您最记得什么？',{'total_tokens':10}))
         return dict(asr=asr,question=question)
+
+if os.environ.get('PWA_UI')=='1':
+    from flask import abort,request
+    from models import InterviewSession,InterviewClip,Photo
+    import io,wave,hashlib
+    import interview_audio
+    from PIL import Image
+    audio=io.BytesIO()
+    with wave.open(audio,'wb') as sound:
+        sound.setparams((1,2,16000,0,'NONE','not compressed'));sound.writeframes(b'\x01\x01'*16000)
+    data=audio.getvalue();key='interview/ui/'+('d'*64)+'.wav'
+    with app.app_context():
+        interview_audio.save(data,key)
+        picture=io.BytesIO();Image.new('RGB',(8,8),'#245e49').save(picture,format='PNG')
+        from storage import get_storage
+        get_storage().save(picture.getvalue(),'album/ui/'+('c'*32)+'.png')
+        s=get_session();s.add(InterviewSession(id='pwa-session',family_id='ui',user_id='ui-user',question='私有缓存测试问题？',state='active'))
+        s.add(InterviewClip(id='d'*64,family_id='ui',user_id='ui-user',session_id='pwa-session',input_revision=1,question='私有缓存测试问题？',
+            source_hash=hashlib.sha256(data).hexdigest(),storage_key=key,duration_ms=1000,status='uploaded'))
+        s.add(Photo(id='c'*32,family_id='ui',uploaded_by='ui-user',storage_path='album/ui/'+('c'*32)+'.png',title='私有照片缓存测试'))
+        s.commit()
+    @app.post('/__pwa_test_version')
+    def pwa_test_version():
+        if request.headers.get('X-PWA-Test')!='local-only-synthetic':abort(404)
+        app.config['RELEASE_VERSION']='pwa-ui-update-only'
+        return dict(ok=True)
 
 if __name__ == "__main__":
     import logging

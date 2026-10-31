@@ -134,6 +134,8 @@ def adapt_url(value):
 
 def install(app):
     app.register_blueprint(bp)
+    from pwa import install as install_pwa
+    install_pwa(app)
     # Alias the existing views, including their blueprint authentication/CSRF hooks.
     # Data and task services remain one implementation; URLs carry the chosen task interface.
     for rule in list(app.url_map.iter_rules()):
@@ -143,8 +145,12 @@ def install(app):
     def gate():
         if not (request.path=='/easy' or request.path.startswith('/easy/')):return
         if not app.config.get('EASY_ENABLED'):abort(404)
+        if request.path in ('/easy/manifest.webmanifest','/easy/sw.js'):
+            if not app.config.get('EASY_PWA_ENABLED'):abort(404)
+            return
+        if request.path=='/easy/login':return
         me=_current_user()
-        if not me:return redirect(url_for('main.login',next=request.full_path.rstrip('?')))
+        if not me:return redirect(url_for('easy_pwa.login',next=request.full_path.rstrip('?')))
         fid=(request.view_args or {}).get('family_id')
         if fid:
             _family_or_404(fid);session['easy_family']={'user':me.id,'id':fid}
@@ -165,4 +171,4 @@ def install(app):
             if endpoint in mapped:return url_for(mapped[endpoint],family_id=values.get('family_id'))
             if endpoint=='interview.index':return url_for('easy.records',family_id=values.get('family_id'))
             return adapt_url(url_for(endpoint,**values))
-        return {'easy_mode':active,'easy_enabled':app.config.get('EASY_ENABLED'),**({'url_for':flow_url} if active else {})}
+        return {'easy_mode':active,'easy_enabled':app.config.get('EASY_ENABLED'),'easy_pwa_enabled':bool(app.config.get('EASY_ENABLED') and app.config.get('EASY_PWA_ENABLED')),**({'url_for':flow_url} if active else {})}
