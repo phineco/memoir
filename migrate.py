@@ -157,6 +157,10 @@ def run_migrations(url, dry_run=False, migrations_dir=None):
                     if inspector.has_table(table_name) and any(index['name']==index_name for index in inspector.get_indexes(table_name)):
                         print('   跳过（索引已存在）: '+index_name)
                         continue
+                if re.fullmatch(r'ALTER\s+TABLE\s+drafts\s+MODIFY\s+COLUMN\s+content\s+MEDIUMTEXT', stmt.strip(), re.I):
+                    if dialect == 'sqlite' or any(c['name'] == 'content' and str(c['type']).upper() in ('MEDIUMTEXT', 'LONGTEXT') for c in inspect(conn).get_columns('drafts')):
+                        print('   跳过（正文容量已满足）: drafts.content')
+                        continue
                 m = _ALTER_ADD_COL.match(stmt)
                 if m:
                     table, column = m.group(1), m.group(2)

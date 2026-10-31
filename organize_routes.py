@@ -136,6 +136,12 @@ def action(family_id, record_id):
                 consent=request.form.get('consent') == 'yes', regenerate=request.form.get('regenerate') == 'yes')
         elif name == 'cancel':
             organize_jobs.cancel(family_id, me.id, record_id, request.form.get('task_id'))
+        elif name == 'confirm':
+            import organize_drafts
+            if request.form.get('confirm_review') != 'yes': abort(400, '请先确认已经核对预览。')
+            story = organize_drafts.confirm(s, family_id, me.id, record_id, request.form.get('revision'),
+                request.form.get('preview_revision'), request.form.get('nonce'), request.form.getlist('related_ids'))
+            return redirect(url_for('main.edit_article', family_id=family_id, interview_id=story.id))
         elif name in ('manual', 'preview'):
             args = (s, family_id, me.id, record_id, request.form.get('revision'), request.form.get('preview_revision'))
             if name == 'manual': organize_preview.manual(*args)

@@ -187,7 +187,7 @@ class Draft(AuditMixin, Base):
     __tablename__ = "drafts"
     interview_id = Column(String(64), index=True)
     version = Column(Integer)
-    content = Column(Text)
+    content = Column(Text().with_variant(MEDIUMTEXT(), 'mysql'))
     search_text = Column(Text().with_variant(MEDIUMTEXT(), 'mysql'))
     is_current = Column(Boolean, default=False)
     voice_authorized_by = Column(String(64))

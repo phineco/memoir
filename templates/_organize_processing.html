@@ -25,6 +25,12 @@
 <blockquote>原稿依据：{{ item.evidence }}</blockquote></div>{% endfor %}{% endfor %}
 {% if record.preview.period %}<label class="check"><input type="checkbox" name="keep_period" value="yes" checked>保留故事时间段 {{ record.preview.period.start }} 至 {{ record.preview.period.end }}</label><blockquote>{{ record.preview.period.evidence }}</blockquote>{% endif %}
 </details><div class="form-actions"><button class="btn-primary" type="submit">暂存核对结果</button></div></form>
-{% block confirmation %}{% endblock %}
+{% if record.preview_source_revision == record.revision %}
+<form method="post" action="{{ url_for('organize.action',family_id=family.id,record_id=record.id) }}" class="disclosure">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="confirm"><input type="hidden" name="revision" value="{{ record.revision }}"><input type="hidden" name="preview_revision" value="{{ record.preview_revision }}"><input type="hidden" name="nonce" value="{{ nonce }}">
+<details><summary>关联已有家人（选填，需手动确认）</summary>{% for person in people %}<label class="check"><input type="checkbox" name="related_ids" value="{{ person.id }}">{{ person.name }}{% if person.relation %} · {{ person.relation }}{% endif %}</label>{% endfor %}</details>
+<p class="hint">先暂存上方修改，再保存草稿。只保存当前已暂存版本，默认仅自己；下一步进入故事编辑后，明确选择可见范围再发布。</p>
+<label class="check"><input type="checkbox" name="confirm_review" value="yes" required>我已核对暂存预览中的事实和疑点，确认生成本人草稿。</label><button class="btn-primary" type="submit">保存为我的故事草稿</button>
+</form>{% endif %}
 </section>{% endif %}
 {% endif %}
