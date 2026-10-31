@@ -18,6 +18,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   await page.waitForFunction(()=>document.querySelector('#record-pending button'));
   const raw=await page.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open('memoir.interview.pending.v1',1);r.onsuccess=()=>{const q=r.result.transaction('clips').objectStore('clips').getAll();q.onsuccess=()=>resolve(q.result.map(v=>({cipher:v.cipher instanceof ArrayBuffer,mime:v.mime,hasBlob:!!v.blob,hasKey:!!v.key})));q.onerror=reject;};r.onerror=reject;}));
   assert(raw.length===1&&raw[0].cipher&&!raw[0].hasBlob&&!raw[0].hasKey);
+  await page.waitForFunction(()=>document.querySelector('#record-status').textContent.includes('网络中断'));
   await page.unroute('**/upload');await page.locator('#record-pending').getByRole('button',{name:'上传',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('#record-status').textContent.includes('服务器已私有保存')).catch(async e=>{console.error(await page.locator('#record-status').textContent());throw e});
   await page.reload();assert((await page.locator('audio[src*="/audio/"]').count())===1);

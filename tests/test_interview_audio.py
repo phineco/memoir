@@ -54,3 +54,19 @@ def test_consent_silence_corrupt_and_account_key_isolation(app):
             with pytest.raises(HTTPException): interview_audio.upload(get_session(),'a','member-a',sid,1,'upload-test',data,consent)
             get_session().rollback()
         assert get_session().query(InterviewClip).count()==0
+
+
+def test_duplicate_upload_finishing_after_answer_advanced_reuses_clip(app,monkeypatch):
+    sid=setup(app);s=get_session()
+    with app.app_context():
+        original=interview_audio.normalize; entered=[]
+        def interleaved(data):
+            result=original(data)
+            if not entered:
+                entered.append(True)
+                clip=interview_audio.upload(s,'a','member-a',sid,1,'upload-race',data,True)
+                interviewing.answer(s,'a','member-a',sid,1,'answer-race','一句已保存的回答。',clip_id=clip.id)
+            return result
+        monkeypatch.setattr(interview_audio,'normalize',interleaved)
+        clip=interview_audio.upload(s,'a','member-a',sid,1,'upload-race',wav(),True)
+        assert clip.answer_id and s.query(InterviewClip).count()==1

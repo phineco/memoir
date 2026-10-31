@@ -2,6 +2,10 @@
 import base64
 import hashlib
 import hmac
+import datetime
+from uuid import uuid4
+from sqlalchemy.exc import IntegrityError
+from reporting import local_now
 import io
 import os
 from pathlib import Path
@@ -80,34 +84,47 @@ def upload(s,fid,uid,sid,revision,nonce,data,consent):
     row=interviewing.owned(s,fid,uid,sid)
     if not consent: abort(400,'请先确认本人或已告知讲述者，允许录音在本站私有保存；这不包含声音复刻授权。')
     cid=interviewing.nonce_id('clip',sid,uid,nonce); digest=hashlib.sha256(data).hexdigest()
-    def prior():
-        clip=s.query(InterviewClip).filter_by(id=cid,session_id=sid,user_id=uid,del_flag=0).first()
+    def prior(lock=False):
+        query=s.query(InterviewClip).filter_by(id=cid,session_id=sid,user_id=uid,del_flag=0)
+        clip=(query.with_for_update() if lock else query).populate_existing().first()
         if clip and clip.source_hash!=digest: abort(409,'此上传编号已用于另一段录音，请重新选择。')
         return clip
     old=prior()
-    if old: return old
+    if old and (old.status not in ('uploading','upload_failed') or (old.status=='uploading' and old.lease_until and old.lease_until>local_now())): return old
     if not data or len(data)>current_app.config['INTERVIEW_MAX_UPLOAD_BYTES']: abort(413,'录音文件过大，请分段上传。')
     s.commit()  # Do not keep a database read transaction while decoding media.
     audio,duration=normalize(data)
-    row=interviewing.guard(s,fid,uid,sid,revision)
-    old=prior()
-    if old: return old
-    if row.state!='active' or interviewing.pending(s,row): abort(409,'采访进度已变化，录音保留在本机；请先恢复对应问题。')
-    if s.query(InterviewClip).filter_by(session_id=sid,del_flag=0).count()>=100: abort(400,'本段录音已达到100个片段，请先整理本段。')
-    key='interview/'+fid+'/'+cid+'.wav'
-    clip=InterviewClip(id=cid,family_id=fid,user_id=uid,session_id=sid,input_revision=row.revision,
-        question=row.question,source_hash=digest,storage_key=key,duration_ms=duration,status='uploaded',create_by=uid)
-    try:
-        save(audio,key); s.add(clip); s.commit()
-    except Exception:
-        try: delete(key)
-        finally: s.rollback()
+    row=interviewing.owned(s,fid,uid,sid,lock=True)
+    old=prior(True)
+    if old and (old.status not in ('uploading','upload_failed') or (old.status=='uploading' and old.lease_until and old.lease_until>local_now())): return old
+    if not old:
+        if str(row.revision)!=str(revision):abort(409,'采访进度已变化，片段仍保留在本机，可先下载。')
+        if row.state!='active' or interviewing.pending(s,row):abort(409,'采访进度已变化，录音保留在本机；请先恢复对应问题。')
+        if s.query(InterviewClip).filter_by(session_id=sid,del_flag=0).count()>=100:abort(400,'本段录音已达到100个片段，请先整理本段。')
+    key='interview/'+fid+'/'+cid+'.wav';token=uuid4().hex
+    clip=old or InterviewClip(id=cid,family_id=fid,user_id=uid,session_id=sid,input_revision=row.revision,
+        question=row.question,source_hash=digest,storage_key=key,duration_ms=duration,create_by=uid)
+    clip.status='uploading';clip.lease_token=token;clip.lease_until=local_now()+datetime.timedelta(seconds=60)
+    s.add(clip)
+    try:s.commit()
+    except IntegrityError:
+        s.rollback();clip=prior()
+        if clip:return clip
         raise
-    return clip
+    # Only the reservation owner writes storage. A duplicate must never delete the winner's file.
+    try:save(audio,key)
+    except Exception:
+        s.query(InterviewClip).filter_by(id=cid,status='uploading',lease_token=token).update({InterviewClip.status:'upload_failed'},synchronize_session=False)
+        s.commit();abort(503,'服务器尚未保存录音，本机片段请保留后重试。')
+    s.expire_all();clip=s.get(InterviewClip,cid)
+    if not clip or clip.status in ('deleting','deleted') or clip.del_flag:
+        delete(key);abort(404)
+    s.query(InterviewClip).filter_by(id=cid,status='uploading',lease_token=token).update({InterviewClip.status:'uploaded',InterviewClip.lease_until:None},synchronize_session=False)
+    s.commit();s.refresh(clip);return clip
 
 
 def owned_clip(s,fid,uid,sid,cid):
     interviewing.owned(s,fid,uid,sid)
     clip=s.query(InterviewClip).filter_by(id=cid,session_id=sid,family_id=fid,user_id=uid,del_flag=0).first()
-    if not clip or clip.status in ('deleting','deleted'): abort(404)
+    if not clip or clip.status in ('deleting','deleted','uploading','upload_failed'): abort(404)
     return clip

@@ -61,8 +61,9 @@ def render_detail(family_id, session_id, error=None):
     tasks=s.query(InterviewAsrTask).filter_by(session_id=row.id).order_by(InterviewAsrTask.create_date).all()
     asr_tasks={task.clip_id:task for task in tasks}
     clips=s.query(InterviewClip).filter_by(session_id=row.id,del_flag=0).filter(InterviewClip.status.notin_(('deleting','deleted'))).order_by(InterviewClip.create_date).all()
+    pending_asr=any(clip.input_revision==row.revision and asr_tasks.get(clip.id) and asr_tasks[clip.id].status in ('queued','running') for clip in clips)
     latest = s.query(InterviewQuestion).filter_by(session_id=row.id).order_by(InterviewQuestion.create_date.desc()).first()
-    return render_template('interview.html', family=family, interview=row, clips=clips, asr_enabled=interview_asr.enabled(), asr_tasks=asr_tasks, local_identity=interview_audio.local_identity(_current_user().id), recorder_user=_current_user().id, answers=interviewing.answers(s, row.id),
+    return render_template('interview.html', family=family, interview=row, clips=clips, asr_enabled=interview_asr.enabled(), asr_tasks=asr_tasks, pending_asr=pending_asr, local_identity=interview_audio.local_identity(_current_user().id), recorder_user=_current_user().id, answers=interviewing.answers(s, row.id),
         topics=interviewing.TOPICS, nonce=secrets.token_urlsafe(24), pending=interviewing.pending(s, row), latest_question=latest,
         error=error.description if error else None, values=request.form if error else {}), error.code if error else 200
 
@@ -120,7 +121,7 @@ def upload(family_id,session_id):
         if request.headers.get('Accept')=='application/json': return jsonify(error=exc.description),exc.code
         raise
     task=None; note=None
-    if request.form.get('consent_asr')=='yes':
+    if request.form.get('consent_asr')=='yes' and clip.status not in ('uploading','upload_failed'):
         import interview_asr
         try:task=interview_asr.begin(get_session(),family_id,_current_user().id,session_id,clip.id,'initial-'+clip.id,consent=True)
         except HTTPException as exc:
@@ -142,3 +143,9 @@ def asr_status(family_id,session_id,clip_id):
     clip=interview_audio.owned_clip(get_session(),family_id,_current_user().id,session_id,clip_id)
     task=get_session().query(InterviewAsrTask).filter_by(clip_id=clip.id).order_by(InterviewAsrTask.create_date.desc()).first()
     return jsonify(status=task.status if task else 'uploaded',accepted=bool(clip.answer_id))
+
+
+@bp.get('/f/<family_id>/interview/<session_id>/progress')
+def progress(family_id,session_id):
+    row=interviewing.owned(get_session(),family_id,_current_user().id,session_id)
+    return jsonify(revision=row.revision,state=row.state,pending=bool(interviewing.pending(get_session(),row)))

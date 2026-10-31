@@ -8,7 +8,8 @@
  let recorder=null,stream=null,timer=null,warning=null,generation=0,recording=false,waiting=false,pendingCount=0,playUrl=null;
  const owner=root.dataset.owner,sid=root.dataset.session,token=root.dataset.csrf;
  function say(message){status.textContent=message;}
- function pausePlayback(){document.querySelectorAll('audio,video').forEach(a=>a.pause());if(window.speechSynthesis)window.speechSynthesis.cancel();}
+ function notify(){root.dispatchEvent(new CustomEvent('interview:record-state',{bubbles:true,detail:{recording,waiting}}));}
+ function pausePlayback(){document.querySelectorAll('audio,video').forEach(a=>a.pause());Object.values(window.memoirReaders||{}).forEach(r=>r.stop());if(window.speechSynthesis)window.speechSynthesis.cancel();}
  async function identity(){
   const r=await fetch(root.dataset.identity,{cache:'no-store',redirect:'error'});
   if(!r.ok||(await r.json()).user_id!==root.dataset.user)throw Error('登录身份已变化，请回到本人账号；本机片段不会交给其他账号。');
@@ -47,7 +48,9 @@
    list.append(box);
   });
  }
- async function upload(row){
+ const uploading=new Set();
+ async function upload(row){if(uploading.has(row.id))return;uploading.add(row.id);try{await performUpload(row);}finally{uploading.delete(row.id);}}
+ async function performUpload(row){
   await identity();
   if(!consent.checked)throw Error('请先勾选录音保存告知。');
   const blob=await unseal(row);const body=new FormData();
@@ -55,22 +58,22 @@
   say('正在上传，本机片段保留至服务器确认保存。');
   let r;try{r=await fetch(root.dataset.upload,{method:'POST',body,headers:{Accept:'application/json','X-CSRFToken':token},redirect:'error'});}catch(e){say('网络中断，本机片段已保留，可稍后重试上传或先下载。');return;}
   if(!r.ok){let failure;try{failure=await r.json();}catch(e){}if(failure&&typeof failure.error==='string'){say(failure.error+' 本机片段仍保留，可回听或下载。');return;}say(r.status===409?'采访进度已变化，片段仍在本机，可下载后从对应记录重新上传。':'上传未完成，片段仍在本机；可稍后重试或下载保存。');return;}
-  const result=await r.json();if(!result.id)throw Error('未收到保存确认，片段仍在本机。');
+  const result=await r.json();if(['uploading','upload_failed'].includes(result.status)){say('服务器还未确认录音保存，本机片段保留，请稍后重试上传。');return;}if(!result.id)throw Error('未收到保存确认，片段仍在本机。');
   await transaction('readwrite',s=>s.delete(row.id));await render();say(result.note||(result.status==='queued'||result.status==='running'?'服务器已保存录音，正在转写。':'服务器已私有保存，可刷新查看回听；转写功能未开通时仍可文字回答。'));
   root.dispatchEvent(new CustomEvent('interview:uploaded',{bubbles:true,detail:result}));
  }
  function release(){clearTimeout(timer);clearTimeout(warning);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;}
  function finish(reason){
   if(!recording||!recorder)return;
-  recording=false;stop.disabled=true;start.disabled=true;waiting=true;
+  recording=false;stop.disabled=true;start.disabled=true;waiting=true;notify();
   say(reason||'已停止录音，正在封存本机片段。'); // Immediate feedback, independent of upload/transcription.
   try{if(recorder.state!=='inactive')recorder.stop();}catch(e){say('停止时遇到问题，请保留本页并检查播放器。');}
   release();
  }
  start.addEventListener('click',async()=>{
-  if(recording||waiting)return;if(!consent.checked){say('请先确认录音保存告知。');consent.focus();return;}
+  if(recording||waiting)return;const text=document.querySelector('#interview-answer-form textarea');if(text&&text.value.trim()){say('请先保存已有文字回答，再录下一题；也可以清空未保存文字后录音。');return;}if(!consent.checked){say('请先确认录音保存告知。');consent.focus();return;}
   if(!navigator.mediaDevices||!window.MediaRecorder||!window.crypto||!crypto.subtle){say('此浏览器暂不支持本站录音，可上传手机录音文件，或用手机键盘听写。');return;}
-  const turn=++generation;waiting=true;start.disabled=true;say('正在申请麦克风权限。');
+  const turn=++generation;waiting=true;start.disabled=true;notify();say('正在申请麦克风权限。');
   try{
    await identity();pausePlayback();
    const acquired=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -88,15 +91,15 @@
      const sealed=await seal(blob);const row={id:Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,'0')).join(''),owner,sid,revision:Number(root.dataset.revision),mime:blob.type,created:Date.now(),...sealed};
      await transaction('readwrite',s=>s.put(row));await render();say('本机已暂存，准备上传。');await upload(row);
     }catch(e){say((e.message||'本机保存未完成。')+' 若播放器可回听，请从播放器下载保存。');}
-    finally{waiting=false;start.disabled=false;stop.disabled=true;}
+    finally{waiting=false;start.disabled=false;stop.disabled=true;notify();}
    };
-   recorder.start(1000);recording=true;waiting=false;stop.disabled=false;say('正在录音，讲完点击“说完了”。');
+   recorder.start(1000);recording=true;waiting=false;stop.disabled=false;notify();say('正在录音，讲完点击“说完了”。');
    warning=setTimeout(()=>say('已录音2分30秒，快到分段时间，讲完这一句即可。'),150000);
    timer=setTimeout(()=>finish('已满3分钟，已停止并保存本段；稍后可以继续讲。'),180000);
-  }catch(e){release();waiting=false;start.disabled=false;say(e.name==='NotAllowedError'?'未获得麦克风权限，请在浏览器设置允许，或用文字回答。':e.message||'无法开始录音。');}
+  }catch(e){release();waiting=false;start.disabled=false;notify();say(e.name==='NotAllowedError'?'未获得麦克风权限，请在浏览器设置允许，或用文字回答。':e.message||'无法开始录音。');}
  });
  stop.addEventListener('click',()=>finish());
- document.addEventListener('play',e=>{if(recording&&e.target!==player)finish('开始播放，已停止录音并封存。');},true);
+ document.addEventListener('play',e=>{if(recording)finish('开始播放，已停止录音并封存。');},true);
  document.addEventListener('visibilitychange',()=>{if(document.hidden){generation++;finish('离开前台，已停止录音，尽力保存本段。');pausePlayback();}else identity().catch(e=>{pausePlayback();player.removeAttribute('src');list.replaceChildren();say(e.message);});});
  window.addEventListener('beforeunload',e=>{if(recording||waiting||pendingCount){e.preventDefault();e.returnValue='';}});
  render().catch(e=>say(e.message));

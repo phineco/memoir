@@ -21,6 +21,9 @@ def nonce_id(prefix, fid, uid, nonce):
 
 
 def owned(s, fid, uid, sid, lock=False):
+    if lock:
+        from transaction_locks import serialize_sqlite
+        serialize_sqlite(s,uid)
     member(s, fid, uid)
     q = s.query(InterviewSession).filter_by(id=sid, family_id=fid, user_id=uid, del_flag=0)
     row = (q.with_for_update() if lock else q).populate_existing().first()

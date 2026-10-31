@@ -87,6 +87,19 @@ if os.environ.get('VOICE_UI')=='1':
         process_one()
         return dict(creates=fake_voice.creates,syntheses=fake_voice.syntheses)
 
+if os.environ.get('INTERVIEW_UI')=='1':
+    from flask import abort,request
+    import interview_asr,interview_questions
+    app.config.update(INTERVIEW_ASR_ENABLED=True,INTERVIEW_ASR_DATA_APPROVED=True,INTERVIEW_ASR_API_KEY='synthetic-only',
+        INTERVIEW_ASR_BASE_URL='https://test.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+        INTERVIEW_AI_ENABLED=True,INAPP_AI_DATA_APPROVED=True,DEEPSEEK_API_KEY='synthetic-only')
+    @app.post('/__interview_test_tick')
+    def interview_test_tick():
+        if request.headers.get('X-Interview-Test')!='local-only-synthetic':abort(404)
+        asr=interview_asr.run_one(lambda data,model:('小时候在老院子里乘凉。',{'seconds':.5}))
+        question=interview_questions.run_one(lambda payload:('老院子的夏天，您最记得什么？',{'total_tokens':10}))
+        return dict(asr=asr,question=question)
+
 if __name__ == "__main__":
     import logging
     logging.getLogger("werkzeug").setLevel(logging.ERROR)

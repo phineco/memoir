@@ -19,6 +19,9 @@ def member(s, family_id, user_id):
 
 
 def owned(s, family_id, user_id, record_id, lock=False):
+    if lock:
+        from transaction_locks import serialize_sqlite
+        serialize_sqlite(s,user_id)
     member(s, family_id, user_id)
     q = s.query(OrganizeRecord).filter_by(id=record_id, family_id=family_id, user_id=user_id, del_flag=0)
     record = (q.with_for_update() if lock else q).populate_existing().first()
