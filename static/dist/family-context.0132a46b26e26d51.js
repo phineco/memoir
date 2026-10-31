@@ -2,6 +2,7 @@
 (function(){
   var body=document.body, uid=body.dataset.userId, fid=body.dataset.familyId;
   if(!uid)return;
+  if(body.hasAttribute('data-family-picker')&&!new URLSearchParams(location.search).has('switch')&&document.documentElement.dataset.entry==='easy'&&document.documentElement.dataset.easyEnabled==='yes'){location.replace('/easy');return;}
   var key='memoir.last-family.v1.'+uid;
   try {
     if(fid){localStorage.setItem(key,fid);return;}

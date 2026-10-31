@@ -3,7 +3,7 @@
 {% block nav %}{% if family %}{% include "_family_nav.html" %}{% endif %}{% endblock %}
 {% block content %}
 <div class="page-return"><a href="{{ url_for('main.account',family_id=family.id if family else None) }}">← 个人中心</a></div>
-<div class="page-heading"><p class="eyebrow">按照你的习惯阅读</p><h1>显示设置</h1><p class="hint">选择后立即生效，仅保存在当前浏览器。其他家人的显示不会改变。</p></div>
+<div class="page-heading"><p class="eyebrow">按照你的习惯阅读</p><h1>显示设置</h1><p class="hint">选择后立即用于本人在此浏览器的显示；可主动保存为账号默认，供未单独设置的设备使用。</p></div>
 <noscript><p class="error">请启用 JavaScript 后使用显示设置；当前仍可用默认样式阅读。</p></noscript>
 {% include "_display_settings.html" %}
 <section class="reading-preview"><h2>阅读预览</h2><div class="prose"><p>夏天的傍晚，奶奶坐在院子里，给我们讲她小时候的故事。</p><p>这些平凡的日子，是一家人最珍贵的记忆。</p></div><p class="hint">字体、字号、主题的效果会应用到故事正文和人物小传。</p></section>

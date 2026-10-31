@@ -1,10 +1,12 @@
 <form id="display-settings">
-{% for name, legend, options in [('size','文字大小',[('18','标准 · 正文 18'),('22','大字 · 正文 22'),('26','特大 · 正文 26')]),('font','字体',[('sans','清晰黑体'),('serif','书卷宋体'),('rounded','亲切圆体')]),('theme','页面外观',[('modern','清新'),('paper','暖纸'),('contrast','高对比')]),('mode','页面密度',[('standard','标准模式'),('simple','简洁模式')])] %}
+{% for name, legend, options in [('size','文字大小',[('18','标准 · 正文 18'),('22','大字 · 正文 22'),('26','特大 · 正文 26')]),('font','字体',[('sans','清晰黑体'),('serif','书卷宋体'),('rounded','亲切圆体')]),('theme','页面外观',[('modern','清新'),('paper','暖纸'),('contrast','高对比')]),('mode','页面密度',[('standard','标准模式'),('simple','简洁模式')]),('entry','打开网站的默认入口',[('standard','完整版'),('easy','简易版（需站点开放）')])] %}
 <fieldset class="settings-group"><legend>{{ legend }}</legend><div class="settings-options">
-{% for value,label in options %}<label class="setting-choice"><input type="radio" name="{{ name }}" value="{{ value }}" data-display-setting> <span>{{ label }}</span></label>{% endfor %}
+{% for value,label in options %}<label class="setting-choice"><input type="radio" name="{{ name }}" value="{{ value }}" data-display-setting {% if name=='entry' and value=='easy' and not easy_enabled %}disabled{% endif %}> <span>{{ label }}</span></label>{% endfor %}
 </div></fieldset>
 {% endfor %}
 <p class="hint">使用设备自带字体，圆体缺失时自动使用黑体。简洁模式增大按钮与间距；人物名单、家族树和主要功能始终可用。</p>
 <div class="form-actions"><button id="display-reset" class="btn-secondary" type="button">恢复默认显示</button>{% if family %}<a class="btn-primary" href="{{ url_for('main.stories',family_id=family.id) }}">返回家庭故事</a>{% else %}<a class="btn-primary" href="{{ url_for('main.index') }}">返回首页</a>{% endif %}</div>
 <p id="display-status" class="hint" role="status" aria-live="polite"></p>
 </form>
+
+{% if display_sync_enabled and me %}<section class="disclosure" id="account-display-sync" data-api="{{ url_for('display_preferences.preference') }}" data-csrf="{{ csrf_token() }}"><h2>账号默认设置</h2><p>本设备的明确选择优先。保存为账号默认后，本设备改为跟随账号；新设备也会采用它，其他已有本机选择的设备保持自己的设置。</p><div class="form-actions"><button class="btn-primary" type="button" id="display-account-save">保存为账号默认</button><button class="btn-secondary" type="button" id="display-account-follow">让本设备跟随账号</button></div><p id="display-account-status" class="hint" role="status" aria-live="polite"></p></section>{% endif %}

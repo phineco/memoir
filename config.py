@@ -63,6 +63,7 @@ class Config:
         "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
     DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-flash")
     AI_ENABLED = bool(os.environ.get("DEEPSEEK_API_KEY", ""))
+    DISPLAY_ACCOUNT_SYNC_ENABLED = os.environ.get('DISPLAY_ACCOUNT_SYNC_ENABLED','1') == '1'
     EASY_PWA_ENABLED = os.environ.get('EASY_PWA_ENABLED','0') == '1'
     EASY_ENABLED = os.environ.get('EASY_ENABLED','0') == '1'
     INTERVIEW_ASR_ENABLED = os.environ.get('INTERVIEW_ASR_ENABLED','0') == '1'

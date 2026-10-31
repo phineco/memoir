@@ -779,3 +779,10 @@ class PlanProgressSuggestion(AuditMixin, Base):
     plan_stamp = Column(String(64), nullable=False)
     status = Column(String(16), nullable=False, default='pending')
     reviewed_by = Column(String(64))
+
+
+class UserDisplayPreference(AuditMixin, Base):
+    __tablename__ = 'user_display_preferences'
+    user_id = Column(String(64), nullable=False, unique=True)
+    revision = Column(Integer, nullable=False, default=1)
+    preferences = Column(JSON, nullable=False)

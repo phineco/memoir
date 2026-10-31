@@ -32,6 +32,8 @@ def create_app():
     app.register_blueprint(interview_bp)
     from suggestion_routes import bp as suggestions_bp
     app.register_blueprint(suggestions_bp)
+    from display_preferences import install as install_display_preferences
+    install_display_preferences(app)
     from easy_routes import install as install_easy
     install_easy(app)
     from album import display_html

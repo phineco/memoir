@@ -400,3 +400,5 @@ section[id] {scroll-margin-top:calc(var(--site-header-height,7rem) + 1rem);}
 
 .easy-body .reading-controls a {display:inline-flex;align-items:center;min-height:56px;}
 .easy-nav a[aria-current=page] {background:var(--surface-soft);border-radius:12px;font-weight:700;}
+
+:root[data-easy]:not([data-size]) {--reading-size:22px;}

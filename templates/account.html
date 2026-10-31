@@ -20,7 +20,7 @@
 <details class="menu-notes"><summary>功能说明与服务协议</summary><dl>
 <dt>关于我的故事</dt><dd>与已关联的本人有关、且你有权阅读的故事。</dd>
 <dt>我记录的故事与草稿</dt><dd>按记录账号归集，也包括替家人记录的内容；未发布内容在“我的草稿”。</dd>
-<dt>我的声音与显示设置</dt><dd>查看声音授权、上传或录音、处理状态及撤回；字体、大字和高对比偏好只在当前浏览器保存。</dd>
+<dt>我的声音与显示设置</dt><dd>查看声音授权、上传或录音、处理状态及撤回；字体、大字和高对比可保留为本人设备选择，也可主动保存为账号默认。</dd>
 <dt>导出与隐私</dt><dd>个人导出包含本人文章与草稿，当前不含照片和录音。隐私申请可提交更正、删除或注销并查看人工处理进度。</dd>
 </dl><div class="menu-buttons"><a class="btn-secondary menu-button" href="{{ url_for('main.terms',family_id=family.id if family else none) }}">用户服务协议</a><a class="btn-secondary menu-button" href="{{ url_for('main.privacy',family_id=family.id if family else none) }}">隐私政策</a></div></details>
 {% if is_operator %}
