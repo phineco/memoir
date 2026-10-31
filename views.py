@@ -936,6 +936,8 @@ def _weekly_data(family_id, week, viewer_id=None, year=None, include_extras=True
         Interview.del_flag == 0).all() if _ok(iv)}
     new_persons = [np for np in new_persons if not np.interview_id
                    or np.interview_id in visible_sources]
+    from people_suggestions import readable
+    new_persons=[candidate for candidate in new_persons if readable(s,candidate)]
     persons = {p.id: p for p in
                s.query(Person).filter_by(family_id=family_id, del_flag=0).all()}
     revised = s.query(Draft, Interview).join(Interview, Draft.interview_id == Interview.id).filter(

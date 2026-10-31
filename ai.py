@@ -132,6 +132,8 @@ def family_knowledge(family_id, viewer_id=None, limit=6000, question=None):
     nps = s.query(NewPerson).filter_by(
         family_id=family_id, join_tree="pending", del_flag=0).limit(8).all()
     nps = [n for n in nps if not n.interview_id or n.interview_id in visible_ids]
+    from people_suggestions import readable
+    nps=[candidate for candidate in nps if readable(s,candidate)]
     if nps:
         parts.append("待定是否入树的新人物：\n" +
                      "\n".join("- %s（%s）" % (n.name, n.context or "")

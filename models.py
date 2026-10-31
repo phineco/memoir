@@ -307,6 +307,12 @@ class PersonLink(AuditMixin, Base):
 
 class NewPerson(AuditMixin, Base):
     __tablename__ = "new_persons"
+    source_record_id = Column(String(64))
+    source_revision = Column(Integer)
+    source_preview_revision = Column(Integer)
+    evidence = Column(Text)
+    linked_person_id = Column(String(64))
+    reviewed_by = Column(String(64))
     family_id = Column(String(64), index=True)
     interview_id = Column(String(64))
     name = Column(String(64))

@@ -263,6 +263,12 @@ CREATE TABLE `person_links` (
 
 -- 11. 新出现人物
 CREATE TABLE `new_persons` (
+  `source_record_id` varchar(64),
+  `source_revision` integer,
+  `source_preview_revision` integer,
+  `evidence` text,
+  `linked_person_id` varchar(64),
+  `reviewed_by` varchar(64),
   `id` varchar(64) NOT NULL COMMENT '主键',
   `family_id` varchar(64) DEFAULT NULL COMMENT '家庭 id',
   `interview_id` varchar(64) DEFAULT NULL COMMENT '来源整理任务 id',

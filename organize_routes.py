@@ -92,9 +92,11 @@ def material_page(family_id, record_id=None, action_error=None):
             error, status = exc.description, exc.code
     people = s.query(Person).filter_by(family_id=family_id, del_flag=0).order_by(Person.sort, Person.name).all()
     import organize_jobs
+    from people_suggestions import source_context
+    followup=source_context(s,record)
     task = s.query(OrganizeTask).filter_by(record_id=record.id, user_id=me.id).order_by(OrganizeTask.create_date.desc(), OrganizeTask.id.desc()).first() if record else None
     return render_template('organize.html', family=family, record=record, values=values,
-        error=error, people=people, task=task, task_message=organize_jobs.MESSAGES.get(task.status) if task else None,
+        error=error, followup=followup, people=people, task=task, task_message=organize_jobs.MESSAGES.get(task.status) if task else None,
         ai_enabled=organize_jobs.enabled(), preview_values=request.form if action_error else {}, nonce=values.get('nonce') or secrets.token_urlsafe(24),
         notice='原稿已保存，仅自己可见。' if request.args.get('saved') == '1' else None), status
 
@@ -136,6 +138,10 @@ def action(family_id, record_id):
                 consent=request.form.get('consent') == 'yes', regenerate=request.form.get('regenerate') == 'yes')
         elif name == 'cancel':
             organize_jobs.cancel(family_id, me.id, record_id, request.form.get('task_id'))
+        elif name == 'share-people':
+            import people_suggestions
+            if request.form.get('confirm_share')!='yes':abort(400,'请确认只分享已公开故事中的人物依据。')
+            people_suggestions.share(s,family_id,me.id,record_id,request.form.get('revision'),request.form.get('preview_revision'),request.form.get('story_version'),request.form.getlist('people_index'))
         elif name == 'confirm':
             import organize_drafts
             if request.form.get('confirm_review') != 'yes': abort(400, '请先确认已经核对预览。')

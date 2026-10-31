@@ -28,7 +28,7 @@
 {% endif %}
 {% if record %}
 <p class="hint">原稿版本 {{ record.revision }} · 本次记录仅自己可见 · 保存原稿不调用 AI。</p>
-{% include "_organize_processing.html" %}
+{% include "_organize_processing.html" %}{% include "_organize_followups.html" %}
 <details class="disclosure"><summary>原材料与删除</summary><div class="form-actions"><a class="btn-secondary" href="{{ url_for('organize.export',family_id=family.id,record_id=record.id) }}">导出原稿</a></div>
 <p>删除原材料会清理原稿历史及未完成整理结果；已生成的故事另行保留，不能用此操作删除故事。</p>
 <form method="post" action="{{ url_for('organize.remove',family_id=family.id,record_id=record.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label class="check"><input type="checkbox" name="confirm" value="yes" required>确认删除此原材料及历史{% if record.story_id %}，保留关联故事{% endif %}</label><button class="btn-danger" type="submit">删除原材料</button></form></details>
