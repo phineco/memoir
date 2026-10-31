@@ -66,6 +66,7 @@ def review(s,fid,uid,sid,action):
     plan=s.query(WritingPlan).filter_by(id=row.plan_id,family_id=fid,del_flag=0).with_for_update().populate_existing().first()
     row=s.query(PlanProgressSuggestion).filter_by(id=sid).with_for_update().populate_existing().one()
     if row.status in ('applied','dismissed'):return row
+    if row.status!='pending':abort(409,'建议已撤回或已失效，请重新核对。')
     if action=='dismiss':row.status='dismissed'
     elif action=='apply':
         if not draft or draft.version!=row.story_version or not plan or stamp(plan)!=row.plan_stamp or not eligible(s,plan,story,row.item_index):abort(409,'故事或计划已有变化，请核对后重新提出建议。')

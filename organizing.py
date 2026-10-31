@@ -28,12 +28,13 @@ def member(s, family_id, user_id, lock=False):
     return role
 
 
-def owned(s, family_id, user_id, record_id, lock=False):
+def owned(s, family_id, user_id, record_id, lock=False, allow_deleted=False):
     if lock:
         from transaction_locks import serialize_sqlite
         serialize_sqlite(s,user_id)
     member(s, family_id, user_id, lock=lock)
-    q = s.query(OrganizeRecord).filter_by(id=record_id, family_id=family_id, user_id=user_id, del_flag=0)
+    q = s.query(OrganizeRecord).filter_by(id=record_id, family_id=family_id, user_id=user_id)
+    if not allow_deleted:q=q.filter_by(del_flag=0)
     record = (q.with_for_update() if lock else q).populate_existing().first()
     if not record:
         abort(404)
@@ -75,6 +76,7 @@ def create(s, family_id, user_id, data, nonce=None):
     identifier = hashlib.sha256((family_id+'\0'+user_id+'\0'+nonce).encode()).hexdigest() if nonce else new_id()
     def prior():
         record = s.get(OrganizeRecord, identifier)
+        if record and record.del_flag:abort(409,'该原稿已删除，旧请求不会恢复内容；请重新打开“提供原稿”开始。')
         if record and any(getattr(record, key) != value for key, value in values.items()):
             abort(409, '该保存编号已有不同内容，请重新打开新原稿页面。')
         return record
@@ -116,12 +118,21 @@ def update(s, family_id, user_id, record_id, revision, data):
 
 
 def delete(s, family_id, user_id, record_id, acknowledge_story=False, commit=True):
-    record = owned(s, family_id, user_id, record_id, lock=True)
+    record = owned(s, family_id, user_id, record_id, lock=True, allow_deleted=True)
+    if record.del_flag:
+        if commit:s.commit()
+        return
     if record.story_id and not acknowledge_story:
         abort(409, '已有正式故事。删除原材料不会删除故事，请先明确确认。')
-    from models import OrganizeTask
+    from models import OrganizeTask,NewPerson,PlanProgressSuggestion
     s.query(OrganizeTask).filter_by(record_id=record.id).update({
         OrganizeTask.status: 'cancelled', OrganizeTask.result: None, OrganizeTask.usage: None}, synchronize_session=False)
     s.query(OrganizeSource).filter_by(record_id=record.id).delete(synchronize_session=False)
-    s.delete(record)
+    s.query(NewPerson).filter_by(source_record_id=record.id,join_tree='pending',del_flag=0).update({
+        NewPerson.del_flag:1,NewPerson.name:None,NewPerson.context:None,NewPerson.evidence:None,NewPerson.join_tree:'dismissed'},synchronize_session=False)
+    s.query(PlanProgressSuggestion).filter_by(record_id=record.id,status='pending').update({PlanProgressSuggestion.status:'withdrawn'},synchronize_session=False)
+    # Keep only an empty idempotency marker; late retries cannot recreate deleted material.
+    record.content='';record.topic='';record.preview=None;record.preview_source_revision=None
+    record.narrator_id=None;record.subject_id=None;record.narrator_label=None;record.recording_mode='unspecified'
+    record.del_flag=1;record.revision+=1;record.preview_revision+=1;record.update_date=local_now()
     if commit:s.commit()

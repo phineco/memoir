@@ -24,6 +24,7 @@ def grounded(item,draft):
 
 
 def readable(s,candidate):
+    if candidate.del_flag:return False
     if not candidate.source_record_id:return True  # Existing imports keep their established contract.
     story,draft=public_story(s,candidate.family_id,candidate.interview_id)
     return bool(story and grounded({'name':candidate.name,'evidence':candidate.evidence},draft))

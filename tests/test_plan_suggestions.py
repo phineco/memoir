@@ -78,3 +78,18 @@ def test_weekly_uses_first_publication_and_keeps_draft_verification_private(app)
     story.visibility='private';s.commit()
     data=_weekly_data('a',44,year=2026)
     assert sid not in {row.id for row in data['interviews']} and not any(item.interview_id==sid for item in data['verifs'])
+
+
+def test_deleted_source_withdraws_unreviewed_family_suggestions_without_deleting_story(app):
+    import people_suggestions
+    from models import NewPerson,OrganizeRecord
+    s=get_session();rid,sid=setup();publish(sid)
+    people_suggestions.share(s,'a','member-a',rid,1,1,1,['0']);proposal=propose(rid)
+    candidate=s.query(NewPerson).filter_by(source_record_id=rid).one();cid=candidate.id
+    organizing.delete(s,'a','member-a',rid,acknowledge_story=True)
+    assert s.get(Interview,sid) and s.get(OrganizeRecord,rid).del_flag
+    candidate=s.get(NewPerson,cid)
+    assert candidate.del_flag and candidate.evidence is None and candidate.name is None
+    assert s.get(PlanProgressSuggestion,proposal).status=='withdrawn'
+    with pytest.raises(HTTPException):plans.review(s,'a','owner-a',proposal,'apply')
+    assert plans.items(s.get(WritingPlan,'plan-a'))[0]['status']=='pending'

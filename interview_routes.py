@@ -5,7 +5,7 @@ from flask import Blueprint, abort, redirect, render_template, request, url_for,
 import io
 from forms import require_csrf
 from werkzeug.exceptions import HTTPException
-from models import InterviewSession, InterviewQuestion, InterviewClip, InterviewAsrTask, Person, get_session
+from models import InterviewSession, InterviewQuestion, InterviewClip, InterviewAsrTask, OrganizeRecord, Interview, Person, get_session
 import interviewing
 from views import _current_user, _family_or_404, _families_for_user
 
@@ -58,6 +58,10 @@ def render_detail(family_id, session_id, error=None):
     row = interviewing.owned(s, family_id, _current_user().id, session_id, allow_deleted=True)
     if row.state in ('deleting','deleting_run','delete_failed','deleted'):
         return render_template('interview_deletion.html',family=family,interview=row)
+    material=s.query(OrganizeRecord).filter_by(id=row.record_id,family_id=family_id,user_id=_current_user().id).first() if row.record_id else None
+    material_deleted=bool(row.record_id and (not material or material.del_flag))
+    can_edit_answers=not material_deleted and not (material and material.story_id)
+    linked_story=s.query(Interview.id).filter_by(id=material.story_id,family_id=family_id,author_id=_current_user().id,del_flag=0).first() if material and material.story_id else None
     import interview_audio
     import interview_asr
     tasks=s.query(InterviewAsrTask).filter_by(session_id=row.id).order_by(InterviewAsrTask.create_date).all()
@@ -65,7 +69,7 @@ def render_detail(family_id, session_id, error=None):
     clips=s.query(InterviewClip).filter_by(session_id=row.id,del_flag=0).filter(InterviewClip.status.notin_(('deleting','deleted'))).order_by(InterviewClip.create_date).all()
     pending_asr=any(clip.input_revision==row.revision and asr_tasks.get(clip.id) and asr_tasks[clip.id].status in ('queued','running') for clip in clips)
     latest = s.query(InterviewQuestion).filter_by(session_id=row.id).order_by(InterviewQuestion.create_date.desc()).first()
-    return render_template('interview.html', family=family, interview=row, clips=clips, asr_enabled=interview_asr.enabled(), asr_tasks=asr_tasks, pending_asr=pending_asr, local_identity=interview_audio.local_identity(_current_user().id), recorder_user=_current_user().id, answers=interviewing.answers(s, row.id),
+    return render_template('interview.html', family=family, interview=row, material_deleted=material_deleted, can_edit_answers=can_edit_answers, linked_story_id=linked_story[0] if linked_story else None, clips=clips, asr_enabled=interview_asr.enabled(), asr_tasks=asr_tasks, pending_asr=pending_asr, local_identity=interview_audio.local_identity(_current_user().id), recorder_user=_current_user().id, answers=interviewing.answers(s, row.id),
         topics=interviewing.TOPICS, nonce=secrets.token_urlsafe(24), pending=interviewing.pending(s, row), latest_question=latest,
         error=error.description if error else None, values=request.form if error else {}), error.code if error else 200
 

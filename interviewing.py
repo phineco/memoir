@@ -145,7 +145,10 @@ def content(s, row):
 
 def finish(s, fid, uid, sid, revision):
     row = owned(s, fid, uid, sid, lock=True)
-    if row.state == 'ended' and row.record_id: return row
+    if row.state == 'ended' and row.record_id:
+        from models import OrganizeRecord
+        if not s.query(OrganizeRecord.id).filter_by(id=row.record_id,del_flag=0).first():abort(409,'整理原稿已删除；请查看原声记录，旧结束请求不会重新创建原稿。')
+        return row
     if str(row.revision) != str(revision): abort(409, '采访已更新，请重新核对。')
     source = content(s, row)
     if not source: abort(400, '请先保存至少一段回答；也可以暂停稍后再讲。')

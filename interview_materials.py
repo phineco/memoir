@@ -40,6 +40,7 @@ def export(s,fid,uid,sid):
 def request_delete(s,fid,uid,sid):
     row=interviewing.owned(s,fid,uid,sid,lock=True,allow_deleted=True)
     if row.state in ('deleting','deleting_run','deleted'):return row
+    if row.state=='delete_failed':row.state='deleting';s.commit();return row
     interviewing.cancel_questions(s,row)
     s.query(InterviewAsrTask).filter_by(session_id=sid).update({InterviewAsrTask.status:'cancelled',InterviewAsrTask.usage:None},synchronize_session=False)
     clips=s.query(InterviewClip).filter_by(session_id=sid).all()
@@ -49,7 +50,7 @@ def request_delete(s,fid,uid,sid):
         clip.status='deleting';clip.transcript=None;clip.usage=None
     from organizing import delete
     for rid in source_ids:
-        if s.query(OrganizeRecord).filter_by(id=rid,family_id=fid,user_id=uid).first():delete(s,fid,uid,rid,acknowledge_story=True,commit=False)
+        if s.query(OrganizeRecord).filter_by(id=rid,family_id=fid,user_id=uid,del_flag=0).first():delete(s,fid,uid,rid,acknowledge_story=True,commit=False)
     s.query(InterviewAnswer).filter_by(session_id=sid).delete(synchronize_session=False)
     row.state='deleting';row.ai_consent=False;row.narrator_id=None;row.subject_id=None;row.narrator_label=None;row.record_id=None
     row.question='原材料删除中';row.topic='free';row.recording_mode='unspecified';row.revision+=1;row.update_date=local_now()
