@@ -144,7 +144,7 @@ def login():
             User.del_flag == 0,
             or_(User.phone == login_id, User.username == login_id)).first()
         if not u or not u.password_hash or not check_password_hash(u.password_hash, password):
-            return render_template("login.html", error="登录名或密码不正确")
+            return render_template("login.html", error="登录名或密码不正确", login_mode="password")
         session["user_id"] = u.id
         return redirect(request.args.get("next") or url_for("main.index"))
     return render_template("login.html")

@@ -2,7 +2,7 @@
   "files": {
     "ai-chat.js": "ai-chat.1ccb46210a3f7d8e.js",
     "album-picker.js": "album-picker.7aecb1964a908149.js",
-    "app.css": "app.cd8a29c3838636d9.css",
+    "app.css": "app.dc7a98494dcae855.css",
     "easy-pwa.js": "easy-pwa.0352130a6e320a8a.js",
     "family-context.js": "family-context.0132a46b26e26d51.js",
     "family-people.js": "family-people.7ba960cb9d7922d4.js",
@@ -25,7 +25,7 @@
   "sha256": {
     "ai-chat.1ccb46210a3f7d8e.js": "1ccb46210a3f7d8e2b6682d1845b35aaa3047ab3363f67694e3d10ce19ece4cc",
     "album-picker.7aecb1964a908149.js": "7aecb1964a908149598725b88a03d9a6653515f6f7cd54ef975365c896352988",
-    "app.cd8a29c3838636d9.css": "cd8a29c3838636d91635768ea1151179a62fd48d543e69c2bea793a101b967f8",
+    "app.dc7a98494dcae855.css": "dc7a98494dcae85554c93e56209213e30b9996a0a35a07d9aa17b2a59de10813",
     "easy-pwa.0352130a6e320a8a.js": "0352130a6e320a8a498da10f1eb0bb5a15cc7b2fbc039f50400be67d200711a9",
     "echarts-5.5.0.min.42f8329d989b6f65.js": "42f8329d989b6f6539dd2b15bbdf0d82025762ac112fbb60dc57b27d7bcf3946",
     "family-context.0132a46b26e26d51.js": "0132a46b26e26d51f6f825b3a408978f291a0c5de4a5380dc17b1f230acbefb0",
