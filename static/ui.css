@@ -401,3 +401,16 @@ section[id] {scroll-margin-top:calc(var(--site-header-height,7rem) + 1rem);}
 .easy-nav a[aria-current=page] {background:var(--surface-soft);border-radius:12px;font-weight:700;}
 
 :root[data-easy]:not([data-size]) {--reading-size:22px;}
+
+/* Public introduction keeps the same buttons and surfaces as family pages. */
+.welcome-hero { text-align:center; padding:1.5rem 0; }
+.welcome-intro { color:var(--muted); line-height:1.9; margin:1rem 0; }
+.welcome-actions { justify-content:center; margin:1.5rem 0 0; }
+.welcome-features { margin:1rem 0 2rem; }
+.welcome-features > h2 { text-align:center; border:0; margin:0 0 1rem; }
+.welcome-feature-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.welcome-feature-grid h3 { font-size:1.15rem; margin:0 0 .5rem; line-height:1.6; }
+.welcome-feature-grid p { margin:.5rem 0 0; }
+.feature-status { display:inline-block; font-size:.8rem; color:var(--muted); border:1px solid var(--line); border-radius:99px; padding:0 .5rem; vertical-align:middle; }
+.welcome-share-hint { text-align:center; }
+@media(max-width:600px) { .welcome-feature-grid { grid-template-columns:minmax(0,1fr); gap:.75rem; }.welcome-hero { padding:.5rem 0 1rem; } }

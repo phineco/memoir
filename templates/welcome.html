@@ -1,13 +1,22 @@
 {% extends "base.html" %}
 {% block title %}家音 · 留住长辈的声音{% endblock %}
 {% block content %}
-<div style="text-align:center; padding: 32px 16px;">
+<div class="welcome-hero">
   <h1>🏠 家音</h1>
-  <p class="hint" style="font-size:17px; line-height:1.8;">老人口述 → AI 整理 → 家族回忆录<br>把长辈的声音，留给下一代。</p>
-  <p style="margin-top:24px;">
-    <a href="{{ url_for('main.login') }}" class="btn-primary" style="text-decoration:none; margin-right:12px;">登录</a>
-    <a href="{{ url_for('main.register') }}" style="text-decoration:none;">注册新账号</a>
-  </p>
-  <p class="hint" style="margin-top:24px;">收到家人分享链接？直接打开链接即可查看，无需登录。</p>
+  <p class="welcome-intro">老人口述 → AI 整理 → 家族回忆录<br>把长辈的声音，留给下一代。</p>
+  <div class="form-actions welcome-actions">
+    <a href="{{ url_for('main.login') }}" class="btn-primary">登录</a>
+    <a href="{{ url_for('main.register') }}" class="btn-secondary">注册新账号</a>
+  </div>
 </div>
+<section class="welcome-features" aria-labelledby="welcome-features-heading">
+  <h2 id="welcome-features-heading">让回忆更容易留下来</h2>
+  <div class="welcome-feature-grid">
+    <article class="card"><h3>AI 采访与整理</h3><p>一次聊一个问题，把零散回忆整理成故事，核对后再发布。</p><p class="hint">AI 服务开放后可用，也可直接写故事。</p></article>
+    <article class="card"><h3>声音复刻</h3><p>用熟悉的家人声音朗读故事，让文字多一份陪伴。</p><p class="hint">须单独授权并开通；播放会标注 AI 合成声音。</p></article>
+    <article class="card"><h3>家庭相册</h3><p>按时间、地点和人物寻找照片，也能把照片放进故事里。</p><p class="hint">和家人一起留住照片背后的记忆。</p></article>
+    <article class="card"><h3>一键成书 <span class="feature-status">规划中</span></h3><p>计划支持选取家庭故事，由 AI 协助编排成电子书。</p><p class="hint">尚未开放，拟作为付费服务；具体方案以开放时说明为准。</p></article>
+  </div>
+</section>
+<p class="hint welcome-share-hint">收到家人分享链接？直接打开链接，按页面提示查看。</p>
 {% endblock %}
