@@ -65,6 +65,8 @@ def outputs():
     sources = {'app.css':css}
     for name in ['preferences.js','read-aloud.js','family-context.js','family-people.js','navigation.js','voice-input.js','write-recovery.js','writing-prompts.js','ai-chat.js','share-links.js','usage.js','family-voice.js','album-picker.js','interview-recorder.js','interview-flow.js','easy-pwa.js','form-state.js']:
         sources[name] = (ROOT / 'static' / name).read_bytes()
+    for name in ['favicon.ico','jiayin-16.png','jiayin-32.png','jiayin-180.png','jiayin-192.png','jiayin-512.png']:
+        sources[name] = (ROOT / 'static/icons' / name).read_bytes()
     for path in LOCK['vendor']:
         if path.endswith(('.css','.js')):
             sources[path.removeprefix('static/')] = (ROOT / path).read_bytes()

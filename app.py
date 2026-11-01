@@ -1,6 +1,6 @@
 """Flask 应用入口。"""
 import re
-from flask import Flask, request, session
+from flask import Flask, redirect, request, session
 
 from config import Config
 from models import User, get_session, init_db, remove_session
@@ -51,9 +51,13 @@ def create_app():
     from assets import asset_resolver
     asset_url = asset_resolver(app.root_path)
 
+    @app.get('/favicon.ico')
+    def favicon():
+        return redirect(asset_url('favicon.ico'))
+
     @app.after_request
     def cache_policy(response):
-        if request.path.startswith("/static/dist/") and re.search(r"\.[0-9a-f]{16}\.(css|js)$", request.path) and response.status_code in (200, 304):
+        if request.path.startswith("/static/dist/") and re.search(r"\.[0-9a-f]{16}\.(css|js|png|ico)$", request.path) and response.status_code in (200, 304):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         elif response.mimetype == "text/html":
             response.headers["Cache-Control"] = "no-store"
