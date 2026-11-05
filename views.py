@@ -1554,6 +1554,26 @@ def _user_map():
     return {u.id: u for u in _s().query(User).filter_by(del_flag=0).all()}
 
 
+def _tree_users(s, family_id):
+    return [u for u in s.query(User).filter_by(del_flag=0).all()
+            if family_role(s, family_id, u.id)]
+
+
+def _set_person_user(s, family_id, p, link_uid, users):
+    """Create and edit share the same family and existing-link checks."""
+    if link_uid and link_uid not in {u.id for u in users}:
+        abort(400, "关联账号必须是本家庭成员")
+    if link_uid != p.user_id:
+        if link_uid:
+            conflict = s.query(Person).filter(
+                Person.family_id == family_id, Person.user_id == link_uid,
+                Person.id != p.id, Person.del_flag == 0).first()
+            if conflict:
+                return f"该账号已关联 {conflict.name}，一人只能关联一个人物"
+        p.user_id = link_uid
+    return None
+
+
 @bp.route("/f/<family_id>/tree/add", methods=["GET", "POST"])
 def tree_add(family_id):
     me = _current_user()
@@ -1562,18 +1582,19 @@ def tree_add(family_id):
         abort(403)
     s = _s()
     persons = _tree_persons(family_id)
+    users = _tree_users(s, family_id)
     if request.method == "POST":
         from models import new_id
         name = request.form.get("name", "").strip()
         if not name:
-            return render_template("tree_form.html", family=fam, persons=persons,
+            return render_template("tree_form.html", family=fam, persons=persons, users=users,
                                    me=me, error="姓名不能为空", form=request.form,
                                    mode="add")
         parent_id = request.form.get("parent_id") or "0"
         parent = s.query(Person).filter_by(id=parent_id, family_id=family_id,
                                            del_flag=0).first() if parent_id != "0" else None
         if parent_id != "0" and not parent:
-            return render_template("tree_form.html", family=fam, persons=persons,
+            return render_template("tree_form.html", family=fam, persons=persons, users=users,
                                    me=me, error="挂靠的上级人物不存在",
                                    form=request.form, mode="add")
         aliases = [a.strip() for a in request.form.get("aliases", "").split("，")
@@ -1586,7 +1607,7 @@ def tree_add(family_id):
             life_state = parse_life_state(request.form, dates)
             sort = int(request.form.get("sort") or 0)
         except ValueError as exc:
-            return render_template("tree_form.html", family=fam, persons=persons,
+            return render_template("tree_form.html", family=fam, persons=persons, users=users,
                                    me=me, error="日期或排序有误：" + str(exc),
                                    form=request.form, mode="add")
         p = Person(
@@ -1605,13 +1626,15 @@ def tree_add(family_id):
         s.add(p)
         s.flush()
         err = _set_spouse(s, family_id, p, request.form.get("spouse_id") or None)
+        if not err:
+            err = _set_person_user(s, family_id, p, request.form.get("link_user_id") or None, users)
         if err:
             s.rollback()
-            return render_template("tree_form.html", family=fam, persons=persons,
+            return render_template("tree_form.html", family=fam, persons=persons, users=users,
                                    me=me, error=err, form=request.form, mode="add")
         s.commit()
         return redirect(url_for("main.family_home", family_id=family_id))
-    return render_template("tree_form.html", family=fam, persons=persons, me=me,
+    return render_template("tree_form.html", family=fam, persons=persons, users=users, me=me,
                            form=request.form, mode="add")
 
 
@@ -1624,8 +1647,7 @@ def tree_edit(family_id, person_id):
     s = _s()
     p = _person_or_404(family_id, person_id)
     persons = [x for x in _tree_persons(family_id) if x.id != p.id]
-    users = [u for u in s.query(User).filter_by(del_flag=0).all()
-             if family_role(s, family_id, u.id)]
+    users = _tree_users(s, family_id)
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         if not name:
@@ -1693,21 +1715,12 @@ def tree_edit(family_id, person_id):
             return render_template("tree_form.html", family=fam, persons=persons,
                                    me=me, error=err, form=request.form,
                                    mode="edit", person=p, users=users)
-        link_uid = request.form.get("link_user_id") or None
-        if link_uid and link_uid not in {u.id for u in users}:
-            abort(400, "关联账号必须是本家庭成员")
-        if link_uid != p.user_id:
-            if link_uid:
-                conflict = s.query(Person).filter(
-                    Person.family_id == family_id, Person.user_id == link_uid,
-                    Person.id != p.id, Person.del_flag == 0).first()
-                if conflict:
-                    s.rollback()
-                    return render_template(
-                        "tree_form.html", family=fam, persons=persons, me=me,
-                        error=f"该账号已关联 {conflict.name}，一人只能关联一个人物",
-                        form=request.form, mode="edit", person=p, users=users)
-            p.user_id = link_uid
+        err = _set_person_user(s, family_id, p, request.form.get("link_user_id") or None, users)
+        if err:
+            s.rollback()
+            return render_template(
+                "tree_form.html", family=fam, persons=persons, me=me,
+                error=err, form=request.form, mode="edit", person=p, users=users)
         p.update_by = me.id
         p.update_date = datetime.datetime.now()
         s.commit()

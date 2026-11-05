@@ -55,7 +55,6 @@
     </label>
   </div>
   <label>备注/线索（逗号分隔）<br><input name="notes" class="full" value="{{ form.get('notes','') if form else '' }}"></label>
-  {% if mode == 'edit' %}
   <div class="form-row">
     <label>关联登录账号（"这是我"）
       <select name="link_user_id">
@@ -66,7 +65,7 @@
       </select>
     </label>
   </div>
-  {% endif %}
+  <p class="hint">可选关联本家庭的登录成员，也可暂不关联、以后再补；同一账号在本家庭只能关联一个人物。</p>
   <div class="form-actions">
     <button type="submit" class="btn-primary">{% if mode == 'edit' %}保存修改{% else %}添加{% endif %}</button>
     <a class="btn-secondary" href="{{ url_for('main.person_page',family_id=family.id,person_id=person.id) if mode=='edit' else url_for('main.family_home',family_id=family.id) }}">取消</a>
