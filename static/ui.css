@@ -418,3 +418,20 @@ section[id] {scroll-margin-top:calc(var(--site-header-height,7rem) + 1rem);}
 .login-methods { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; max-width:520px; margin:1rem 0; }
 .login-methods button { width:100%; }
 .login-methods button[aria-pressed=true] { font-weight:700; box-shadow:inset 0 0 0 2px var(--on-accent); }
+
+/* Recording feedback stays in view until the microphone is stopped. */
+.record-controls {padding:12px;border:2px solid var(--line);border-radius:16px;background:var(--surface);}
+.record-signal {display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.record-dot {width:14px;height:14px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+#record-elapsed {font-variant-numeric:tabular-nums;font-weight:700;}
+.record-buttons {display:flex;gap:12px;flex-wrap:wrap;}
+.record-buttons button {flex:1;}
+#interview-recorder:is([data-record-state="recording"],[data-record-state="requesting"]) .record-controls {position:fixed;z-index:50;bottom:16px;left:max(12px,calc((100vw - 720px)/2));right:max(12px,calc((100vw - 720px)/2));box-shadow:0 6px 28px #0003;}
+.easy-body #interview-recorder:is([data-record-state="recording"],[data-record-state="requesting"]) .record-controls {bottom:calc(92px + env(safe-area-inset-bottom));}
+#interview-recorder[data-record-state="recording"] .record-controls {border:3px solid #a51d2d;background:#fff3f3;color:#831525;}
+#interview-recorder[data-record-state="recording"] .record-dot {background:#b91c2e;animation:record-pulse 1.2s ease-in-out infinite;}
+#interview-recorder[data-record-state="recording"] #record-stop {background:#a51d2d;color:#fff;border-color:#a51d2d;font-weight:700;}
+#interview-recorder[data-record-state="requesting"] .record-controls {border-color:#9a6700;}
+#interview-recorder[data-record-state="requesting"] .record-dot {background:#9a6700;}
+@keyframes record-pulse {50%{box-shadow:0 0 0 6px #b91c2e22;}}
+@media (prefers-reduced-motion:reduce) {.record-dot {animation:none!important;}}
