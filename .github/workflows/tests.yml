@@ -77,6 +77,7 @@ jobs:
       - run: ALBUM_UPLOADER_UI=1 UI_CHECK_SCRIPT=tests/interview-recorder-ui.cjs python tools/run_ui.py
       - run: ALBUM_UPLOADER_UI=1 INTERVIEW_UI=1 UI_CHECK_SCRIPT=tests/interview-flow-ui.cjs python tools/run_ui.py
       - run: EASY_UI=1 UI_CHECK_SCRIPT=tests/easy-ui.cjs python tools/run_ui.py
+      - run: EASY_UI=1 ALBUM_UPLOADER_UI=1 INTERVIEW_UI=1 UI_CHECK_SCRIPT=tests/easy-recording-ui.cjs python tools/run_ui.py
       - run: ALBUM_UPLOADER_UI=1 PWA_UI=1 UI_CHECK_SCRIPT=tests/pwa-ui.cjs python tools/run_ui.py
       - run: ALBUM_UPLOADER_UI=1 EASY_UI=1 UI_CHECK_SCRIPT=tests/display-sync-ui.cjs python tools/run_ui.py
       - run: ALBUM_UPLOADER_UI=1 AUX_UI=1 UI_CHECK_SCRIPT=tests/auxiliary-ui.cjs python tools/run_ui.py

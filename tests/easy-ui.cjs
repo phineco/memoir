@@ -21,6 +21,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   await page.goto(base+'/easy/f/ui/story/story');assert.equal(await page.locator('#articleBody').evaluate(n=>getComputedStyle(n).fontSize),'26px');
   await page.setViewportSize({width:320,height:900});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   await page.goto(base+'/easy/f/ui/interview/new');await page.getByRole('button',{name:'开始这一段'}).click();assert(page.url().includes('/easy/f/ui/interview/'));
+  await page.getByText('改用文字回答',{exact:true}).click();
   await page.locator('#interview-answer-form [name=answer]').fill('小时候我和家人在老院子乘凉。');await page.getByRole('button',{name:'保存回答，下一题'}).click();assert(page.url().includes('/easy/'));
   await page.getByRole('button',{name:'先休息，稍后继续'}).click();await page.goto(base+'/easy');assert(await page.getByRole('link',{name:'继续上次讲述'}).isVisible());
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:'/private/tmp/memoir-easy-home.png',fullPage:true});

@@ -1,0 +1,22 @@
+<section class="easy-question-block">
+{% if pending %}
+<h1>这一段已保存</h1><p role="status">正在准备下一个问题，稍等一下。</p>
+<details><summary>等候时的其他选择</summary><a class="btn-secondary" href="{{ url_for('interview.detail',family_id=family.id,session_id=interview.id) }}">查看下个问题</a><form method="post" action="{{ url_for('interview.action',family_id=family.id,session_id=interview.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="revision" value="{{ interview.revision }}"><button class="btn-secondary" name="action" value="template">先用预置问题继续</button></form></details>
+{% else %}
+<div id="question-content"><h1 id="interview-question">{{ interview.question }}</h1></div>
+<button class="btn-secondary" type="button" id="hear-question">听问题</button>
+{% include '_interview_recorder.html' %}
+<details id="interview-text" {% if values.get('answer') %}open{% endif %}><summary>改用文字回答</summary>
+<form id="interview-answer-form" method="post" action="{{ url_for('interview.action',family_id=family.id,session_id=interview.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="revision" value="{{ interview.revision }}"><input type="hidden" name="nonce" value="{{ nonce }}"><label>您的回答<textarea class="full" name="answer" rows="3" maxlength="4000">{{ values.get('answer','') }}</textarea></label><button class="btn-primary" name="action" value="answer">保存回答，下一题</button></form>
+</details>
+<details id="easy-interview-options"><summary>换话题与其他选项</summary>
+<button class="btn-secondary" type="button" id="record-choice-open">更改录音选择</button>
+<label>听问题的语速<select id="question-rate"><option value="0.85">慢一点</option><option value="1">正常</option></select></label>
+<p class="hint" id="question-audio-status">若听不到声音，也可以阅读问题。</p>
+{% if latest_question and latest_question.status in ['failed','uncertain','limited'] %}<p class="hint">这次使用预置问题继续，AI 追问不会自动重试。</p>{% endif %}
+<form method="post" action="{{ url_for('interview.action',family_id=family.id,session_id=interview.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="revision" value="{{ interview.revision }}"><button class="btn-secondary" name="action" value="skip">跳过这一题</button><label>换个话题<select class="full" name="topic">{% for key,item in topics.items() %}<option value="{{ key }}">{{ item[0] }}</option>{% endfor %}</select></label><button class="btn-secondary" name="action" value="topic">切换话题</button></form>
+{% if pending_asr %}<form method="post" action="{{ url_for('interview.action',family_id=family.id,session_id=interview.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="revision" value="{{ interview.revision }}"><p>录音正在转文字；也可先用文字继续，录音仍保留。</p><button class="btn-secondary" name="action" value="template">先用文字继续</button></form>{% endif %}
+{% include '_interview_file_upload.html' %}
+</details>
+{% endif %}
+</section>

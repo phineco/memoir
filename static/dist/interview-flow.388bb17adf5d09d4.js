@@ -7,10 +7,14 @@
  const status=document.getElementById('record-status');
  function setStatus(text){if(status)status.textContent=text;}
  function controls(){
+  document.querySelectorAll('.easy-interview form button,#record-choice-open,#hear-recording-choice,[data-record-choice]').forEach(n=>n.disabled=busy);
+  const phase=document.getElementById('record-phase');if(phase&&!busy&&asr)phase.textContent='录音已保存，正在转文字';else if(phase&&!busy&&phase.textContent==='录音已保存，正在转文字')phase.textContent='可以继续回答';
   if(answer)answer.querySelectorAll('textarea,button').forEach(n=>n.disabled=busy||asr);
   if(hear)hear.disabled=busy||!(window.memoirReaders&&window.memoirReaders['hear-question']);
+  const choiceReader=document.getElementById('hear-recording-choice');if(choiceReader)choiceReader.disabled=busy||!(window.memoirReaders&&window.memoirReaders['hear-recording-choice']);
   const start=document.getElementById('record-start');if(start&&!busy)start.disabled=asr;
  }
+ initReadAloud('hear-recording-choice','question-rate','recording-choice-explanation');
  if(hear){
   initReadAloud('hear-question','question-rate','question-content');
   hear.addEventListener('memoir:reading-state',e=>{
@@ -54,6 +58,7 @@
  });
  if(root.dataset.pending==='yes')setTimeout(()=>poll(null),1200);
  if(asr){
+  setStatus('录音已保存，正在转成文字，完成后继续下一题。');
   const task=document.querySelector('[data-asr-pending]');
   if(task)setTimeout(()=>poll(task.dataset.asrPending),1200);
  }

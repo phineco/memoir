@@ -7,6 +7,7 @@
  const player=document.getElementById('record-playback'),list=document.getElementById('record-pending');
  let recorder=null,stream=null,timer=null,warning=null,generation=0,recording=false,waiting=false,pendingCount=0,playUrl=null;
  const phaseLabel=document.getElementById('record-phase'),elapsed=document.getElementById('record-elapsed');
+ const easy=root.dataset.easy==='yes';
  let phase='idle',clock=null,startedAt=0;
  function tick(){
   const seconds=Math.max(0,Math.floor((performance.now()-startedAt)/1000));
@@ -14,23 +15,34 @@
  }
  function setPhase(value){
   if(recording && value!=='recording')return;
+  if(waiting&&phase==='requesting'&&['uploading','saved','retry'].includes(value))return;
   phase=value;root.dataset.recordState=value;
   const labels={idle:'准备录音',requesting:'正在打开麦克风',recording:'正在录音，请开始讲',saving:'已停止，正在保存',uploading:'正在上传录音',saved:'录音已保存',retry:'录音待上传',error:'录音未开始或已中断'};
   if(phaseLabel)phaseLabel.textContent=labels[value]||labels.idle;
   start.textContent=value==='requesting'?'正在打开麦克风…':'开始回答';
   start.setAttribute('aria-pressed',recording?'true':'false');
   stop.textContent=value==='requesting'?'取消打开麦克风':'说完了';
+  if(easy){start.hidden=recording;stop.hidden=!(recording||value==='requesting');}
   if(value!=='recording'){clearInterval(clock);clock=null;}
  }
  const owner=root.dataset.owner,sid=root.dataset.session,token=root.dataset.csrf;
  const asrConsent=document.getElementById('recording-asr-consent'),noticePanel=document.getElementById('recording-notice'),noticeSummary=document.getElementById('recording-notice-summary');
- function choiceSummary(){if(noticeSummary)noticeSummary.textContent=!consent.checked?'录音与转写选择（先确认）':asrConsent&&asrConsent.checked?'录音/转写选择 · 已确认':asrConsent?'录音已确认 · 未选转写':'录音已确认 · 仅保存';}
+ function choiceSummary(){if(easy&&noticeSummary){noticeSummary.textContent=consent.checked?'录音选择 · 可随时更改':'录音前先确认';return;}if(noticeSummary)noticeSummary.textContent=!consent.checked?'录音与转写选择（先确认）':asrConsent&&asrConsent.checked?'录音/转写选择 · 已确认':asrConsent?'录音已确认 · 未选转写':'录音已确认 · 仅保存';}
  const choiceKey='memoir.interview.choice.v1.'+JSON.stringify([root.dataset.user,sid,root.dataset.notice]);
  try{const choice=JSON.parse(sessionStorage.getItem(choiceKey)||'null');if(choice){consent.checked=choice.recording===true;if(asrConsent)asrConsent.checked=choice.asr===true;}}catch(e){}
  choiceSummary();if(consent.checked&&noticePanel)noticePanel.open=false;
  function retainChoice(){choiceSummary();try{sessionStorage.setItem(choiceKey,JSON.stringify({recording:consent.checked,asr:!!(asrConsent&&asrConsent.checked)}));}catch(e){}}
  consent.addEventListener('change',retainChoice);if(asrConsent)asrConsent.addEventListener('change',retainChoice);
- const fileForm=root.querySelector('form');if(fileForm)fileForm.addEventListener('submit',()=>{try{sessionStorage.setItem(choiceKey,JSON.stringify({recording:fileForm.elements.consent_recording.checked,asr:!!(fileForm.elements.consent_asr&&fileForm.elements.consent_asr.checked)}));}catch(e){}});
+ function openNotice(){if(noticePanel){noticePanel.open=true;const button=noticePanel.querySelector('[data-record-choice]');if(button){button.focus({preventScroll:true});noticePanel.scrollIntoView({block:'nearest'});}else consent.focus();}}
+ document.querySelectorAll('[data-record-choice]').forEach(button=>button.addEventListener('click',()=>{
+  if(recording||waiting)return;
+  consent.checked=button.dataset.recordChoice!=='off';if(asrConsent)asrConsent.checked=button.dataset.recordChoice==='asr';
+  retainChoice();noticePanel.open=false;
+  if(!consent.checked){const text=document.getElementById('interview-text');if(text){text.open=true;text.querySelector('textarea').focus();}say('已改用文字，后续录音和转写选择已关闭。');return;}
+  start.click();
+ }));
+ const choiceOpen=document.getElementById('record-choice-open');if(choiceOpen)choiceOpen.addEventListener('click',()=>{if(recording||waiting)return;const options=document.getElementById('easy-interview-options');if(options)options.open=false;openNotice();});
+ const fileForm=document.getElementById('record-file-form');if(fileForm)fileForm.addEventListener('submit',()=>{try{sessionStorage.setItem(choiceKey,JSON.stringify({recording:fileForm.elements.consent_recording.checked,asr:!!(fileForm.elements.consent_asr&&fileForm.elements.consent_asr.checked)}));}catch(e){}});
  function say(message){status.textContent=message;}
  function notify(){root.dataset.recordBusy=recording||waiting?'yes':'no';root.dispatchEvent(new CustomEvent('interview:record-state',{bubbles:true,detail:{recording,waiting}}));}
  function pausePlayback(){document.querySelectorAll('audio,video').forEach(a=>a.pause());Object.values(window.memoirReaders||{}).forEach(r=>r.stop());if(window.speechSynthesis)window.speechSynthesis.cancel();}
@@ -54,7 +66,7 @@
   return {iv,cipher:await crypto.subtle.encrypt({name:'AES-GCM',iv},await key(),await blob.arrayBuffer())};
  }
  async function unseal(row){await identity();return new Blob([await crypto.subtle.decrypt({name:'AES-GCM',iv:row.iv},await key(),row.cipher)],{type:row.mime});}
- function play(blob){pausePlayback();if(playUrl)URL.revokeObjectURL(playUrl);playUrl=URL.createObjectURL(blob);player.src=playUrl;return player.play().catch(()=>say('可以点击播放器回听。'));}
+ function play(blob){player.hidden=false;pausePlayback();if(playUrl)URL.revokeObjectURL(playUrl);playUrl=URL.createObjectURL(blob);player.src=playUrl;return player.play().catch(()=>say('可以点击播放器回听。'));}
  async function rows(){return (await transaction('readonly',s=>s.getAll())).filter(r=>r.owner===owner&&r.sid===sid);}
  async function render(){
   const saved=await rows();pendingCount=saved.length;root.dataset.pendingCount=String(pendingCount);list.textContent='';
@@ -76,7 +88,7 @@
  async function upload(row){if(uploading.has(row.id))return;uploading.add(row.id);try{await performUpload(row);}finally{uploading.delete(row.id);}}
  async function performUpload(row){
   await identity();
-  if(!consent.checked)throw Error('请先勾选录音保存告知。');
+  if(!consent.checked)throw Error('请先确认允许录音私有保存。');
   const blob=await unseal(row);const body=new FormData();
   body.append('audio',blob,'answer');body.append('revision',String(row.revision));body.append('nonce',row.id);body.append('consent_recording','yes');const asr=document.getElementById('recording-asr-consent');if(asr&&asr.checked)body.append('consent_asr','yes');body.append('csrf_token',token);
   setPhase('uploading');say('正在上传，本机片段保留至服务器确认保存。');
@@ -95,7 +107,7 @@
   release();
  }
  start.addEventListener('click',async()=>{
-  if(recording||waiting)return;const text=document.querySelector('#interview-answer-form textarea');if(text&&text.value.trim()){say('请先保存已有文字回答，再录下一题；也可以清空未保存文字后录音。');return;}if(!consent.checked){say('请先确认录音保存告知。');if(noticePanel)noticePanel.open=true;consent.focus();return;}
+  if(recording||waiting)return;const text=document.querySelector('#interview-answer-form textarea');if(text&&text.value.trim()){say('请先保存已有文字回答，再录下一题；也可以清空未保存文字后录音。');return;}if(!consent.checked){say('请先确认录音保存告知。');openNotice();return;}
   if(!navigator.mediaDevices||!window.MediaRecorder||!window.crypto||!crypto.subtle){setPhase('error');say('此浏览器暂不支持本站录音，可上传手机录音文件，或用手机键盘听写。');return;}
   const turn=++generation;waiting=true;start.disabled=true;stop.disabled=false;setPhase('requesting');notify();say('正在申请麦克风权限。');
   try{
