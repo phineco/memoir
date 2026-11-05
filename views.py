@@ -477,7 +477,7 @@ def _build_tree(family_id, viewer_id=None):
              if family_role(s, family_id, u.id)}
     by_id = {p.id: p for p in persons}
     nodes = {}
-    for p in persons:
+    for order, p in enumerate(persons):
         lines = [p.name]
         # 出生/去世年月（只有年份数据时显示年份；农历加前缀）
         if p.birth_year and p.death_year:
@@ -497,6 +497,9 @@ def _build_tree(family_id, viewer_id=None):
             lines.append(f"（{p.relation}）")
         nodes[p.id] = {
             "name": "\n".join(lines), "person_id": p.id,
+            "parent_id": p.parent_id if p.parent_id in by_id else None,
+            "spouse_id": p.spouse_id if p.spouse_id in by_id else None,
+            "order": order,
             "itemStyle": {"color": "#b7d7a8" if p.life_state == "alive" else "#d9d9d9" if p.life_state == "deceased" else "#d8e5ef"},
             "children": [],
         }

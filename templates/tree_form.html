@@ -20,8 +20,9 @@
   </div>
   <div class="form-row">
     <label>别名（逗号分隔） <input name="aliases" value="{{ form.get('aliases','') if form else '' }}" placeholder="如：建军，三儿"></label>
-    <label>排序 <input name="sort" type="number" value="{{ form.get('sort', 0) if form else 0 }}"></label>
+    <label>同辈排序 <input name="sort" type="number" value="{{ form.get('sort', 0) if form else 0 }}"></label>
   </div>
+  <p class="hint">配偶会在家族树中同层并排，不受同辈排序数字或原有挂靠层级影响。添加配偶可将上级留空；上级用于记录真实的上一辈关系，不要为了排版把配偶设为上级。排序数字越小，同辈越靠前。</p>
   {% include "_life_dates.html" %}
   <label>生存状态
     <select name="life_status">

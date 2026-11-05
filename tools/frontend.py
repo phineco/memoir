@@ -63,7 +63,7 @@ def outputs():
         subprocess.run([str(compiler()), '-c', 'tailwind.config.js', '-i', 'static/src.css', '-o', str(target), '--minify'], cwd=ROOT, check=True)
         css = target.read_bytes() + b'\n' + (ROOT / 'static/ui.css').read_bytes()
     sources = {'app.css':css}
-    for name in ['preferences.js','read-aloud.js','family-context.js','family-people.js','navigation.js','voice-input.js','write-recovery.js','writing-prompts.js','ai-chat.js','share-links.js','usage.js','family-voice.js','album-picker.js','interview-recorder.js','interview-flow.js','easy-pwa.js','form-state.js']:
+    for name in ['preferences.js','read-aloud.js','family-context.js','family-tree-layout.js','family-people.js','navigation.js','voice-input.js','write-recovery.js','writing-prompts.js','ai-chat.js','share-links.js','usage.js','family-voice.js','album-picker.js','interview-recorder.js','interview-flow.js','easy-pwa.js','form-state.js']:
         sources[name] = (ROOT / 'static' / name).read_bytes()
     for name in ['favicon.ico','jiayin-16.png','jiayin-32.png','jiayin-180.png','jiayin-192.png','jiayin-512.png']:
         sources[name] = (ROOT / 'static/icons' / name).read_bytes()
