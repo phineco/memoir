@@ -30,3 +30,23 @@ const people=check([['one'],['two']]).nodes.filter(n=>n.person_id);
 assert(people.every(n=>n.symbol.startsWith('path://')&&n.symbolSize[0]>=40));
 const future=layout({person_id:'avatar',name:'Future',symbol:'image:///static/future-avatar.png'},18,new Set());
 assert.equal(future.nodes.find(n=>n.person_id).symbol,'image:///static/future-avatar.png');
+
+const adapt=require('../static/family-chart-adapter.js');
+for(const rows of [
+ [['dad'],['mom'],['a','dad','b'],['b','mom','a'],['child','b'],['unrelated']],
+ [['a','b'],['b','a'],['orphan','missing']],
+ [[big,null,'other'],['other',null,big]],
+ [['a\"<img onerror=alert(1)>'],['b','a\"<img onerror=alert(1)>']],
+]){
+ const graph=layout(tree(rows),26,new Set(),320,{cards:true}),f3Tree=adapt(graph);
+ const people=f3Tree.data.filter(n=>n.data.person.person_id);
+ assert.equal(people.length,rows.length);assert.equal(new Set(people.map(n=>n.tid)).size,rows.length);
+ assert(people.every(n=>/^[a-z0-9-]+$/.test(n.tid)));
+ assert.deepEqual(new Set(people.map(n=>n.data.person.person_id)),new Set(rows.map(r=>r[0])));
+ assert.equal(people.reduce((count,n)=>count+(n.parents||[]).length,0),graph.links.filter(l=>l.kind==='parent').length);
+ for(const person of people){
+  for(const parent of person.parents||[])assert(graph.links.some(l=>l.kind==='parent'&&l.source===parent.data.person.person_id&&l.target===person.data.person.person_id));
+ }
+ assert(f3Tree.dim.width>0&&f3Tree.dim.height>0);
+}
+console.log('family-chart adapter: complete forest, exact recorded parent edges, cycles, safe HTML IDs and opaque IDs passed.');

@@ -69,6 +69,7 @@ jobs:
       - run: python tools/frontend.py bootstrap
       - run: python tools/frontend.py check
       - run: node tests/family-tree-layout.cjs
+      - run: UI_CHECK_SCRIPT=tests/family-chart-ui.cjs python tools/run_ui.py
       - run: UI_CHECK_SCRIPT=tests/spouse-tree-checks.cjs python tools/run_ui.py
       - run: UI_CHECK_SCRIPT=tests/tree-fullscreen-ui.cjs python tools/run_ui.py
       - run: UI_CHECK_SCRIPT=tests/person-account-link-checks.cjs python tools/run_ui.py

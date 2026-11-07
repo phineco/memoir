@@ -10,10 +10,10 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
    const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
    for(const width of (mode==='native'?[1280]:[390,320])){
     await page.setViewportSize({width,height:844});await page.goto(base+'/f/ui?view=tree');
-    await page.waitForFunction(()=>document.querySelector('#tree canvas')?.width>0);
+    await page.waitForFunction(()=>document.querySelectorAll('#tree .tree-person-card').length>0);
     const section=page.locator('#family-tree'),button=page.getByRole('button',{name:'全屏查看家族树',exact:true});
     await page.getByRole('button',{name:'放大家族树',exact:true}).click();
-    const zoom=await page.evaluate(()=>echarts.getInstanceByDom(document.getElementById('tree')).getOption().series[0].zoom);
+    const zoom=await page.evaluate(()=>f3.handlers.getCurrentZoom(document.querySelector('#tree svg.main_svg')).k);
     await button.click();await page.waitForFunction(()=>document.getElementById('family-tree').classList.contains('tree-fullscreen'));
     const exit=page.getByRole('button',{name:'退出家族树全屏',exact:true});await page.waitForFunction(()=>!document.querySelector('[data-tree-action=fullscreen]').disabled);
     assert.equal(await section.getAttribute('aria-modal'),'true');
@@ -21,7 +21,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     else assert.equal(await page.evaluate(()=>document.fullscreenElement),null);
     const box=await section.boundingBox();assert(Math.abs(box.x)<1&&Math.abs(box.y)<1);
     const screen=await page.evaluate(()=>[innerWidth,innerHeight]);assert(Math.abs(box.width-screen[0])<2&&Math.abs(box.height-screen[1])<2);
-    assert(Math.abs(await page.evaluate(()=>echarts.getInstanceByDom(document.getElementById('tree')).getOption().series[0].zoom)-zoom)<.001);
+    assert(Math.abs(await page.evaluate(()=>f3.handlers.getCurrentZoom(document.querySelector('#tree svg.main_svg')).k)-zoom)<.001);
     const exitBox=await exit.boundingBox();assert(exitBox.y>=0&&exitBox.y+exitBox.height<screen[1]);
     assert(await page.locator('#tree').evaluate(n=>n.clientHeight>160));
     await page.getByRole('button',{name:'缩小家族树',exact:true}).click();

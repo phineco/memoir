@@ -22,37 +22,32 @@ const assert=require('node:assert/strict');
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   for(const width of [1280,390,320]){
    await page.setViewportSize({width,height:900});await page.goto(base+'/f/ui?view=tree');
-   await page.waitForFunction(()=>document.querySelector('#tree canvas')?.width>0);
-   const getZoom=()=>page.evaluate(()=>echarts.getInstanceByDom(document.getElementById('tree')).getOption().series[0].zoom);
-   await page.getByRole('button',{name:'放大家族树',exact:true}).click();assert((await getZoom())>1);
-   await page.getByRole('button',{name:'缩小家族树',exact:true}).click();assert(Math.abs((await getZoom())-1)<.001);
+   await page.waitForFunction(()=>document.querySelectorAll('#tree .tree-person-card').length>0);
+   const getZoom=()=>page.evaluate(()=>f3.handlers.getCurrentZoom(document.querySelector('#tree svg.main_svg')).k);
+   const initialZoom=await getZoom();
+   await page.getByRole('button',{name:'放大家族树',exact:true}).click();assert((await getZoom())>initialZoom);
+   await page.getByRole('button',{name:'缩小家族树',exact:true}).click();assert(Math.abs((await getZoom())-initialZoom)<.001);
    const mover=page.getByRole('button',{name:'移动家族树',exact:true});await mover.click();assert.equal(await mover.getAttribute('aria-pressed'),'true');
    await page.locator('#tree').scrollIntoViewIfNeeded();const canvas=await page.locator('#tree').boundingBox();
-   const before=await page.evaluate(()=>echarts.getInstanceByDom(document.getElementById('tree')).getOption().series[0].center);
+   const before=await page.evaluate(()=>({...f3.handlers.getCurrentZoom(document.querySelector('#tree svg.main_svg'))}));
    await page.mouse.move(canvas.x+canvas.width/2,canvas.y+canvas.height/2);await page.mouse.down();await page.mouse.move(canvas.x+canvas.width/2+40,canvas.y+canvas.height/2-30,{steps:5});await page.mouse.up();
-   const after=await page.evaluate(()=>echarts.getInstanceByDom(document.getElementById('tree')).getOption().series[0].center);assert.notDeepEqual(after,before);
-   await page.getByRole('button',{name:'重置视图',exact:true}).click();assert.equal(await mover.getAttribute('aria-pressed'),'false');assert.equal(await getZoom(),1);
+   const after=await page.evaluate(()=>({...f3.handlers.getCurrentZoom(document.querySelector('#tree svg.main_svg'))}));assert.notDeepEqual(after,before);
+   await page.getByRole('button',{name:'重置视图',exact:true}).click();assert.equal(await mover.getAttribute('aria-pressed'),'false');assert.equal(await getZoom(),initialZoom);
    await page.getByRole('button',{name:'展开全部',exact:true}).click();
-   const geometry=await page.evaluate(()=>{
-    const chart=echarts.getInstanceByDom(document.getElementById('tree')),series=chart.getModel().getSeriesByIndex(0),data=series.getData();
-    return {option:chart.getOption().series[0].data,positions:data.mapArray((i)=>{const raw=data.getRawDataItem(i),el=data.getItemGraphicEl(i),rect=el?.getBoundingRect();return {id:raw.id,pid:raw.person_id,toggle:raw.toggle,layout:data.getItemLayout(i),screen:rect?el.transformCoordToGlobal(rect.x+rect.width/2,rect.y+rect.height/2):null,transform:el?.getComputedTransform()};})};
-   });
-   const personNode=geometry.option.find(n=>n.person_id===spouse);assert(personNode.symbol.startsWith('path://'));assert.match(personNode.name,/新建配偶\[三婶\]\n1950年3月8日\[阳历\]/);assert(!personNode.name.includes('对你：'));
-   const wife=geometry.positions.find(n=>n.pid==='daughter'),partner=geometry.positions.find(n=>n.pid===spouse),child=geometry.positions.find(n=>n.pid==='p02');
-   assert.equal(wife.screen[1],partner.screen[1]);assert(child.screen[1]>wife.screen[1]);
-   assert(Math.abs(wife.screen[0]-partner.screen[0])>=120);
-   assert(wife.screen[0]>0&&partner.screen[0]<width-32);
+   const geometry=await page.locator('#tree .tree-person-card').evaluateAll(cards=>cards.map(card=>{
+    const d=card.parentNode.__data__,rect=card.getBoundingClientRect();
+    return {id:card.dataset.personId,x:d.x,y:d.y,text:card.textContent,screenX:rect.x+rect.width/2,screenY:rect.y+rect.height/2};
+   }));
+   const partner=geometry.find(n=>n.id===spouse),wife=geometry.find(n=>n.id==='daughter'),child=geometry.find(n=>n.id==='p02');
+   assert.match(partner.text,/新建配偶/);assert.match(partner.text,/三婶/);assert.match(partner.text,/1950年3月8日/);assert.match(partner.text,/阳历/);assert(!partner.text.includes('对你：'));
+   assert.equal(wife.y,partner.y);assert(child.y>wife.y);assert(Math.abs(wife.x-partner.x)>=120);
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
-   async function clickNode(item){
-    await page.locator('#tree').scrollIntoViewIfNeeded();const box=await page.locator('#tree').boundingBox();
-    await page.mouse.click(box.x+item.screen[0]+1,box.y+item.screen[1]+(item.pid?12:1));
-   }
-   const branch=geometry.positions.find(n=>n.toggle==='daughter');
-   await clickNode(branch);
-   assert.equal(await page.evaluate(()=>echarts.getInstanceByDom(document.getElementById('tree')).getOption().series[0].data.filter(n=>n.person_id).length),3);
+   assert.equal(await page.locator('#tree .tree-person-icon svg').count(),4);
+   await page.locator('#tree [data-branch-id="daughter"]').click();
+   await page.waitForFunction(()=>document.querySelectorAll('#tree .tree-person-card').length===3);
    await page.getByRole('button',{name:'展开全部',exact:true}).click();
-   assert.equal(await page.evaluate(()=>echarts.getInstanceByDom(document.getElementById('tree')).getOption().series[0].data.filter(n=>n.person_id).length),4);
-   await clickNode(partner);await page.waitForURL('**/person/'+spouse+'?*');
+   assert.equal(await page.locator('#tree .tree-person-card').count(),4);
+   await page.locator('#tree [data-person-id="'+spouse+'"]').click();await page.waitForURL('**/person/'+spouse+'?*');
    assert.equal(new URL(page.url()).searchParams.get('return_to'),'/f/ui?view=tree');
    await page.goto(base+'/f/ui?view=tree');
    if(process.env.UI_SCREENSHOTS){require('node:fs').mkdirSync(process.env.UI_SCREENSHOTS,{recursive:true});await page.locator('#tree').screenshot({path:process.env.UI_SCREENSHOTS+'/spouse-'+width+'.png'});}

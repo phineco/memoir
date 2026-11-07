@@ -7,6 +7,7 @@
 <title>{% block title %}家音 · 回忆录{% endblock %}</title>
 {% if me and usage_metrics %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endif %}
 <script id="display-bootstrap" type="application/json">{{ display_bootstrap|tojson }}</script><script src="{{ asset_url('preferences.js') }}"></script>
+{% block extra_styles %}{% endblock %}
 <link rel="stylesheet" href="{{ asset_url('app.css') }}">
 </head>
 <body data-user-id="{{ me.id if me else '' }}" data-family-id="{{ family.id if family else '' }}" {% if request.endpoint == 'main.index' and me %}data-family-picker{% endif %}>

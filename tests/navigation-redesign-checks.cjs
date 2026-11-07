@@ -21,7 +21,7 @@ const fs=require('node:fs');
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),width+' '+path);
     if(process.env.UI_SCREENSHOTS && path==='/account?family_id=ui'){fs.mkdirSync(process.env.UI_SCREENSHOTS,{recursive:true});await page.screenshot({path:process.env.UI_SCREENSHOTS+'/account-'+width+'.png',fullPage:true});}
     if(path.includes('view=tree')){
-     await page.waitForFunction(()=>document.querySelector('#tree canvas')?.width>0);
+     await page.waitForFunction(()=>document.querySelectorAll('#tree .tree-person-card').length>0);
      assert(await page.getByRole('link',{name:/林奶奶/}).isVisible());
      if(process.env.UI_SCREENSHOTS){fs.mkdirSync(process.env.UI_SCREENSHOTS,{recursive:true});await page.screenshot({path:process.env.UI_SCREENSHOTS+'/people-tree-'+width+'.png',fullPage:true});}
     }
@@ -42,7 +42,7 @@ const fs=require('node:fs');
    await page.goto(base+'/account/stories?kind=own&family_id=ui');await page.getByRole('link',{name:'阅读故事',exact:true}).first().click();
    await page.getByRole('link',{name:'← 返回我的内容',exact:true}).click();assert.equal(new URL(page.url()).pathname,'/account/stories');
   }
-  await context.route('**/echarts-*.js',r=>r.abort());
+  await context.route('**/family-chart-0.9.0*.js',r=>r.abort());
   await page.goto(base+'/f/ui?view=tree');
   assert.match(await page.locator('#tree-status').innerText(),/暂时无法显示/);
   assert(await page.locator('#family-people .person-card').first().isVisible());

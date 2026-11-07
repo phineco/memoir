@@ -2,7 +2,7 @@
 (function(root,factory){
  if(typeof module==='object' && module.exports)module.exports=factory;
  else root.familyTreeLayout=factory;
-})(typeof window==='undefined'?globalThis:window,function(tree,fontSize,collapsed,viewportWidth){
+})(typeof window==='undefined'?globalThis:window,function(tree,fontSize,collapsed,viewportWidth,options={}){
  // A validated avatar symbol can replace this shared person silhouette later.
  const personSymbol='path://M16 2a6 6 0 1 0 0 12a6 6 0 0 0 0-12ZM4 32v-4a12 12 0 0 1 24 0v4Z';
  const people=[],stack=[tree];
@@ -39,7 +39,8 @@
   if(parent)parent.children.push(unit);else roots.push(unit);
  }
  const hidden=collapsed || new Set(units.filter(u=>u.level>=2 && u.children.length).map(u=>u.id));
- const labelWidth=viewportWidth?Math.min(Math.max(160,fontSize*7),Math.max(104,(viewportWidth-40)/2)):Math.max(160,fontSize*7);
+ const cardWidth=options.cards?Math.max(112,Math.min(220,(viewportWidth-40)/2)):0;
+ const labelWidth=options.cards?cardWidth-22:viewportWidth?Math.min(Math.max(160,fontSize*7),Math.max(104,(viewportWidth-40)/2)):Math.max(160,fontSize*7);
  const textWidth=text=>[...text].reduce((width,c)=>width+(/[\u0000-\u007f]/.test(c)?.6:1)*fontSize,0);
  function wrapLabel(text){
   return text.split('\n').map(line=>{
@@ -51,7 +52,8 @@
  }
  const displayNames=new Map(people.map(p=>[p.person_id,wrapLabel(p.name)]));
  const labelHeight=Math.max(1,...[...displayNames.values()].map(text=>text.split('\n').length))*(fontSize+4)+12;
- const gap=viewportWidth?labelWidth+20:Math.max(200,fontSize*9),row=Math.max(180,labelHeight+110);
+ const cardHeight=labelHeight+76;
+ const gap=options.cards?cardWidth+16:viewportWidth?labelWidth+20:Math.max(200,fontSize*9),row=Math.max(180,labelHeight+110,options.cards?cardHeight+100:0);
  function measure(unit){
   unit.visibleChildren=hidden.has(unit.id)?[]:unit.children;
   unit.width=Math.max(unit.members.length*gap,unit.visibleChildren.reduce((n,c)=>n+measure(c),0));
@@ -68,7 +70,7 @@
   if(unit.members.length===2)links.push({source:unit.members[0].person_id,target:unit.members[1].person_id,kind:'spouse',symbol:['none','none'],lineStyle:{width:3}});
   if(unit.children.length){
    const id='branch:'+unit.id;
-   nodes.push({id,name:hidden.has(unit.id)?'＋ 展开分支':'－ 收起分支',toggle:unit.id,x,y:y+48,symbol:'roundRect',symbolSize:[100,28],
+   nodes.push({id,name:hidden.has(unit.id)?'＋ 展开分支':'－ 收起分支',toggle:unit.id,x,y:y+(options.cards?cardHeight/2+28:48),symbol:'roundRect',symbolSize:[100,28],
     itemStyle:{color:'#f0f0f0',borderColor:'#888',borderWidth:1},label:{position:'inside',fontSize:14,color:'#222',distance:0}});
   }
   let next=left+(unit.width-unit.visibleChildren.reduce((n,c)=>n+c.width,0))/2;for(const child of unit.visibleChildren){place(child,next);next+=child.width;}
@@ -79,5 +81,5 @@
   const inconsistent=unresolved.has(unitOf.get(relation.source))||unresolved.has(unitOf.get(relation.target));
   links.push({...relation,kind:'parent',symbol:['none','arrow'],lineStyle:{type:inconsistent?'dashed':'solid',curveness:.08}});
  }
- return {nodes,links,collapsed:hidden,unresolved:unresolved.size,width:Math.max(gap,cursor-gap/2),height:Math.max(row,...nodes.map(n=>n.y+row)),labelHeight,labelWidth,rowHeight:row,units};
+ return {nodes,links,collapsed:hidden,unresolved:unresolved.size,width:Math.max(gap,cursor-gap/2),height:Math.max(row,...nodes.map(n=>n.y+row)),labelHeight,labelWidth,rowHeight:row,cardWidth,cardHeight,units};
 });

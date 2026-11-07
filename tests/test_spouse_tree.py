@@ -42,6 +42,10 @@ def test_tree_passes_authorized_spouse_and_parent_relationships_without_rewritin
     assert 'pb' not in json.dumps(json.loads(payload))
     assert 'tree-expand' in html
     assert 'family-tree-layout.' in html
+    assert 'family-chart-0.9.0.min.' in html
+    assert 'd3-7.9.0.min.' in html
+    assert 'family-chart-adapter.' in html
+    assert 'echarts-' not in html
 
 
 def test_create_spouse_keeps_independent_parent_and_draws_reciprocal_link(client, login):
