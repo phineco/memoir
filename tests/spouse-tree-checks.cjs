@@ -23,12 +23,21 @@ const assert=require('node:assert/strict');
   for(const width of [1280,390,320]){
    await page.setViewportSize({width,height:900});await page.goto(base+'/f/ui?view=tree');
    await page.waitForFunction(()=>document.querySelector('#tree canvas')?.width>0);
+   const getZoom=()=>page.evaluate(()=>echarts.getInstanceByDom(document.getElementById('tree')).getOption().series[0].zoom);
+   await page.getByRole('button',{name:'放大家族树',exact:true}).click();assert((await getZoom())>1);
+   await page.getByRole('button',{name:'缩小家族树',exact:true}).click();assert(Math.abs((await getZoom())-1)<.001);
+   const mover=page.getByRole('button',{name:'移动家族树',exact:true});await mover.click();assert.equal(await mover.getAttribute('aria-pressed'),'true');
+   await page.locator('#tree').scrollIntoViewIfNeeded();const canvas=await page.locator('#tree').boundingBox();
+   const before=await page.evaluate(()=>echarts.getInstanceByDom(document.getElementById('tree')).getOption().series[0].center);
+   await page.mouse.move(canvas.x+canvas.width/2,canvas.y+canvas.height/2);await page.mouse.down();await page.mouse.move(canvas.x+canvas.width/2+40,canvas.y+canvas.height/2-30,{steps:5});await page.mouse.up();
+   const after=await page.evaluate(()=>echarts.getInstanceByDom(document.getElementById('tree')).getOption().series[0].center);assert.notDeepEqual(after,before);
+   await page.getByRole('button',{name:'重置视图',exact:true}).click();assert.equal(await mover.getAttribute('aria-pressed'),'false');assert.equal(await getZoom(),1);
    await page.getByRole('button',{name:'展开全部',exact:true}).click();
    const geometry=await page.evaluate(()=>{
     const chart=echarts.getInstanceByDom(document.getElementById('tree')),series=chart.getModel().getSeriesByIndex(0),data=series.getData();
     return {option:chart.getOption().series[0].data,positions:data.mapArray((i)=>{const raw=data.getRawDataItem(i),el=data.getItemGraphicEl(i),rect=el?.getBoundingRect();return {id:raw.id,pid:raw.person_id,toggle:raw.toggle,layout:data.getItemLayout(i),screen:rect?el.transformCoordToGlobal(rect.x+rect.width/2,rect.y+rect.height/2):null,transform:el?.getComputedTransform()};})};
    });
-   const personNode=geometry.option.find(n=>n.person_id===spouse);assert(personNode.symbol.startsWith('path://'));assert.match(personNode.name,/新建配偶\[三婶\]\n出生：1950年3月8日\[阳历\]/);assert(!personNode.name.includes('对你：'));
+   const personNode=geometry.option.find(n=>n.person_id===spouse);assert(personNode.symbol.startsWith('path://'));assert.match(personNode.name,/新建配偶\[三婶\]\n1950年3月8日\[阳历\]/);assert(!personNode.name.includes('对你：'));
    const wife=geometry.positions.find(n=>n.pid==='daughter'),partner=geometry.positions.find(n=>n.pid===spouse),child=geometry.positions.find(n=>n.pid==='p02');
    assert.equal(wife.screen[1],partner.screen[1]);assert(child.screen[1]>wife.screen[1]);
    assert(Math.abs(wife.screen[0]-partner.screen[0])>=120);

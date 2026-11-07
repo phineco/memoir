@@ -200,5 +200,5 @@ def tree_date_lines(person, event):
             label += str(day) + '日'
         if not year:
             label += '（年份不详）'
-        lines.append(EVENTS[event] + '：' + label + '[' + title + ']')
+        lines.append(('' if event == 'birth' else EVENTS[event] + '：') + label + '[' + title + ']')
     return lines

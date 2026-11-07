@@ -466,3 +466,9 @@ section[id] {scroll-margin-top:calc(var(--site-header-height,7rem) + 1rem);}
 
 .easy-question-block>details>summary::before,.easy-history>summary::before {content:'＋';margin-right:8px;text-decoration:none;}
 .easy-question-block>details[open]>summary::before,.easy-history[open]>summary::before {content:'－';}
+
+.tree-view-tools {display:flex;gap:8px;flex-wrap:wrap;margin-block:12px;}
+.tree-view-tools button {display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:64px;min-height:44px;padding:8px 12px;}
+.tree-view-tools svg {width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.tree-moving canvas {cursor:grab!important;}
+.tree-moving:active canvas {cursor:grabbing!important;}

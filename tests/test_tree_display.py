@@ -7,13 +7,13 @@ from views import _build_tree
 
 
 @pytest.mark.parametrize('fields,expected', [
-    ({'birth_solar_year':1950,'birth_solar_month':3,'birth_solar_day':8}, ['出生：1950年3月8日[阳历]']),
-    ({'birth_solar_year':1950}, ['出生：1950年[阳历]']),
-    ({'birth_solar_year':1950,'birth_solar_month':3}, ['出生：1950年3月[阳历]']),
-    ({'birth_lunar_year':1950,'birth_lunar_month':3,'birth_lunar_day':8,'birth_lunar_leap':True}, ['出生：1950年闰3月8日[农历]']),
-    ({'birth_lunar_month':3,'birth_lunar_day':8}, ['出生：3月8日（年份不详）[农历]']),
-    ({'birth_year':1942,'birth_calendar':'lunar'}, ['出生：1942年[农历]']),
-    ({'birth_solar_year':1950,'birth_lunar_year':1949}, ['出生：1950年[阳历]','出生：1949年[农历]']),
+    ({'birth_solar_year':1950,'birth_solar_month':3,'birth_solar_day':8}, ['1950年3月8日[阳历]']),
+    ({'birth_solar_year':1950}, ['1950年[阳历]']),
+    ({'birth_solar_year':1950,'birth_solar_month':3}, ['1950年3月[阳历]']),
+    ({'birth_lunar_year':1950,'birth_lunar_month':3,'birth_lunar_day':8,'birth_lunar_leap':True}, ['1950年闰3月8日[农历]']),
+    ({'birth_lunar_month':3,'birth_lunar_day':8}, ['3月8日（年份不详）[农历]']),
+    ({'birth_year':1942,'birth_calendar':'lunar'}, ['1942年[农历]']),
+    ({'birth_solar_year':1950,'birth_lunar_year':1949}, ['1950年[阳历]','1949年[农历]']),
     ({}, []),
 ])
 def test_tree_birth_precision_and_calendar(fields, expected):
@@ -41,6 +41,6 @@ def test_tree_name_contains_relationship_and_preserves_other_information(app):
     assert label.splitlines()[0] == '王桂兰[母亲]'
     assert fallback.splitlines()[0] == '王桂兰[长辈]'
     assert '对你：' not in label
-    assert '出生：1950年3月8日[阳历]' in label
+    assert '1950年3月8日[阳历]' in label
     assert '去世：2020年6月1日[阳历]' in label
     assert '别名：桂兰' in label
