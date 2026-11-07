@@ -2,12 +2,30 @@
 import hashlib
 import json
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 from flask import Blueprint,Response,abort,current_app,redirect,render_template,request,url_for
+from werkzeug.exceptions import HTTPException
 
 
 def enabled():return bool(current_app.config.get('EASY_ENABLED') and current_app.config.get('EASY_PWA_ENABLED'))
+
+
+def login_return(candidate):
+    """Return to a real task page; old bookmarks must not strand a signed-in user."""
+    try:
+        parts=urlsplit(candidate)
+        valid=not parts.scheme and not parts.netloc and '\\' not in candidate and not any(ord(c)<32 for c in candidate) and (parts.path=='/easy' or parts.path.startswith('/easy/'))
+    except ValueError:valid=False
+    if not valid:abort(400,'返回地址无效，请从简易首页重新登录。')
+    path=parts.path.rstrip('/') or '/easy'
+    try:
+        endpoint,_=current_app.url_map.bind_to_environ(request.environ).match(path,method='GET')
+    except HTTPException:
+        return url_for('easy.index')
+    if not endpoint.startswith(('easy.','interview.','organize.')) and endpoint!='easy_pwa.install_help':
+        return url_for('easy.index')
+    return urlunsplit(('', '',path,parts.query,parts.fragment))
 
 
 def install(app):
@@ -40,12 +58,7 @@ def install(app):
     @bp.route('/easy/login',methods=['GET','POST'])
     def login():
         from views import login as normal_login
-        candidate=request.args.get('next') or '/easy'
-        try:
-            parts=urlsplit(candidate)
-            valid=not parts.scheme and not parts.netloc and '\\' not in candidate and not any(ord(c)<32 for c in candidate) and (parts.path=='/easy' or parts.path.startswith('/easy/'))
-        except ValueError:valid=False
-        if not valid:abort(400,'返回地址无效，请从简易首页重新登录。')
+        candidate=login_return(request.args.get('next') or '/easy')
         response=normal_login()
         # Keep an installed login inside the task interface; do not trust arbitrary return URLs.
         if hasattr(response,'status_code') and response.status_code in (301,302,303):

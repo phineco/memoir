@@ -39,6 +39,11 @@ def index():
     return render_template('easy_home.html',family=family,continuing=row)
 
 
+@bp.get('/easy/')
+def canonical_index():
+    return redirect(url_for('easy.index', family_id=request.args.get('family_id')))
+
+
 @bp.get('/easy/families')
 def families():
     return render_template('easy_choose.html',family=None,families=_families_for_user(_current_user()))
