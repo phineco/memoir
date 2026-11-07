@@ -12,6 +12,7 @@
  if(!holder||!data)return;
  const status=document.getElementById('tree-status'),reset=document.getElementById('tree-reset'),expand=document.getElementById('tree-expand');
  const tools=document.getElementById('tree-view-tools'),zoomIn=tools.querySelector('[data-tree-action=zoom-in]'),zoomOut=tools.querySelector('[data-tree-action=zoom-out]'),move=tools.querySelector('[data-tree-action=move]');
+ const zoomLabel=document.getElementById('tree-zoom');
  const section=document.getElementById('family-tree'),fullscreen=tools.querySelector('[data-tree-action=fullscreen]');
  let chart,cardRenderer,collapsed,moving=false,full=false,fullscreenBusy=false,returnScroll=null;
  function fullState(active){
@@ -44,7 +45,9 @@
  });
  function toolState(){
   const zoom=chart?f3.handlers.getCurrentZoom(chart.svg).k:1;
-  zoomIn.disabled=zoom>=4-.001;zoomOut.disabled=zoom<=.25+.001;
+  zoomIn.disabled=zoom>=4-.001;zoomOut.disabled=zoom<=(chart?chart.zoom.scaleExtent()[0]:.25)+.00001;
+  zoomLabel.textContent=(zoom<.1?(zoom*100).toFixed(1):Math.round(zoom*100))+'%';
+  move.querySelector('[data-tree-move-label]').textContent=moving?'停止移动':'移动';
   move.setAttribute('aria-pressed',String(moving));move.className=moving?'btn-primary':'btn-secondary';holder.classList.toggle('tree-moving',moving);
  }
  function fallback(){
@@ -89,7 +92,7 @@
   });
  }
  function setTransform(transform){d3.select(chart.listener).call(chart.zoom.transform,transform);}
- function draw(preserveView=false){
+ function draw(preserveView=false,fitAll=false){
   try{
    if(!window.f3||!window.d3||!window.familyTreeLayout||!window.familyChartTree){fallback();return;}
    holder.hidden=false;
@@ -108,24 +111,31 @@
     this.style.strokeDasharray=!link.spouse&&link.source.unresolvedParent?'6 4':'';
    });
    if(previous)setTransform(previous);
+   else if(fitAll){
+    const k=Math.min(1,Math.max(1,holder.clientWidth-24)/tree.dim.width,Math.max(1,holder.clientHeight-24)/tree.dim.height);
+    chart.zoom.scaleExtent([Math.min(.25,k),4]);
+    setTransform(d3.zoomIdentity.translate((holder.clientWidth-tree.dim.width*k)/2+tree.dim.x_off*k,(holder.clientHeight-tree.dim.height*k)/2+tree.dim.y_off*k).scale(k));
+   }
    else{
+    chart.zoom.scaleExtent([.25,4]);
     // Keep labels readable; large forests can be explored by dragging and zooming.
     const k=Math.max(.6,Math.min(1,holder.clientWidth/tree.dim.width,holder.clientHeight/tree.dim.height));
     const x=(holder.clientWidth-tree.dim.width*k)/2+tree.dim.x_off*k;
     setTransform(d3.zoomIdentity.translate(x,tree.dim.y_off*k+20).scale(k));
    }
    reset.hidden=false;expand.hidden=false;tools.hidden=false;toolState();
-   status.textContent=layout.unresolved?'部分上级关系存在循环，请核对；人物均已保留，可使用下方名单查找。':'配偶同层并排；点击人物卡片查看详情，点击分支按钮展开或收起。';
+   status.textContent=layout.unresolved?'部分上级关系存在循环，请核对；人物均已保留，可使用下方名单查找。':moving?'移动中：拖动查看，点“停止移动”后可查看人物。':fitAll?'已展开全部人物并显示全图；字太小时可点“放大”。':'点击人物看详情；点“移动”可拖动，点“查看全图”可找回整棵树。';
   }catch(e){fallback();}
  }
  tools.addEventListener('click',event=>{
   const button=event.target.closest('button');if(!chart||!button||!tools.contains(button))return;
   if(button.dataset.treeAction==='fullscreen'){toggleFullscreen();return;}
+  if(button.dataset.treeAction==='fit'){collapsed=new Set();moving=false;draw(false,true);return;}
   if(button.dataset.treeAction==='move'){
    moving=!moving;toolState();
-   status.textContent=moving?'移动模式：拖动家族树查看；再次点击移动，可恢复点击人物详情。':'点击人物查看详情；可用放大、缩小和移动按钮调整视图。';return;
+   status.textContent=moving?'移动中：按住鼠标或用一根手指拖动；点“停止移动”后可查看人物。':'点击人物查看详情；可用放大、缩小和移动按钮调整视图。';return;
   }
-  const zoom=f3.handlers.getCurrentZoom(chart.svg).k,target=Math.max(.25,Math.min(4,zoom*(button.dataset.treeAction==='zoom-in'?1.25:.8)));
+  const zoom=f3.handlers.getCurrentZoom(chart.svg).k,target=Math.max(chart.zoom.scaleExtent()[0],Math.min(4,zoom*(button.dataset.treeAction==='zoom-in'?1.25:.8)));
   d3.select(chart.listener).call(chart.zoom.scaleTo,target);toolState();
  });
  reset.addEventListener('click',()=>{collapsed=undefined;moving=false;draw();});

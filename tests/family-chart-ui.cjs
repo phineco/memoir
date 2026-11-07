@@ -36,6 +36,15 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
   const branch=page.locator('#tree [data-branch-id="a"]');await branch.focus();await page.keyboard.press('Enter');
   assert.equal(await branch.getAttribute('aria-expanded'),'false');assert(await branch.evaluate(n=>n===document.activeElement));
   await page.keyboard.press(' ');assert.equal(await branch.getAttribute('aria-expanded'),'true');
+  await page.getByRole('button',{name:'查看家族树全图',exact:true}).click();
+  assert.equal(await page.locator('#tree .tree-person-card').count(),rows.length);
+  const contained=await page.locator('#tree').evaluate(holder=>{
+   const bounds=holder.getBoundingClientRect();
+   return [...holder.querySelectorAll('.tree-person-card')].every(card=>{const r=card.getBoundingClientRect();return r.left>=bounds.left&&r.right<=bounds.right&&r.top>=bounds.top&&r.bottom<=bounds.bottom;});
+  });assert(contained,'Fit must include every person inside the viewport');
+  const fitZoom=await page.evaluate(()=>f3.handlers.getCurrentZoom(document.querySelector('#tree svg.main_svg')).k);
+  await page.getByRole('button',{name:'放大家族树',exact:true}).click();
+  assert(await page.evaluate(()=>f3.handlers.getCurrentZoom(document.querySelector('#tree svg.main_svg')).k)>fitZoom);
   // Moving mode does not accidentally navigate through a person card.
   await page.getByRole('button',{name:'移动家族树',exact:true}).click();
   await page.locator('#tree [data-person-id="dad"]').evaluate(n=>n.click());assert.equal(new URL(page.url()).pathname,'/f/ui');
