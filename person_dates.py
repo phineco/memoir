@@ -182,3 +182,23 @@ def parse_life_state(form, dates, person=None):
     if state == 'unknown' and has_death:
         state = 'deceased'
     return state
+
+
+def tree_date_lines(person, event):
+    """Compact tree dates retain known precision and each recorded calendar."""
+    lines = []
+    for kind, title in [('solar', '阳历'), ('lunar', '农历')]:
+        parts = values(person, event, kind)
+        if not any(parts.values()):
+            continue
+        year, month, day = (parts[part] for part in PARTS)
+        label = str(year) + '年' if year else ''
+        if month:
+            label += '闰' if kind == 'lunar' and getattr(person, event + '_lunar_leap', False) else ''
+            label += str(month) + '月'
+        if day:
+            label += str(day) + '日'
+        if not year:
+            label += '（年份不详）'
+        lines.append(EVENTS[event] + '：' + label + '[' + title + ']')
+    return lines

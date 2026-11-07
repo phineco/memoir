@@ -470,7 +470,8 @@ def kinship_term(viewer_id, target_id, by_id):
 
 
 def _build_tree(family_id, viewer_id=None):
-    """persons 表 parent_id 树 → ECharts tree 所需嵌套结构。"""
+    """Authorized person labels and ancestry for the family tree renderer."""
+    from person_dates import tree_date_lines
     s = _s()
     persons = s.query(Person).filter_by(family_id=family_id, del_flag=0).order_by(Person.sort).all()
     users = {u.id: u.nickname or u.phone for u in s.query(User).filter_by(del_flag=0).all()
@@ -478,23 +479,15 @@ def _build_tree(family_id, viewer_id=None):
     by_id = {p.id: p for p in persons}
     nodes = {}
     for order, p in enumerate(persons):
-        lines = [p.name]
-        # 出生/去世年月（只有年份数据时显示年份；农历加前缀）
-        if p.birth_year and p.death_year:
-            lines.append(f"{p.birth_label}–{p.death_label}")
-        elif p.birth_year:
-            lines.append(f"{p.birth_label}年生" if p.alive else f"生于{p.birth_label}")
-        elif p.death_year:
-            lines.append(f"卒于{p.death_label}")
+        kin = kinship_term(viewer_id, p.id, by_id) if viewer_id else None
+        relation = kin or p.relation
+        lines = [p.name + (f"[{relation}]" if relation else "")]
+        lines.extend(tree_date_lines(p, 'birth'))
+        lines.extend(tree_date_lines(p, 'death'))
         if p.aliases:
             lines.append("别名：" + "、".join(p.aliases))
         if p.user_id and p.user_id in users:
             lines.append(f"👤{users[p.user_id]}")
-        kin = kinship_term(viewer_id, p.id, by_id) if viewer_id else None
-        if kin:
-            lines.append(f"对你：{kin}")
-        elif p.relation:
-            lines.append(f"（{p.relation}）")
         nodes[p.id] = {
             "name": "\n".join(lines), "person_id": p.id,
             "parent_id": p.parent_id if p.parent_id in by_id else None,

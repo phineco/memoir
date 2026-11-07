@@ -26,3 +26,7 @@ assert.equal(folded.nodes.find(n=>n.toggle).toggle,'a');
 assert.equal(layout(branchTree,26,new Set()).nodes.filter(n=>n.person_id).length,5);
 assert.equal(check([['solo',null,'missing']]).links.length,0);
 console.log('Spouse adjacency, differing parent levels/sorts, both ancestries, no invented parenthood, cycles, orphans, string IDs and branch folding passed.');
+const people=check([['one'],['two']]).nodes.filter(n=>n.person_id);
+assert(people.every(n=>n.symbol.startsWith('path://')&&n.symbolSize[0]>=40));
+const future=layout({person_id:'avatar',name:'Future',symbol:'image:///static/future-avatar.png'},18,new Set());
+assert.equal(future.nodes.find(n=>n.person_id).symbol,'image:///static/future-avatar.png');

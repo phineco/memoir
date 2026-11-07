@@ -34,15 +34,16 @@
     });
    }
    const style=getComputedStyle(document.documentElement),fontSize=Math.max(18,Number(document.documentElement.dataset.size)||18);
-   const layout=familyTreeLayout(JSON.parse(data.textContent),fontSize,collapsed);collapsed=layout.collapsed;
+   const layout=familyTreeLayout(JSON.parse(data.textContent),fontSize,collapsed,holder.clientWidth);collapsed=layout.collapsed;
+   holder.style.minHeight=Math.max(480,Math.min(720,layout.labelHeight+36+layout.rowHeight+90))+'px';
    chart.resize();
    const bounds=[{id:'extent:start',x:0,y:0},{id:'extent:end',x:layout.width,y:layout.height}].map(n=>({...n,symbolSize:0,silent:true,label:{show:false},tooltip:{show:false},itemStyle:{opacity:0}}));
    chart.setOption({tooltip:{trigger:'item',renderMode:'richText',formatter:event=>event.dataType==='edge'?(event.data.kind==='spouse'?'配偶关系':'已记录的上级关系'):event.name},series:[{
     type:'graph',layout:'none',data:[...layout.nodes,...bounds],links:layout.links,roam:true,
     // Explicit extents keep one layout unit equal to one pixel on every viewport.
-    left:(holder.clientWidth-layout.width)/2,top:Math.max(100,fontSize*5),width:layout.width,height:layout.height,
+    left:(holder.clientWidth-layout.width)/2,top:Math.max(100,layout.labelHeight+36),width:layout.width,height:layout.height,
     zoom:1,nodeScaleRatio:0,edgeSymbolSize:8,
-    label:{show:true,position:'top',align:'center',verticalAlign:'bottom',width:Math.max(160,fontSize*7),overflow:'break',distance:10,lineHeight:fontSize+4,fontSize,color:style.getPropertyValue('--ink').trim(),fontFamily:style.getPropertyValue('--font-ui').trim()},
+    label:{show:true,formatter:params=>params.data.display_name||params.name,position:'top',align:'center',verticalAlign:'bottom',width:layout.labelWidth,overflow:'none',distance:10,lineHeight:fontSize+4,fontSize,color:style.getPropertyValue('--ink').trim(),fontFamily:style.getPropertyValue('--font-ui').trim()},
     lineStyle:{color:style.getPropertyValue('--muted').trim(),opacity:1},
     animation:false
    }]},true);

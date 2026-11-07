@@ -9,6 +9,7 @@ const assert=require('node:assert/strict');
   async function add(name,parent,spouse,sort){
    await page.goto(base+'/f/ui/tree/add');await page.locator('[name=name]').fill(name);
    await page.locator('[name=parent_id]').selectOption(parent);await page.locator('[name=spouse_id]').selectOption(spouse);
+   if(name==='新建配偶'){await page.locator('[name=relation]').fill('三婶');await page.locator('[name=birth_solar_year]').fill('1950');await page.locator('[name=birth_solar_month]').selectOption('3');await page.locator('[name=birth_solar_day]').selectOption('8');}
    await page.locator('[name=sort]').fill(String(sort));await page.getByRole('button',{name:'添加',exact:true}).click();
    assert.equal(new URL(page.url()).pathname,'/f/ui');
   }
@@ -25,16 +26,17 @@ const assert=require('node:assert/strict');
    await page.getByRole('button',{name:'展开全部',exact:true}).click();
    const geometry=await page.evaluate(()=>{
     const chart=echarts.getInstanceByDom(document.getElementById('tree')),series=chart.getModel().getSeriesByIndex(0),data=series.getData();
-    return {option:chart.getOption().series[0].data,positions:data.mapArray((i)=>{const raw=data.getRawDataItem(i),el=data.getItemGraphicEl(i);return {id:raw.id,pid:raw.person_id,toggle:raw.toggle,layout:data.getItemLayout(i),screen:el?.transformCoordToGlobal(0,0),transform:el?.getComputedTransform()};})};
+    return {option:chart.getOption().series[0].data,positions:data.mapArray((i)=>{const raw=data.getRawDataItem(i),el=data.getItemGraphicEl(i),rect=el?.getBoundingRect();return {id:raw.id,pid:raw.person_id,toggle:raw.toggle,layout:data.getItemLayout(i),screen:rect?el.transformCoordToGlobal(rect.x+rect.width/2,rect.y+rect.height/2):null,transform:el?.getComputedTransform()};})};
    });
+   const personNode=geometry.option.find(n=>n.person_id===spouse);assert(personNode.symbol.startsWith('path://'));assert.match(personNode.name,/新建配偶\[三婶\]\n出生：1950年3月8日\[阳历\]/);assert(!personNode.name.includes('对你：'));
    const wife=geometry.positions.find(n=>n.pid==='daughter'),partner=geometry.positions.find(n=>n.pid===spouse),child=geometry.positions.find(n=>n.pid==='p02');
    assert.equal(wife.screen[1],partner.screen[1]);assert(child.screen[1]>wife.screen[1]);
-   assert(Math.abs(wife.screen[0]-partner.screen[0])>=180);
+   assert(Math.abs(wife.screen[0]-partner.screen[0])>=120);
    assert(wife.screen[0]>0&&partner.screen[0]<width-32);
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
    async function clickNode(item){
     await page.locator('#tree').scrollIntoViewIfNeeded();const box=await page.locator('#tree').boundingBox();
-    await page.mouse.click(box.x+item.screen[0]+1,box.y+item.screen[1]+1);
+    await page.mouse.click(box.x+item.screen[0]+1,box.y+item.screen[1]+(item.pid?12:1));
    }
    const branch=geometry.positions.find(n=>n.toggle==='daughter');
    await clickNode(branch);

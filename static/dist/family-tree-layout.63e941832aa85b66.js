@@ -2,7 +2,9 @@
 (function(root,factory){
  if(typeof module==='object' && module.exports)module.exports=factory;
  else root.familyTreeLayout=factory;
-})(typeof window==='undefined'?globalThis:window,function(tree,fontSize,collapsed){
+})(typeof window==='undefined'?globalThis:window,function(tree,fontSize,collapsed,viewportWidth){
+ // A validated avatar symbol can replace this shared person silhouette later.
+ const personSymbol='path://M16 2a6 6 0 1 0 0 12a6 6 0 0 0 0-12ZM4 32v-4a12 12 0 0 1 24 0v4Z';
  const people=[],stack=[tree];
  while(stack.length){const node=stack.pop();if(node.person_id)people.push(node);stack.push(...(node.children||[]).slice().reverse());}
  people.sort((a,b)=>a.order-b.order);
@@ -37,7 +39,19 @@
   if(parent)parent.children.push(unit);else roots.push(unit);
  }
  const hidden=collapsed || new Set(units.filter(u=>u.level>=2 && u.children.length).map(u=>u.id));
- const gap=Math.max(200,fontSize*9),row=Math.max(180,...people.map(p=>(p.name.split('\n').length+2)*(fontSize+4)+60));
+ const labelWidth=viewportWidth?Math.min(Math.max(160,fontSize*7),Math.max(104,(viewportWidth-40)/2)):Math.max(160,fontSize*7);
+ const textWidth=text=>[...text].reduce((width,c)=>width+(/[\u0000-\u007f]/.test(c)?.6:1)*fontSize,0);
+ function wrapLabel(text){
+  return text.split('\n').map(line=>{
+   const tokens=line.match(/\[[^\]]*\]|\d+年|闰?\d+月|\d+日|./gu)||[];
+   const lines=[];let current='';
+   for(const token of tokens){if(current&&textWidth(current+token)>labelWidth){lines.push(current);current='';}current+=token;}
+   lines.push(current);return lines.join('\n');
+  }).join('\n');
+ }
+ const displayNames=new Map(people.map(p=>[p.person_id,wrapLabel(p.name)]));
+ const labelHeight=Math.max(1,...[...displayNames.values()].map(text=>text.split('\n').length))*(fontSize+4)+12;
+ const gap=viewportWidth?labelWidth+20:Math.max(200,fontSize*9),row=Math.max(180,labelHeight+110);
  function measure(unit){
   unit.visibleChildren=hidden.has(unit.id)?[]:unit.children;
   unit.width=Math.max(unit.members.length*gap,unit.visibleChildren.reduce((n,c)=>n+measure(c),0));
@@ -49,7 +63,7 @@
   const x=left+unit.width/2,y=unit.level*row;
   unit.members.forEach((person,i)=>{
    visible.add(person.person_id);
-   nodes.push({...person,id:person.person_id,x:x+(i-(unit.members.length-1)/2)*gap,y,symbolSize:16});
+   nodes.push({...person,display_name:displayNames.get(person.person_id),id:person.person_id,x:x+(i-(unit.members.length-1)/2)*gap,y,symbol:person.symbol||personSymbol,symbolSize:[40,44],symbolKeepAspect:true,itemStyle:{...person.itemStyle,borderColor:'#52685b',borderWidth:1}});
   });
   if(unit.members.length===2)links.push({source:unit.members[0].person_id,target:unit.members[1].person_id,kind:'spouse',symbol:['none','none'],lineStyle:{width:3}});
   if(unit.children.length){
@@ -65,5 +79,5 @@
   const inconsistent=unresolved.has(unitOf.get(relation.source))||unresolved.has(unitOf.get(relation.target));
   links.push({...relation,kind:'parent',symbol:['none','arrow'],lineStyle:{type:inconsistent?'dashed':'solid',curveness:.08}});
  }
- return {nodes,links,collapsed:hidden,unresolved:unresolved.size,width:Math.max(gap,cursor-gap/2),height:Math.max(row,...nodes.map(n=>n.y+row)),units};
+ return {nodes,links,collapsed:hidden,unresolved:unresolved.size,width:Math.max(gap,cursor-gap/2),height:Math.max(row,...nodes.map(n=>n.y+row)),labelHeight,labelWidth,rowHeight:row,units};
 });
