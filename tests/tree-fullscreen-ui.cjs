@@ -24,6 +24,11 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     assert(Math.abs(await page.evaluate(()=>f3.handlers.getCurrentZoom(document.querySelector('#tree svg.main_svg')).k)-zoom)<.001);
     const exitBox=await exit.boundingBox();assert(exitBox.y>=0&&exitBox.y+exitBox.height<screen[1]);
     assert(await page.locator('#tree').evaluate(n=>n.clientHeight>160));
+    const toolbarBox=await page.locator('#tree-view-tools').boundingBox(),treeBox=await page.locator('#tree').boundingBox();
+    assert(Math.abs(toolbarBox.y+toolbarBox.height-treeBox.y)<2,'Tools must touch the top of the chart');
+    assert(Math.abs(toolbarBox.x-treeBox.x)<2&&Math.abs(toolbarBox.width-treeBox.width)<2);
+    const zoomButton=page.getByRole('button',{name:'放大家族树',exact:true}),zoomBox=await zoomButton.boundingBox();
+    assert(zoomBox.width===44&&zoomBox.height===44);assert.equal(await zoomButton.getAttribute('title'),'放大家族树');
     await page.getByRole('button',{name:'缩小家族树',exact:true}).click();
     await page.getByRole('button',{name:'移动家族树',exact:true}).click();
     assert.equal(await page.getByRole('button',{name:'移动家族树',exact:true}).getAttribute('aria-pressed'),'true');

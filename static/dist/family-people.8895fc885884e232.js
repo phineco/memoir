@@ -19,7 +19,7 @@
   if(active===full)return;
   full=active;if(active)returnScroll=[window.scrollX,window.scrollY];
   section.classList.toggle('tree-fullscreen',active);body.classList.toggle('tree-fullscreen-open',active);
-  fullscreen.setAttribute('aria-pressed',String(active));fullscreen.setAttribute('aria-label',active?'退出家族树全屏':'全屏查看家族树');fullscreen.querySelector('span').textContent=active?'退出全屏':'全屏';
+  fullscreen.setAttribute('aria-pressed',String(active));fullscreen.setAttribute('aria-label',active?'退出家族树全屏':'全屏查看家族树');fullscreen.querySelector('span').textContent=active?'退出全屏':'全屏';fullscreen.title=fullscreen.getAttribute('aria-label');
   if(active){section.setAttribute('role','dialog');section.setAttribute('aria-modal','true');section.setAttribute('aria-label','家族树全屏查看');}
   else{section.removeAttribute('role');section.removeAttribute('aria-modal');section.removeAttribute('aria-label');}
   requestAnimationFrame(()=>{draw(true);fullscreen.focus({preventScroll:true});if(!active&&returnScroll)window.scrollTo(...returnScroll);});
@@ -47,7 +47,7 @@
   const zoom=chart?f3.handlers.getCurrentZoom(chart.svg).k:1;
   zoomIn.disabled=zoom>=4-.001;zoomOut.disabled=zoom<=(chart?chart.zoom.scaleExtent()[0]:.25)+.00001;
   zoomLabel.textContent=(zoom<.1?(zoom*100).toFixed(1):Math.round(zoom*100))+'%';
-  move.querySelector('[data-tree-move-label]').textContent=moving?'停止移动':'移动';
+  move.querySelector('[data-tree-move-label]').textContent=moving?'停止移动':'移动';move.title=moving?'停止移动，恢复查看人物':'移动家族树';
   move.setAttribute('aria-pressed',String(moving));move.className=moving?'btn-primary':'btn-secondary';holder.classList.toggle('tree-moving',moving);
  }
  function fallback(){
