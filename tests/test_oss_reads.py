@@ -73,3 +73,32 @@ def test_album_pages_serve_sdk_images_and_keep_family_access(client,login,monkey
     assert all(body.is_closed for body in bodies)
     count=len(reads);login('owner-b')
     assert client.get('/f/a/album/oss-photo/image').status_code==404 and len(reads)==count
+
+
+def test_failed_image_read_reports_safe_oss_fields_without_exposing_object(client,login,monkeypatch,caplog):
+    import json
+    from tests.test_storage_diagnostics import service
+    def fail(request):raise oss.exceptions.OperationError(name='GetObject',error=service())
+    monkeypatch.setattr('storage._backend',backend_for(fail))
+    s=get_session();s.add(Photo(id='read-error',family_id='a',storage_path='album/a/private-key.jpg'));s.commit()
+    login();response=client.get('/f/a/album/read-error/image?size=thumb')
+    assert response.status_code==404
+    events=[json.loads(r.message) for r in caplog.records if r.message.startswith('{')]
+    failure=next(e for e in events if e.get('kind')=='album_image')
+    assert failure['oss_code']=='AccessDenied' and failure['oss_status_code']==403
+    assert failure['storage_backend']=='OssStorageBackend'
+    assert failure['request_id']==response.headers['X-Request-ID']
+    assert 'SECRET' not in caplog.text and 'private-key' not in caplog.text
+    assert 'AccessDenied' not in response.get_data(as_text=True)
+
+
+def test_missing_local_image_logs_effective_backend(store,client,login,caplog):
+    import json
+    s=get_session();s.add(Photo(id='local-missing',family_id='a',storage_path='album/a/unavailable.jpg'));s.commit()
+    login();response=client.get('/f/a/album/local-missing/image?size=thumb')
+    assert response.status_code==404
+    entries=[json.loads(r.message) for r in caplog.records if r.message.startswith('{')]
+    event=next(e for e in entries if e.get('kind')=='album_image')
+    assert event['storage_backend']=='LocalStorageBackend' and event['error_type']=='FileNotFoundError'
+    assert event['request_id']==response.headers['X-Request-ID']
+    assert 'unavailable.jpg' not in caplog.text

@@ -30,14 +30,15 @@ def release_version(root, configured=''):
     return candidate if isinstance(candidate,str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,63}',candidate) else 'unknown'
 
 
-def record_error(error, kind='request'):
+def record_error(error, kind='request', storage_backend=None):
     if not has_request_context():return
     frames=traceback.extract_tb(error.__traceback__) if error.__traceback__ else []
     current_app.logger.error(json.dumps(dict(
         event='failure',kind=kind,request_id=g.get('request_id'),version=current_app.config['RELEASE_VERSION'],
         endpoint=request.endpoint,method=request.method,error_type=type(error).__name__,
         **database_details(error),
-        **(storage_error_details(error) if kind=='album_storage' else {}),
+        **({'storage_backend':storage_backend} if storage_backend in ('LocalStorageBackend','OssStorageBackend','unavailable') else {}),
+        **(storage_error_details(error) if kind in ('album_storage','album_image') else {}),
         stack=[dict(file=Path(frame.filename).name,line=frame.lineno,function=frame.name) for frame in frames]),ensure_ascii=False))
 
 

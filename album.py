@@ -311,12 +311,17 @@ def image(family_id,photo_id):
     ext=(photo.storage_path or '').rsplit('.',1)[-1].lower()
     types={'jpg':'image/jpeg','jpeg':'image/jpeg','png':'image/png','gif':'image/gif','webp':'image/webp'}
     if ext not in types:abort(404)
+    backend=None
     try:
+        backend=get_storage()
         if request.args.get('size')=='thumb' and photo.storage_path.startswith('album/'):
-            try:data=get_storage().read(thumb_key(photo.storage_path),MAX_IMAGE+1)
-            except Exception:data=get_storage().read(photo.storage_path,MAX_IMAGE+1)
-        else:data=get_storage().read(photo.storage_path,MAX_IMAGE+1)
-    except Exception:abort(404)
+            try:data=backend.read(thumb_key(photo.storage_path),MAX_IMAGE+1)
+            except Exception:data=backend.read(photo.storage_path,MAX_IMAGE+1)
+        else:data=backend.read(photo.storage_path,MAX_IMAGE+1)
+    except Exception as error:
+        from observability import record_error
+        record_error(error,kind='album_image',storage_backend=type(backend).__name__ if backend else 'unavailable')
+        abort(404)
     if len(data)>MAX_IMAGE:abort(404)
     response=send_file(io.BytesIO(data),mimetype=types[ext],max_age=0)
     response.headers.update({'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Cross-Origin-Resource-Policy':'same-origin'})

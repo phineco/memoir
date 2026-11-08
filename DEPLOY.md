@@ -481,3 +481,5 @@ OSS V2的OperationError是包装异常，外层类型不足以区分服务拒绝
 ### 上传成功但相册/编辑页图片404（2026-11-08）
 
 已复现OSS SDK V2响应流StreamBody.read()不接受长度参数；旧存储适配器调用read(limit)触发TypeError，被图片接口转换为404。修复为iter_bytes分块读取，到上限停止并保证关闭流，保留图片/音频调用方各自的大小限制。真实SDK响应流配合内存HTTP响应验证原图、缩略图、缺缩略图回退及家庭权限。更新并重启后验证既有照片的本站图片接口，无需重传照片或修改photos.storage_path，不改为公开OSS URL，不在源码/记忆中保存临时签名地址。若仍不显示，再核对实际图片GET请求及OSS GetObject权限。
+
+若对象在OSS但读取检查显示LocalStorageBackend/FileNotFoundError，应先统一有效STORAGE_BACKEND=oss：检查项目.env、宝塔项目环境变量及启动进程的环境覆盖；load_dotenv默认不覆盖已设置的环境变量。终端读取结果只证明该终端进程配置，不能自动等同于运行中的Gunicorn。保存配置并重启本项目后复核原图/缩略图读取，不要将对象key改为外部签名URL或重新上传来掩盖后端错位。图片接口失败新增album_image安全日志及storage_backend，OSS错误继续包含底层服务码；正常缺缩略图但主图回退成功不记失败日志，不扩大照片访问权限。
