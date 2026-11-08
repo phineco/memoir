@@ -287,3 +287,24 @@ def test_uploader_is_the_actor_and_is_not_overwritten_by_edit(store,client,login
 @pytest.mark.parametrize('value',['other','user:','user:'+'a'*65])
 def test_invalid_uploader_filter_is_rejected(client,login,value):
     login();assert client.get('/f/a/album/choices',query_string={'uploader':value}).status_code==400
+
+
+@pytest.mark.parametrize('module_name', ['PIL', 'PIL._imaging'])
+def test_missing_image_dependency_preserves_form_and_writes_nothing(store,client,login,monkeypatch,caplog,module_name):
+    import builtins
+    login();csrf=token(client);image_bytes=picture()
+    original_import=builtins.__import__
+    def missing(name,*args,**kwargs):
+        if name=='PIL':raise ModuleNotFoundError('private-dependency-details',name=module_name)
+        return original_import(name,*args,**kwargs)
+    with monkeypatch.context() as patch:
+        patch.setattr(builtins,'__import__',missing)
+        response=upload(client,csrf,photo=(io.BytesIO(image_bytes),'phone.jpg'))
+    body=response.get_data(as_text=True)
+    assert response.status_code==503
+    assert '照片处理服务尚未配置完成' in body and '老院子合影' in body and '合肥老家' in body
+    assert '请重新选择原图' in body and 'private-dependency-details' not in body
+    assert get_session().query(Photo).count()==0 and not Path(store.upload_dir).exists()
+    assert 'image_dependency' in caplog.text and 'ModuleNotFoundError' in caplog.text
+    assert 'private-dependency-details' not in caplog.text
+    assert upload(client,csrf).status_code==302

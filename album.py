@@ -71,8 +71,17 @@ def metadata(data,family_id):
     return dict(title=title or None,caption=caption or None,location=location,photo_year=year,photo_month=month,photo_day=day,person_id=person_id)
 
 
+class ImageProcessingUnavailable(RuntimeError):
+    """The server cannot load its required image processing dependency."""
+
+
 def normalize(data):
-    from PIL import Image,ImageOps,UnidentifiedImageError
+    try:
+        from PIL import Image,ImageOps,UnidentifiedImageError
+    except ImportError as error:
+        from observability import record_error
+        record_error(error,kind='image_dependency')
+        raise ImageProcessingUnavailable('照片处理服务尚未配置完成，请联系管理员。') from error
     try:
         with warnings.catch_warnings():
             warnings.simplefilter('error',Image.DecompressionBombWarning)
@@ -208,6 +217,7 @@ def upload(family_id,person_id=None):
         data=file.read(MAX_IMAGE+1)
         if len(data)>MAX_IMAGE:raise ValueError('照片太大，请选择 10 MB 以内的文件。')
         data,thumbnail,ext=normalize(data)
+    except ImageProcessingUnavailable as error:return form_page(family,error=str(error),status=503)
     except ValueError as error:return form_page(family,error=str(error),status=400)
     identifier=new_id();key=f'album/{family_id}/{identifier}.{ext}'
     try:
