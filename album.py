@@ -224,7 +224,9 @@ def upload(family_id,person_id=None):
         get_storage().save(data,key)
         try:get_storage().save(thumbnail,thumb_key(key))
         except Exception:current_app.logger.warning('album thumbnail unavailable; using full image')
-    except Exception:
+    except Exception as error:
+        from observability import record_error
+        record_error(error,kind='album_storage')
         current_app.logger.warning('album upload storage failed')
         return form_page(family,error='照片暂未保存，请保留原图并稍后重试。',status=503)
     me=_current_user();s=get_session()

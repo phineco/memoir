@@ -182,7 +182,7 @@ def test_object_proxy_never_returns_an_oss_url(client,login,monkeypatch):
     login('owner-b');assert client.get('/f/a/album/private/image').status_code==404 and len(reads)==1
 
 
-def test_upload_csrf_size_and_storage_failure_are_recoverable(store,app,client,login,monkeypatch):
+def test_upload_csrf_size_and_storage_failure_are_recoverable(store,app,client,login,monkeypatch,caplog):
     login();csrf=token(client)
     assert upload(client,'invalid-csrf').status_code==400
     assert upload(client,csrf,photo=(io.BytesIO(b'x'*(10*1024*1024+1)),'large.jpg')).status_code==400
@@ -191,6 +191,9 @@ def test_upload_csrf_size_and_storage_failure_are_recoverable(store,app,client,l
     result=upload(client,csrf)
     assert result.status_code==503 and '照片暂未保存' in result.get_data(as_text=True)
     assert 'private-storage-error' not in result.get_data(as_text=True) and get_session().query(Photo).count()==0
+    assert '"kind": "album_storage"' in caplog.text and '"error_type": "RuntimeError"' in caplog.text
+    assert 'private-storage-error' not in caplog.text
+    assert '老院子合影' in result.get_data(as_text=True)
 
 
 def test_deleted_photo_does_not_block_later_story_text_edits(store,client,login):
@@ -308,3 +311,19 @@ def test_missing_image_dependency_preserves_form_and_writes_nothing(store,client
     assert 'image_dependency' in caplog.text and 'ModuleNotFoundError' in caplog.text
     assert 'private-dependency-details' not in caplog.text
     assert upload(client,csrf).status_code==302
+
+
+@pytest.mark.parametrize('error', [PermissionError('sensitive-storage-path'),RuntimeError('sensitive-credentials')])
+def test_backend_initialization_failures_are_safely_diagnosed(store,client,login,monkeypatch,caplog,error):
+    import json
+    login();csrf=token(client)
+    def unavailable():raise error
+    monkeypatch.setattr('album.get_storage',unavailable)
+    result=upload(client,csrf)
+    assert result.status_code==503 and get_session().query(Photo).count()==0
+    assert not Path(store.upload_dir).exists()
+    entries=[json.loads(record.message) for record in caplog.records if record.message.startswith('{')]
+    failure=next(e for e in entries if e.get('kind')=='album_storage')
+    assert failure['error_type']==type(error).__name__ and failure['stack']
+    assert failure['request_id']==result.headers['X-Request-ID']
+    assert str(error) not in caplog.text and str(error) not in result.get_data(as_text=True)
