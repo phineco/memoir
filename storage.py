@@ -97,8 +97,16 @@ class OssStorageBackend(StorageBackend):
             bucket=self.bucket, key=key))
 
     def read(self, key: str, limit: int) -> bytes:
+        if limit < 0:raise ValueError('read limit must be non-negative')
+        if limit == 0:return b''
         result=self.client.get_object(self._oss.GetObjectRequest(bucket=self.bucket,key=key))
-        try:return result.body.read(limit)
+        try:
+            output=bytearray()
+            # OSS V2 StreamBody.read() accepts no size; use its bounded iterator.
+            for chunk in result.body.iter_bytes(block_size=min(limit,64*1024)):
+                output.extend(chunk[:limit-len(output)])
+                if len(output)>=limit:break
+            return bytes(output)
         finally:result.body.close()
 
     def url(self, key: str) -> str:
