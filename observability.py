@@ -13,6 +13,7 @@ from sqlalchemy import event
 from werkzeug.exceptions import HTTPException
 
 from database_diagnostics import database_details
+from storage_diagnostics import storage_error_details
 
 
 def release_version(root, configured=''):
@@ -36,6 +37,7 @@ def record_error(error, kind='request'):
         event='failure',kind=kind,request_id=g.get('request_id'),version=current_app.config['RELEASE_VERSION'],
         endpoint=request.endpoint,method=request.method,error_type=type(error).__name__,
         **database_details(error),
+        **(storage_error_details(error) if kind=='album_storage' else {}),
         stack=[dict(file=Path(frame.filename).name,line=frame.lineno,function=frame.name) for frame in frames]),ensure_ascii=False))
 
 

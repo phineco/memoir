@@ -475,3 +475,5 @@ python -m pip check
 这表示上传在存储初始化或主图写入阶段失败；此前仅有warning汇总，不能据此判断是OSS权限、缺SDK还是本地目录。新版会同时记录 `event=failure, kind=album_storage`，以相同request_id关联异常类型与代码位置，不记录原始异常文本、凭据或照片内容。503继续保留表单文字；缩略图失败仍按原逻辑回退主图。
 
 先用网站进程实际解释器检查有效STORAGE_BACKEND；`APP_ENV=cloud`默认OSS，未显式配置STORAGE_BACKEND不等于本地。OSS须核对相同虚拟环境的SDK、配置是否齐全及桶地域/上传权限；本地须核对服务账号对UPLOAD_DIR及父目录的权限和磁盘空间。不要通过公开桶或全目录777解决。故障a33dd46231093bb1ecdc0d3b尚无具体存储异常证据，不将推测当作根因。
+
+OSS V2的OperationError是包装异常，外层类型不足以区分服务拒绝与连接失败。新版album_storage诊断通过SDK unwrap()逐层展开，记录storage_error_chain；若底层为ServiceError，还记录经格式校验的oss_status_code、oss_code、oss_ec、oss_request_id。没有服务响应时可能只有连接/超时异常链。不会记录message、request_target、headers或原始响应，网页不显示这些运维字段。按新错误码核对凭据、权限、地域、网络或参数，不因仅见OperationError就放宽桶权限；禁止公开桶或重复盲目上传作为修复。
