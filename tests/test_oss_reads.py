@@ -92,8 +92,10 @@ def test_failed_image_read_reports_safe_oss_fields_without_exposing_object(clien
     assert 'AccessDenied' not in response.get_data(as_text=True)
 
 
-def test_missing_local_image_logs_effective_backend(store,client,login,caplog):
+def test_missing_local_image_logs_effective_backend(app,client,login,caplog,monkeypatch):
     import json
+    from storage import LocalStorageBackend
+    monkeypatch.setattr('storage._backend',LocalStorageBackend(app.config['UPLOAD_DIR']))
     s=get_session();s.add(Photo(id='local-missing',family_id='a',storage_path='album/a/unavailable.jpg'));s.commit()
     login();response=client.get('/f/a/album/local-missing/image?size=thumb')
     assert response.status_code==404
